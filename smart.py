@@ -4866,6 +4866,11 @@ def read_marches(g, sleep):
                 if mxy:
                     a["x"], a["y"] = int(mxy.group(1)), int(mxy.group(2))
             a["status"] = "gather"
+            a["mission"] = "gather"                                # UX-03
+            kind = next((k for k, rx in (("food", r"farm|cropland|field"), ("wood", r"lumber|wood"), ("stone", r"quarry|stone"),
+                                        ("gold", r"gold|mine"), ("gems", r"gem")) if re.search(rx, joined, re.I)), "")
+            if kind:
+                a["kind"] = kind
         else:
             labc = img2[int(0.428 * h):int(0.454 * h), int(0.47 * w):int(0.56 * w)]
             lab = _ocr_words(labc, "march_lab.png", light=True, thr=170)
@@ -4875,6 +4880,29 @@ def read_marches(g, sleep):
             log(f"    march {k + 1}: label {lab!r}")
             if mt:
                 a["troops"] = int(re.sub(r"\D", "", mt[-1]))
+            # UX-03: mission type and troop health when the popup shows them
+            if re.search(r"rally", joined, re.I):
+                a["mission"] = "rally"
+            elif re.search(r"barbarian|fort", joined + " " + a.get("target", ""), re.I) or st == "attack":
+                a["mission"] = "barbarians"
+            mh = re.search(r"(\d{1,3})\s*%", joined)
+            if mh and 0 <= int(mh.group(1)) <= 100:
+                a["health"] = int(mh.group(1))
+        # UX-03: commander names - read from the popup when shown, else the dashboard preset for that task
+        names = []
+        low = joined.lower().replace(" ", "")
+        for cn in COMMANDER_NAMES:
+            if len(cn) > 3 and cn.lower().replace(" ", "") in low and cn not in names:
+                names.append(cn)
+        if names:
+            a["commanders"] = names[:2]
+        else:
+            task = ("gathering_" + a["kind"]) if a.get("kind") in ("food", "wood", "stone", "gold") else \
+                   ("rallies" if a.get("mission") == "rally" else "barbarians" if a.get("mission") == "barbarians" else "")
+            c1, c2 = _preset(task) if task else ("", "")
+            if c1:
+                a["commanders"] = [c for c in (c1, c2) if c]
+                a["commanders_from"] = "preset"
         out.append(a)
         recover_screen(g); sleep(1)
     control.CITY["marches"] = out
