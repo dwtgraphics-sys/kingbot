@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:12:36+04:00"
+  "heartbeat": "2026-11-26T01:15:04+04:00"
  },
  "items": [
   {
@@ -538,8 +538,10 @@
    "title": "Character/Account Switcher, 4 Summary KPIs & 'What the Bot Did' Cards",
    "priority": "High",
    "start": "00:57",
-   "status": "in_progress",
-   "seq": 48
+   "status": "done",
+   "seq": 48,
+   "finished": "2026-11-25T21:15:04+00:00",
+   "note": "bot v224: per-character daily counters (history_by_char) + gem_mines counter; dashboard: character pills, 4 KPI cards (14/30 d), 'What the bot did' 4 cards, ❗ info"
   },
   {
    "id": "TOOLS-04",

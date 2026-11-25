@@ -600,6 +600,10 @@ def gather_gems(g, sleep, max_armies=4, day_limit=1200, max_level=0, search_radi
                 if r == "sent":
                     sent += 1
                     d = _gem_day(sent_level=lv)
+                    try:
+                        stat("gem_mines")                    # UX-04: 'gem mines gathered' card
+                    except Exception:
+                        pass
                     log(f"  gather_gems: army sent to a level {lv} gem deposit (today: {d['sends']} sends ≈ {d['est']} gems)")
                 elif r == "busy":
                     break
@@ -1514,7 +1518,7 @@ def read_resources(g, sleep=None):
 
 
 # ---------------- v105: day stats (30-day history), notifications, Telegram push ----------------
-STAT_KEYS = ("food", "wood", "stone", "gold", "gems", "barb", "rally", "rally_join", "mail", "recall", "merchant", "tavern", "events_claim")
+STAT_KEYS = ("food", "wood", "stone", "gold", "gems", "barb", "rally", "rally_join", "mail", "recall", "merchant", "tavern", "events_claim", "gem_mines")
 
 
 def _stats_load():
@@ -1535,6 +1539,19 @@ def _stats_save(d):
     d["notes"] = d.get("notes", [])[-60:]
     json.dump(d, open(os.path.join(BASE, "stats_days.json"), "w", encoding="utf-8"), ensure_ascii=False)
     control.CITY["history"] = [dict(day=k, **days[k]) for k in sorted(days)]
+    try:                                                     # UX-04: per-character history (last 30 days, 12 characters)
+        bc = d.get("by_char") or {}
+        keep = set(sorted(days)[-30:])
+        for who in list(bc):
+            for k in [k for k in bc[who] if k not in keep]:
+                bc[who].pop(k, None)
+            if not bc[who]:
+                bc.pop(who, None)
+        for who in sorted(bc, key=lambda w: max(bc[w]) if bc[w] else "")[:-12]:
+            bc.pop(who, None)
+        control.CITY["history_by_char"] = {w: [dict(day=k, **bc[w][k]) for k in sorted(bc[w])] for w in bc}
+    except Exception:
+        pass
     control.CITY["notes"] = d["notes"][-40:]
 
 
@@ -1624,6 +1641,14 @@ def stat(key, n=1, d=None):
         if prev:
             notify("day", _day_summary(prev, days[prev]), d)
     days[day][key] = days[day].get(key, 0) + n
+    try:                                                     # UX-04: the same counters per character
+        import control
+        who = str((control.CITY.get("rotation") or {}).get("char") or _char_key() or "default")[:40]
+        bc = d.setdefault("by_char", {}).setdefault(who, {})
+        bc.setdefault(day, {})
+        bc[day][key] = bc[day].get(key, 0) + n
+    except Exception:
+        pass
     if own:
         _stats_save(d)
     return d
