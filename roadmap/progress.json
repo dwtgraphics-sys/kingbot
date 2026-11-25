@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:36:14+04:00"
+  "heartbeat": "2026-11-26T00:36:16+04:00"
  },
  "items": [
   {
@@ -494,7 +494,7 @@
    "title": "All Speedups Total Card, Combined Totals, 'How To Use It' (1-3), Training FAQ, Promo & Site Footer",
    "priority": "Medium",
    "start": "00:37",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 44
   },
   {
