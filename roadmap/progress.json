@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:23:21+04:00"
+  "heartbeat": "2026-11-26T01:25:13+04:00"
  },
  "items": [
   {
@@ -582,8 +582,10 @@
    "title": "'Settings Per Character' & Rotation Rules (General vs. Per-Character, Order & Switch Now)",
    "priority": "Critical",
    "start": "01:12",
-   "status": "in_progress",
-   "seq": 52
+   "status": "done",
+   "seq": 52,
+   "finished": "2026-11-25T21:25:13+00:00",
+   "note": "bot v225: slots on/off, star_only, random turn minutes..minutes_max, switch_now (ignored <10 min after last switch), 'since' in status; dashboard controls + guide card. General vs own settings = existing presets per character"
   },
   {
    "id": "AI-03",
@@ -591,7 +593,7 @@
    "title": "Quick Support Channel Pills (Discord / WhatsApp / Support)",
    "priority": "High",
    "start": "01:16",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 53
   },
   {

@@ -940,9 +940,21 @@ def _active_char():
 
 def _rot_status(slot, until, note=""):
     import control
+    since = load_json(ROT_FILE, {}).get("since")
     control.CITY["rotation"] = {"char": slot.get("name") if slot else None, "preset": (slot or {}).get("preset") or "",
                                 "until": datetime.datetime.fromtimestamp(until).astimezone().isoformat(timespec="seconds") if until else None,
+                                "since": datetime.datetime.fromtimestamp(since).astimezone().isoformat(timespec="seconds") if since else None,
                                 "note": note}
+
+
+SWITCH_GAP_MIN = 10          # GUIDE-16: at least 10 minutes between two character switches
+
+
+def _turn_minutes(slot):
+    """GUIDE-16: a turn lasts 'minutes', or a random time between 'minutes' and 'minutes_max' when that is set."""
+    lo = float(slot.get("minutes") or 120)
+    hi = float(slot.get("minutes_max") or 0)
+    return random.uniform(lo, hi) if hi > lo else lo
 
 
 COLLECT_ON_SWITCH = ("collect_city", "tavern", "alliance_gifts", "alliance_help", "daily_objectives", "read_mail", "vip_shop", "events", "materials")
@@ -1059,7 +1071,10 @@ def _do_switch(slot):
 def rotation_settings(settings):
     """v136: character rotation. Every slot = character + saved preset + minutes. Returns the settings to use now."""
     rot = settings.get("char_rotation") or {}
-    slots = [x for x in (rot.get("slots") or []) if x.get("name")]
+    slots = [x for x in (rot.get("slots") or []) if x.get("name") and x.get("on", True) is not False]   # GUIDE-16: in the rotation or not
+    if rot.get("star_only"):                                   # GUIDE-16: switch only between the starred characters
+        stars = [x for x in slots if x.get("star")]
+        slots = stars or slots
     if not rot.get("enabled") or not slots:
         EFF[0] = None
         import control
@@ -1067,6 +1082,15 @@ def rotation_settings(settings):
         return settings
     st = load_json(ROT_FILE, {})
     now = time.time()
+    sn = str(rot.get("switch_now") or "")                       # GUIDE-16: "Switch now" from the dashboard
+    if sn and sn != st.get("switch_now_done"):
+        st["switch_now_done"] = sn
+        if now - float(st.get("since") or 0) >= SWITCH_GAP_MIN * 60:
+            st["until"] = 0
+            log("Character rotation: 'Switch now' from the dashboard")
+        else:
+            log(f"Character rotation: 'Switch now' ignored - less than {SWITCH_GAP_MIN} min since the last switch")
+        save_json(ROT_FILE, st)
     idx = next((i for i, x in enumerate(slots) if _same(x["name"], st.get("name"))), None)
     if idx is None:
         cur = _active_char() or st.get("name")
@@ -1075,7 +1099,8 @@ def rotation_settings(settings):
             log(f"Character rotation: starting with {slots[i_cur]['name']} (already open in the game)")
             if st.get("name") and not _same(st.get("name"), slots[i_cur]["name"]):
                 _swap_char_files(st.get("name"), slots[i_cur]["name"])   # (no name yet: the files already belong to it)
-            st = {"name": slots[i_cur]["name"], "until": now + slots[i_cur]["minutes"] * 60, "fails": 0, "skip": 0, "since": now}
+            st = {"name": slots[i_cur]["name"], "until": now + _turn_minutes(slots[i_cur]) * 60, "fails": 0, "skip": 0, "since": now,
+                  "switch_now_done": st.get("switch_now_done")}
             save_json(ROT_FILE, st)
             idx = i_cur
     target = None
@@ -1083,13 +1108,13 @@ def rotation_settings(settings):
         target = st.get("skip", 0) % len(slots)
     elif now >= st.get("until", 0):
         if len(slots) == 1:
-            st["until"] = now + slots[0]["minutes"] * 60
+            st["until"] = now + _turn_minutes(slots[0]) * 60
             save_json(ROT_FILE, st)
         else:
             target = (idx + 1 + st.get("skip", 0)) % len(slots)
             if target == idx:                               # every other character was skipped: stay on this one a full turn
                 log(f"Character rotation: staying on {slots[idx]['name']} for another {slots[idx]['minutes']} min")
-                st.update(until=now + slots[idx]["minutes"] * 60, skip=0, fails=0)
+                st.update(until=now + _turn_minutes(slots[idx]) * 60, skip=0, fails=0)
                 save_json(ROT_FILE, st)
                 target = None
     if target is not None:
@@ -1105,10 +1130,12 @@ def rotation_settings(settings):
             log(f"  ! character switch failed: {e!r}")
         if ok:
             _swap_char_files(prev, slot["name"])
-            st = {"name": slot["name"], "until": time.time() + slot["minutes"] * 60, "fails": 0, "skip": 0, "since": time.time()}
+            mins = _turn_minutes(slot)
+            st = {"name": slot["name"], "until": time.time() + mins * 60, "fails": 0, "skip": 0, "since": time.time(),
+                  "switch_now_done": st.get("switch_now_done")}
             save_json(ROT_FILE, st)
             idx = target
-            smart.notify("info", f"تبديل الشخصيات: البوت يعمل الآن على {slot['name']} بإعداد «{slot.get('preset') or 'الإعدادات الرئيسية'}» لمدة {slot['minutes']} دقيقة")
+            smart.notify("info", f"تبديل الشخصيات: البوت يعمل الآن على {slot['name']} بإعداد «{slot.get('preset') or 'الإعدادات الرئيسية'}» لمدة {round(mins)} دقيقة")
             _due_after_switch(rot)
             _refresh_after_switch()
         else:
