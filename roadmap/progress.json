@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:10:05+04:00"
+  "heartbeat": "2026-11-26T00:10:41+04:00"
  },
  "items": [
   {
@@ -318,8 +318,10 @@
    "title": "Chat Input Bar with Send Button & Accuracy Disclaimer",
    "priority": "Medium",
    "start": "23:38",
-   "status": "in_progress",
-   "seq": 28
+   "status": "done",
+   "seq": 28,
+   "finished": "2026-11-25T20:10:41+00:00",
+   "note": "input bar already existed: placeholder, send button, Enter, bubbles, disclaimer added"
   },
   {
    "id": "TOOLS-02D",
