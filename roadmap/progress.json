@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:11:44+00:00"
+  "heartbeat": "2026-11-25T19:13:27+00:00"
  },
  "items": [
   {
@@ -83,8 +83,10 @@
    "title": "Top Bar (Notifications Badge 9+, AR/EN Switcher) & Main Hamburger Dropdown Menu",
    "priority": "Critical",
    "start": "22:00",
-   "status": "pending",
-   "seq": 7
+   "status": "done",
+   "seq": 7,
+   "finished": "2026-11-25T19:13:27+00:00",
+   "note": "menu order + tools accordion + community links (kingbot-syn/config/community.json) + referrals page; header 9+ badge/globe already existed"
   },
   {
    "id": "GUIDE-02",
@@ -112,8 +114,10 @@
    "title": "Unified Navigation Drawer with Free Tools & Community Links",
    "priority": "High",
    "start": "22:19",
-   "status": "pending",
-   "seq": 10
+   "status": "done",
+   "seq": 10,
+   "finished": "2026-11-25T19:13:27+00:00",
+   "note": "same menu routes on phone and desktop (tested 390/1280)"
   },
   {
    "id": "GUIDE-03",
