@@ -4217,6 +4217,31 @@ def _kp_popup(g, sleep):
         g.click_rel(0.15, 0.80); sleep(1.5)                  # close the popup (blank part of the profile panel)
 
 
+def _read_ap_ratio(img):
+    """UX-01: find "Action Points ... 1,234/1,500" on the open governor profile. Returns (cur, max) or None.
+    Reads the left half of the profile window; only a sane ratio (cur <= max, max 1000..3000) is accepted."""
+    import re
+    h, w = img.shape[:2]
+    boxes = _ocr_boxes(img[int(0.10 * h):int(0.75 * h), int(0.02 * w):int(0.55 * w)], "profile_ap.png")
+    rows = []
+    for b in sorted(boxes, key=lambda b: b[1]):
+        if rows and abs(rows[-1][0] - b[1]) < 8:
+            rows[-1][1].append(b)
+        else:
+            rows.append([b[1], [b]])
+    lines = [" ".join(x[4] for x in sorted(r[1], key=lambda x: x[0])) for r in rows]
+    for i, ln in enumerate(lines):
+        if "action" not in ln.lower().replace(" ", ""):
+            continue
+        for t in lines[i:i + 3]:
+            m = re.search(r"(\d[\d,\.]*)\s*/\s*(\d[\d,\.]*)", t.replace("O", "0").replace("o", "0"))
+            if m:
+                cur, mx = int(re.sub(r"\D", "", m.group(1))), int(re.sub(r"\D", "", m.group(2)))
+                if 1000 <= mx <= 3000 and 0 <= cur <= mx:
+                    return cur, mx
+    return None
+
+
 def read_profile(g, sleep):
     """Open the governor profile (avatar top-left), OCR name / alliance / power / kill points, crop the portrait,
     read VIP from the top bar. Sends everything to the dashboard (control.CITY['profile'])."""
@@ -4312,6 +4337,13 @@ def read_profile(g, sleep):
                 m = re.search(r"(\d{7,})", ln)
                 if m and i == 0:
                     prof["gid"] = m.group(1)
+        try:                                             # UX-01: action points "cur / max" for the dashboard AP card
+            apv = _read_ap_ratio(img)
+            if apv:
+                control.CITY["ap"] = {"cur": apv[0], "max": apv[1], "read_at": prof["read_at"]}
+                log(f"    action points: {apv[0]}/{apv[1]}")
+        except Exception as e:
+            log(f"    action points OCR failed: {e!r}")
         ap = img[int(0.02 * h):int(0.15 * h), int(0.095 * w):int(0.19 * w)]
         ok, buf = cv2.imencode(".jpg", cv2.resize(ap, (96, 96)), [cv2.IMWRITE_JPEG_QUALITY, 75])
         if ok:
@@ -4541,7 +4573,7 @@ def read_marches(g, sleep):
 SMART["read_marches"] = read_marches
 
 # ---------------- v129: keep profile / characters / marches across restarts ----------------
-PERSIST_KEYS = ("profile", "characters", "characters_at", "marches", "marches_at", "commanders", "commanders_at")
+PERSIST_KEYS = ("profile", "characters", "characters_at", "marches", "marches_at", "commanders", "commanders_at", "ap")
 
 
 def _persist_save():

@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:04:36+00:00"
+  "heartbeat": "2026-11-25T19:06:26+00:00"
  },
  "items": [
   {
@@ -36,9 +36,11 @@
    "title": "2x3 Live Resource & Action Points (AP) Cards Grid",
    "priority": "Critical",
    "start": "22:00",
-   "status": "in_progress",
+   "status": "done",
    "seq": 3,
-   "started": "2026-11-25T19:04:36+00:00"
+   "started": "2026-11-25T19:04:36+00:00",
+   "finished": "2026-11-25T19:06:26+00:00",
+   "note": "AP read from governor profile (city.ap) + 2x3 cards with today delta and bars; bot v206"
   },
   {
    "id": "AI-01",
