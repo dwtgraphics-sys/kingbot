@@ -233,9 +233,40 @@ def watchdog(limit=600):
     import threading
     warned = [0.0]
 
+    hung_since = [0.0]
+
+    def game_hung_check():
+        """v193: the game window stopped answering Windows (\"Not Responding\") for 3 minutes -> close it.
+        The next round starts the game again."""
+        try:
+            hwnd = find_window()
+            if hwnd and ctypes.windll.user32.IsHungAppWindow(hwnd):
+                if not hung_since[0]:
+                    hung_since[0] = time.time()
+                    log_raw("  ! the game window is not responding - waiting up to 3 minutes")
+                elif time.time() - hung_since[0] > 180:
+                    log("! the game has been frozen for 3 minutes - closing it (it is started again)")
+                    import subprocess
+                    subprocess.run(["taskkill", "/IM", "MASS.exe", "/F"], capture_output=True, timeout=20,
+                                   creationflags=0x08000000)
+                    hung_since[0] = 0.0
+            else:
+                hung_since[0] = 0.0
+        except Exception:
+            pass
+
     def run():
+        n = 0
         while True:
             time.sleep(15)
+            n += 1
+            try:                                  # v193: heartbeat for the external watchdog (watchdog.ps1)
+                with open(HEARTBEAT_FILE, "w") as f:
+                    f.write(f"{os.getpid()} {time.time():.0f}")
+            except Exception:
+                pass
+            if n % 4 == 0:
+                game_hung_check()
             t0, tname = TASK_NOW[0], TASK_NOW[1]
             if t0 and time.time() - t0 > TASK_LIMIT:
                 log(f"! task '{tname}' has been running for over {TASK_LIMIT // 60} minutes "
@@ -1036,6 +1067,7 @@ def status_text():
 
 
 PID_FILE = os.path.join(BASE, "kingbot.pid")
+HEARTBEAT_FILE = os.path.join(BASE, "heartbeat.txt")   # v193: written every 15 s by the watchdog thread
 
 
 def _process_alive(pid):
@@ -1083,6 +1115,13 @@ def _single_instance():
 def main():
     _single_instance()
     log(f"Kingbot v{local_version()} starting.")
+    try:
+        import server_config
+        me = server_config.me()
+        log(f"Server: {me.get('id')}" + (" (main, old file paths)" if me.get("legacy") else "")
+            + f" - settings {me.get('control')}, status {me.get('status')}")
+    except Exception as e:
+        log(f"! server config: {e!r}")
     if check_and_update(log):
         sys.exit(RESTART_CODE)
     start_ver = local_version()

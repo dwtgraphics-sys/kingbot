@@ -10,6 +10,7 @@ import os, json, base64, datetime, urllib.request, urllib.error
 from updater import local_version
 from common import LOG_FILE, ROUTINES_FILE, load_json, log
 
+import server_config
 GITHUB_OWNER = "dwtgraphics-sys"
 GITHUB_REPO = "kingbot-syn"
 TOKEN_FILE = r"C:\RisBot\github_token.txt"
@@ -267,7 +268,7 @@ def take_screenshot(dest):
 class Control:
     def __init__(self):
         self.root = "github://dwtgraphics-sys/kingbot-syn"
-        self.file = "control/control.json"
+        self.file = server_config.path("control")
         self.data = None
         self.shot_done = None
         self.pending_change = False
@@ -287,7 +288,7 @@ class Control:
         self._last_poll_ts = now_ts
         first = not self.seen
         self.seen = True
-        res = _gh_request("control/control.json", "GET")
+        res = _gh_request(server_config.path("control"), "GET")
         if self.data is not None:
             _write_live(self.data)
         if not isinstance(res, dict) or "content" not in res:
@@ -323,7 +324,7 @@ class Control:
         tmp_jpg = os.path.join(tempfile.gettempdir(), "kingbot_gh_screen.jpg")
         path = take_screenshot(tmp_jpg)
         if path and os.path.isfile(path):
-            ok = _gh_put_bytes("outbox/screen.jpg", open(path, "rb").read(), "bot: screenshot")
+            ok = _gh_put_bytes(server_config.path("screen"), open(path, "rb").read(), "bot: screenshot")
             log("Screenshot uploaded to GitHub." if ok else "! GitHub screenshot upload failed.")
         else:
             log("! Screenshot failed.")
@@ -334,7 +335,7 @@ class Control:
         d = dict(self.data or {"running": True, "loop_minutes": 60, "tasks": []})
         d.update(changes)
         d["sent_at"] = _now()
-        ok = _gh_put_bytes("control/control.json", json.dumps(d, ensure_ascii=False, indent=2).encode("utf-8"), "bot: update settings")
+        ok = _gh_put_bytes(server_config.path("control"), json.dumps(d, ensure_ascii=False, indent=2).encode("utf-8"), "bot: update settings")
         if ok:
             self.data = _clean(d)
         return ok
@@ -344,6 +345,7 @@ class Control:
             info.setdefault("resources", dict(RESOURCES))
         if CITY:
             info.setdefault("city", dict(CITY))
+        info.setdefault("server_id", server_config.server_id())
         self.last = dict(info, version=local_version(), updated=_now())
         _write_live(None, info)
         st = load_json(STREAM_FILE, None) if os.path.isfile(STREAM_FILE) else None
@@ -365,4 +367,4 @@ class Control:
             "log": [l.rstrip("\n") for l in tail],
         }
         status.update(info)
-        _gh_put_bytes("outbox/status.json", json.dumps(status, ensure_ascii=False, indent=2).encode("utf-8"), "bot: status")
+        _gh_put_bytes(server_config.path("status"), json.dumps(status, ensure_ascii=False, indent=2).encode("utf-8"), "bot: status")

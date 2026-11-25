@@ -1,0 +1,4 @@
+{
+  "SERVER_ID": "vps-01-main",
+  "_note": "انسخ هذا الملف باسم local_config.json على السيرفر (لا يُرفع إلى GitHub). القيم الممكنة لـ SERVER_ID: vps-01-main / vps-02-pilot / vps-03-farms"
+}

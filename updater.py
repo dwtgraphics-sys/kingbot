@@ -14,7 +14,7 @@ LIST_URL = f"https://drive.google.com/embeddedfolderview?id={FOLDER_ID}"
 DL_URL = "https://drive.google.com/uc?export=download&id={}"
 VERSION_FILE = os.path.join(BASE, "version.json")
 NEVER_OVERWRITE = {"routines.json", "tasks.json", "log.txt", "version.json", "telegram.txt", "telegram_owner.txt",
-                   "3_start_bot.bat"}   # the launcher lives on this PC; keep an update zip from replacing it
+                   "3_start_bot.bat", "local_config.json", ".env"}   # the launcher lives on this PC; keep an update zip from replacing it
 UA = {"User-Agent": "Mozilla/5.0 Kingbot"}
 
 # ---- GitHub source (v190) ----

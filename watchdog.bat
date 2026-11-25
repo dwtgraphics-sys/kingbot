@@ -1,20 +1,13 @@
 @echo off
 rem ===========================================================================
-rem  Kingbot watchdog - started by Task Scheduler every 2 minutes (hidden).
-rem
-rem  Starts the bot with pythonw (no console window) when it is not running.
-rem  The console version died whenever Remote Desktop disconnected, because the
-rem  session's window was destroyed together with python.
+rem  Kingbot watchdog - started by Task Scheduler every 2 minutes (hidden, via watchdog.vbs).
+rem  v193: the work is done by watchdog.ps1:
+rem    - starts the bot when it is not running (found by kingbot.pid / bot.py, not "any pythonw":
+rem      stream_bot.py also runs with pythonw and hid a dead bot before)
+rem    - restarts the bot when it is frozen (heartbeat.txt older than 5 minutes)
+rem  A frozen GAME is handled inside the bot (closed after 3 minutes "Not Responding").
 rem ===========================================================================
 setlocal
 cd /d "%~dp0"
-
-rem pythonw runs the bot without a console; python.exe would open one.
-tasklist /fi "IMAGENAME eq pythonw.exe" /fo csv /nh 2>nul | find /i "pythonw.exe" >nul
-if not errorlevel 1 exit /b 0
-tasklist /fi "IMAGENAME eq python.exe" /fo csv /nh 2>nul | find /i "python.exe" >nul
-if not errorlevel 1 exit /b 0
-
->>"%~dp0launcher.log" echo [%DATE% %TIME%] watchdog: the bot is not running - starting it (hidden)
-wscript.exe //B "%~dp0start_bot_hidden.vbs"
+powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0watchdog.ps1"
 exit /b 0

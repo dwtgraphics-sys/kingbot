@@ -29,3 +29,8 @@ __pycache__/
 *.bak*
 *.PNG
 stream_status.json
+local_config.json
+.env
+heartbeat.txt
+servers_index_cache.json
+live_state.json
