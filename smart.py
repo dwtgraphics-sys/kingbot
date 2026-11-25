@@ -3211,6 +3211,13 @@ def queue_goto_unit(g, sleep, troop_key):
 
     The game then jumps to that building and selects it, which is the route the user described.
     Returns True when a row was tapped."""
+    try:                                     # v199: the Queue Overview reader (folded sections, scrolling, small windows)
+        import queue_manager
+        if queue_manager.tap_row(g, sleep, "train", match=lambda r: queue_manager.unit_of(r["name"]) == troop_key):
+            log(f"  queue: tapped the {troop_key} row")
+            return True
+    except Exception as e:
+        log(f"  ! queue: unit row via queue_manager failed: {e!r}")
     boxes, img = queue_panel(g, sleep)
     if not boxes:
         return False
@@ -3260,6 +3267,14 @@ def queue_goto(g, sleep, kind, words=None):
     training queue - where tapping the right row is far more reliable than a city position.
     `words` overrides the vocabulary (e.g. the name of one military building).
     """
+    sec = {"build": "build", "res": "research", "heal": "heal"}.get(kind)
+    if sec and not words:                    # v199: tap the ROW (Building Queue 1 / Tech Research), never the header
+        try:
+            import queue_manager
+            if queue_manager.tap_row(g, sleep, sec, prefer_idle=(sec == "build")):
+                return True
+        except Exception as e:
+            log(f"  ! queue: {kind} row via queue_manager failed: {e!r}")
     # v166: the same templated panel the training uses (the old fixed spots missed the button)
     boxes, img = queue_panel(g, sleep)
     if not boxes:

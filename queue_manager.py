@@ -79,6 +79,8 @@ def fraction(t, word):
     m = re.search(word + r"\D{0,4}([\d,.\s]+?)\s*/\s*([\d,.\s]+)", norm(t))
     if not m:                                   # the label itself was misread: take the first "a/b" of the card
         m = re.search(r"(\d[\d,.]*)\s*/\s*(\d[\d,.]*)", norm(t))
+    if not m and word in ("producible", "chances"):  # small counters: "5,'5" / "20120" are "5/5" / "20/20"
+        m = re.search(word + r"\D{0,4}(\d{1,2})\s*[,'’|]{1,3}\s*(\d{1,2})\b", norm(t))
     if not m:
         return None
     a, b = (int(re.sub(r"\D", "", x) or 0) for x in m.groups())
@@ -117,10 +119,16 @@ def row_name(section, text):
     low = t.lower()
     if section == "build":
         m = re.search(r"bu?i?l?ding\s*queue\s*(\d)", low)
-        return f"Building Queue {m.group(1)}" if m else (t if re.search(r"[A-Za-z]{3,}", t) else None)
+        if m:
+            return f"Building Queue {m.group(1)}"
+        if re.search(r"bu?i?l?ding\s*queue", low):
+            return "Building Queue ?"                   # the number was not read - named by its place below
+        return None
     if section == "scout":
         m = re.search(r"scout\s*([abc8])(?:\b|$)", low)
-        return f"Scout {'B' if m.group(1) == '8' else m.group(1).upper()}" if m else None
+        if m:
+            return f"Scout {'B' if m.group(1) == '8' else m.group(1).upper()}"
+        return "Scout ?" if re.fullmatch(r"scout\W*", low) else None
     if section == "train":
         if not unit_of(t):
             return None
@@ -201,6 +209,24 @@ def build(rows):
     qm = {"at": round(now), "read": datetime.datetime.now().strftime("%H:%M"),
           "train": [], "heal": None, "build": [], "research": [], "donate": None, "materials": None, "scout": []}
     seen = set()
+    for sec, fmt_, letters in (("build", "Building Queue {}", "12"), ("scout", "Scout {}", "ABC")):
+        known = [r["name"] for r in rows if r["section"] == sec]
+        for r in rows:
+            if r["section"] == sec and r["name"].endswith("?"):
+                i = rows.index(r)
+                prev = next((x["name"] for x in reversed(rows[:i]) if x["section"] == sec and not x["name"].endswith("?")), None)
+                nxt = next((x["name"] for x in rows[i + 1:] if x["section"] == sec and not x["name"].endswith("?")), None)
+                guess = None
+                if prev and prev[-1] in letters and letters.index(prev[-1]) + 1 < len(letters):
+                    guess = letters[letters.index(prev[-1]) + 1]
+                elif nxt and nxt[-1] in letters and letters.index(nxt[-1]) > 0:
+                    guess = letters[letters.index(nxt[-1]) - 1]
+                elif not prev and not nxt:
+                    guess = letters[0]
+                if guess and fmt_.format(guess) not in known:
+                    r["name"] = fmt_.format(guess)
+                    known.append(r["name"])
+    rows = [r for r in rows if not r["name"].endswith("?")]
     for r in rows:
         key = (r["section"], norm(r["name"]))
         if key in seen:
@@ -394,7 +420,7 @@ def summary(qm):
     return ", ".join(parts) or "nothing readable"
 
 
-def tap_row(g, sleep, section, words=None):
+def tap_row(g, sleep, section, words=None, match=None, prefer_idle=False):
     """Open the panel and tap the first row of `section` whose name contains one of `words`
     (scrolling when needed). The game then jumps to that building. True when tapped."""
     img = open_panel(g, sleep)
@@ -409,6 +435,10 @@ def tap_row(g, sleep, section, words=None):
             if r["section"] != section:
                 continue
             if words and not any(w in norm(r["name"]) for w in words):
+                continue
+            if match and not match(r):
+                continue
+            if prefer_idle and state_of(r["status"])[0] == "busy":
                 continue
             g.click_rel(0.08, r["y"] / h); sleep(3)
             log(f"    queue_manager: tapped '{r['name']}' ({section})")
@@ -449,7 +479,7 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
         elif fast and any(r["state"] == "busy" for r in qm["train"]):
             pass
     h = qm["heal"]
-    if heal and h and (h.get("wounded") or 0) > 0 and h["state"] in ("idle", "done", "unknown"):
+    if heal and h and (h.get("wounded") is None or h["wounded"] > 0) and h["state"] in ("idle", "done", "unknown"):
         smart.heal(g, sleep, speedups=heal_speedups)
         did.append("heal")
     if build and qm["build"] and any(r["state"] in ("idle", "done") for r in qm["build"]):
