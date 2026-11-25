@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:25:13+04:00"
+  "heartbeat": "2026-11-26T01:25:59+04:00"
  },
  "items": [
   {
@@ -593,8 +593,10 @@
    "title": "Quick Support Channel Pills (Discord / WhatsApp / Support)",
    "priority": "High",
    "start": "01:16",
-   "status": "in_progress",
-   "seq": 53
+   "status": "done",
+   "seq": 53,
+   "finished": "2026-11-25T21:25:59+00:00",
+   "note": "pills above the assistant input from kingbot-syn/config/community.json (discord, whatsapp/whatsapp_group, support; empty support = in-app support page); WhatsApp hidden until a link is added"
   },
   {
    "id": "TOOLS-04B",
@@ -613,7 +615,7 @@
    "title": "Overflow Resource Donation",
    "priority": "Low",
    "start": "01:21",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 55
   },
   {
