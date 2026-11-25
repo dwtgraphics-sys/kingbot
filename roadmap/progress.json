@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:22:22+00:00"
+  "heartbeat": "2026-11-25T19:23:24+00:00"
  },
  "items": [
   {
@@ -251,8 +251,10 @@
    "title": "Add Game Resource Icons, 'All' Tab & Time-Range Pills",
    "priority": "High",
    "start": "23:13",
-   "status": "pending",
-   "seq": 22
+   "status": "done",
+   "seq": 22,
+   "finished": "2026-11-25T19:23:23+00:00",
+   "note": "icons, All grouped chart, range pills"
   },
   {
    "id": "GUIDE-07",
@@ -271,8 +273,9 @@
    "title": "March Priority & Timeout",
    "priority": "High",
    "start": "23:17",
-   "status": "pending",
-   "seq": 24
+   "status": "in_progress",
+   "seq": 24,
+   "started": "2026-11-25T19:23:24+00:00"
   },
   {
    "id": "TOOLS-02C",
