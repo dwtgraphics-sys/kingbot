@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:10:38+04:00"
+  "heartbeat": "2026-11-26T01:12:36+04:00"
  },
  "items": [
   {
@@ -527,8 +527,10 @@
    "title": "Inline Latest Screenshot Preview & Stream Status Indicator",
    "priority": "Medium",
    "start": "00:57",
-   "status": "in_progress",
-   "seq": 47
+   "status": "done",
+   "seq": 47,
+   "finished": "2026-11-25T21:12:36+00:00",
+   "note": "dashboard: screenshot thumbnail + capture time + lightbox, Online/Offline stream badge, stream URL per server; ❗ info"
   },
   {
    "id": "UX-04",
@@ -536,7 +538,7 @@
    "title": "Character/Account Switcher, 4 Summary KPIs & 'What the Bot Did' Cards",
    "priority": "High",
    "start": "00:57",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 48
   },
   {
