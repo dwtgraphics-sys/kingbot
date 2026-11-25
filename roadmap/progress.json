@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:16:29+04:00"
+  "heartbeat": "2026-11-26T00:16:30+04:00"
  },
  "items": [
   {
@@ -384,7 +384,7 @@
    "title": "Detailed 'Active Marches' Cards (Commanders, Target, Troops & Health)",
    "priority": "High",
    "start": "23:58",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 34
   },
   {
