@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:24:36+04:00"
+  "heartbeat": "2026-11-26T00:33:50+04:00"
  },
  "items": [
   {
@@ -472,7 +472,7 @@
    "title": "'Worth Knowing' Rules: Gem Farming 18h/Day Cap, Smart Scheduler & Conduct Score (<61)",
    "priority": "High",
    "start": "00:33",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 42
   },
   {
