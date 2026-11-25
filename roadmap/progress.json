@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:35:10+04:00"
+  "heartbeat": "2026-11-26T00:35:16+04:00"
  },
  "items": [
   {
@@ -483,7 +483,7 @@
    "title": "Mysterious Merchant & Tavern Chests",
    "priority": "Medium",
    "start": "00:35",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 43
   },
   {
