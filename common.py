@@ -478,6 +478,41 @@ def keep_on_screen(hwnd):
         time.sleep(1.0)
 
 
+DESIGN_W, DESIGN_H = 946, 710          # v201: the window size every picture and position was made for
+_SIZE_TRY = [0.0]
+
+
+def ensure_game_size(hwnd):
+    """v201: put the game window back to 946x710 (drawing area). Remote Desktop at another resolution left it at
+    941x529, where the windows inside the game sit elsewhere and the pictures no longer match. At most one try
+    every 10 minutes, and only when the screen is big enough."""
+    try:
+        x, y, w, h = client_rect(hwnd)
+        if abs(w - DESIGN_W) <= 8 and abs(h - DESIGN_H) <= 8:
+            return False
+        if time.time() - _SIZE_TRY[0] < 600 or user32.IsIconic(hwnd):
+            return False
+        _SIZE_TRY[0] = time.time()
+        r = wintypes.RECT()
+        user32.GetWindowRect(hwnd, ctypes.byref(r))
+        fw, fh = (r.right - r.left) - w, (r.bottom - r.top) - h       # frame + title bar
+        sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+        ww, wh = DESIGN_W + fw, DESIGN_H + fh
+        if ww > sw or wh > sh:
+            log(f"  game size: the window is {w}x{h}, but the screen ({sw}x{sh}) is too small for {DESIGN_W}x{DESIGN_H}")
+            return False
+        user32.ShowWindow(hwnd, 9)                                    # SW_RESTORE (not maximized)
+        time.sleep(0.8)
+        user32.SetWindowPos(hwnd, 0, max(0, (sw - ww) // 2), 0, ww, wh, 0x0004)   # NOZORDER
+        time.sleep(2.0)
+        x2, y2, w2, h2 = client_rect(hwnd)
+        log(f"  game size: {w}x{h} -> {w2}x{h2} (the size the bot was made for is {DESIGN_W}x{DESIGN_H})")
+        return True
+    except Exception as e:
+        log(f"  ! game size: {e!r}")
+        return False
+
+
 class Game:
     def __init__(self):
         self.hwnd = find_window()
@@ -492,6 +527,7 @@ class Game:
             if not self.hwnd:
                 raise RuntimeError("Game window closed")
         keep_on_screen(self.hwnd)
+        ensure_game_size(self.hwnd)
         self.x, self.y, self.w, self.h = client_rect(self.hwnd)
 
     def focus(self):

@@ -442,8 +442,7 @@ def tap_row(g, sleep, section, words=None, match=None, prefer_idle=False):
                 continue
             g.click_rel(0.08, r["y"] / h); sleep(3)
             log(f"    queue_manager: tapped '{r['name']}' ({section})")
-            if panel_visible(g.screenshot()):          # some rows leave the panel open
-                close_panel(g, sleep)
+            # the panel stays open; the selected building and its buttons are in the middle of the picture
             return True
         _scroll(g, sleep)
         img = g.screenshot()
@@ -471,17 +470,14 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
         need = [r for r in qm["train"] if r["state"] in ("idle", "done") and r["unit"]]
         if not qm["train"]:
             log("  - queue_manager: no Unit Training rows were read - training is checked next time")
-        if need:
-            buildings = [UNIT_BUILDING[r["unit"]] for r in need]
-            smart.train_troops(g, sleep, fast=fast, use_bag=use_bag, buildings=buildings,
-                               inf_tier=inf_tier, arch_tier=arch_tier, cav_tier=cav_tier, siege_tier=siege_tier)
-            did.append("train " + ",".join(buildings))
-        elif fast and any(r["state"] == "busy" for r in qm["train"]):
-            pass
+        tiers = {"infantry": inf_tier, "archer": arch_tier, "cavalry": cav_tier, "siege": siege_tier}
+        for r in need:
+            if train_unit(g, sleep, r["unit"], tiers.get(r["unit"], 4)):
+                did.append("train " + r["unit"])
     h = qm["heal"]
     if heal and h and (h.get("wounded") is None or h["wounded"] > 0) and h["state"] in ("idle", "done", "unknown"):
-        smart.heal(g, sleep, speedups=heal_speedups)
-        did.append("heal")
+        if heal_now(g, sleep):
+            did.append("heal")
     if build and qm["build"] and any(r["state"] in ("idle", "done") for r in qm["build"]):
         smart.build_upgrade(g, sleep, mode=build_mode, speedups=build_speedups)
         did.append("build")
@@ -493,9 +489,10 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
         smart.alliance_tech(g, sleep, max_donations=d["chances"])
         did.append(f"donate ({d['chances']})")
     m = qm["materials"]
-    if materials and m and (m.get("producible") or 0) > 0 and m["state"] in ("idle", "done", "busy", "unknown"):
-        smart.materials(g, sleep, kinds=tuple(mat_kinds or ()))
-        did.append("materials")
+    if materials and m and (m.get("producible") or 0) > 0:
+        n = produce_materials(g, sleep, kinds=tuple(mat_kinds or ()), slots=m.get("producible") or 1)
+        if n:
+            did.append(f"materials {n}")
     if scout:
         idle = [r for r in qm["scout"] if r["state"] in ("idle", "done")]
         for r in idle[:3]:
@@ -533,3 +530,155 @@ def send_scout(g, sleep, name):
     close_gem_dialogs(g)
     smart.recover_screen(g)
     return True
+
+
+# ------------------------------------------------------------------ v201: the route the game itself offers
+# Tapping a row in the Queue Overview moves the camera to that building and selects it; the action the row is
+# about (Train / Heal / Material Production) is the GLOWING round button under the building. Positions below are
+# pixel offsets from the centre of the game picture, measured on the live game (25-11, window 941 wide); the
+# game's UI scales with the window width.
+def rel(g, dx, dy, img=None):
+    if img is not None:
+        h, w = img.shape[:2]
+    else:
+        w, h = g.w, g.h
+    k = w / 941.0
+    return 0.5 + dx * k / w, 0.5 + dy * k / h
+
+
+BTN_DX = (-59, -33, 0, 35, 58, 103)      # round buttons under a selected building
+BTN_DY = 59
+
+
+def glowing_button(g, img=None):
+    """The highlighted (orange ring) round button under the selected building -> (x, y) relative, or None."""
+    import cv2
+    img = g.screenshot() if img is None else img
+    h, w = img.shape[:2]
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    ring = cv2.inRange(hsv, (8, 110, 190), (34, 255, 255))
+    best, score = None, 0.0
+    k = w / 941.0
+    r = int(34 * k)
+    for dx in BTN_DX:
+        x, y = rel(g, dx, BTN_DY, img)
+        cx, cy = int(x * w), int(y * h)
+        box = ring[max(0, cy - r):cy + r, max(0, cx - r):cx + r]
+        if box.size == 0:
+            continue
+        sc = float(box.mean()) / 255.0
+        if sc > score:
+            best, score = (x, y), sc
+    return best if score > 0.06 else None
+
+
+def press_row_action(g, sleep, section, match=None, words=None):
+    """Queue Overview row -> the building -> its glowing action button. True when a window opened."""
+    if not tap_row(g, sleep, section, words=words, match=match):
+        return False
+    sleep(1.0)
+    img = g.screenshot()
+    spot = glowing_button(g, img) or rel(g, 35, BTN_DY, img)
+    g.click_rel(*spot)
+    sleep(2.5)
+    return True
+
+
+def window_title(g, img=None):
+    """Text of the title bar of an open game window ('ARCHER TRAINING', 'UNIT HEALING', 'MATERIAL PRODUCTION')."""
+    import smart
+    img = g.screenshot() if img is None else img
+    h, w = img.shape[:2]
+    x0, y0 = rel(g, -170, -155, img)
+    x1, y1 = rel(g, 170, -125, img)
+    crop = img[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)]
+    return " ".join(smart._ocr_lines(crop, "qm_title.png", scale=2.5)).lower()
+
+
+def close_window(g, sleep):
+    g.click_rel(*rel(g, 231, -142)); sleep(1.5)
+
+
+TIER_DX = {1: -6, 2: 46, 3: 98, 4: 150, 5: 200}
+
+
+def train_unit(g, sleep, unit, tier=4):
+    """Unit Training row (infantry / archer / cavalry / siege) -> Train -> tier -> TRAIN (never INSTANT)."""
+    from common import close_gem_dialogs
+    if not press_row_action(g, sleep, "train", match=lambda r: unit_of(r["name"]) == unit):
+        log(f"    train: the {unit} row was not found")
+        return False
+    t = window_title(g)
+    if "training" not in t and "train" not in t:
+        log(f"    ! train: {unit}: the training window did not open (title '{t[:40]}')")
+        import smart
+        smart.recover_screen(g)
+        return False
+    try:
+        tier = max(1, min(5, int(tier)))
+    except Exception:
+        tier = 4
+    g.click_rel(*rel(g, TIER_DX[tier], -94)); sleep(1.5)
+    g.click_rel(*rel(g, 175, 118)); sleep(3)               # TRAIN (the blue button on the right)
+    if close_gem_dialogs(g):
+        log(f"    ! train: {unit}: the game asked for gems - answered NO")
+        close_window(g, sleep)
+        return False
+    t2 = window_title(g)
+    if "training" in t2:
+        log(f"    ! train: {unit}: the window is still open (not enough resources?) - closing")
+        close_window(g, sleep)
+        return False
+    log(f"  train: {unit} tier {tier} started")
+    return True
+
+
+def heal_now(g, sleep):
+    """Unit Healing row -> hospital -> Heal -> HEAL with resources (never INSTANT)."""
+    from common import close_gem_dialogs
+    if not press_row_action(g, sleep, "heal"):
+        return False
+    t = window_title(g)
+    if "heal" not in t:
+        log(f"    ! heal: the healing window did not open (title '{t[:40]}')")
+        import smart
+        smart.recover_screen(g)
+        return False
+    g.click_rel(*rel(g, 159, 113)); sleep(3)               # HEAL (blue, right)
+    if close_gem_dialogs(g):
+        log("    ! heal: the game asked for gems - answered NO")
+        close_window(g, sleep)
+        return False
+    if "heal" in window_title(g):
+        log("    - heal: nothing to heal or not enough resources - closing")
+        close_window(g, sleep)
+        return False
+    log("  heal: healing started with resources")
+    return True
+
+
+MAT_DX = {"leather": 64, "ore": 111, "ebony": 158, "bone": 205}
+
+
+def produce_materials(g, sleep, kinds=("leather", "ore", "ebony", "bone"), slots=5):
+    """Material Production row -> blacksmith -> Material Production -> add materials to the free slots."""
+    from common import close_gem_dialogs
+    kinds = [k for k in (kinds or ()) if k in MAT_DX] or list(MAT_DX)
+    if not press_row_action(g, sleep, "materials"):
+        return 0
+    t = window_title(g)
+    if "material" not in t and "production" not in t:
+        log(f"    ! materials: the production window did not open (title '{t[:40]}')")
+        import smart
+        smart.recover_screen(g)
+        return 0
+    added = 0
+    for i in range(max(0, min(5, int(slots or 0)))):
+        g.click_rel(*rel(g, MAT_DX[kinds[i % len(kinds)]], -66)); sleep(1.6)
+        if close_gem_dialogs(g):
+            log("    ! materials: the game asked for gems - answered NO")
+            break
+        added += 1
+    close_window(g, sleep)
+    log(f"  materials: {added} production(s) queued ({', '.join(kinds[j % len(kinds)] for j in range(added)) or '-'})")
+    return added
