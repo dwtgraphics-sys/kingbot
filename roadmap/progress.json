@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:18:25+04:00"
+  "heartbeat": "2026-11-26T00:20:27+04:00"
  },
  "items": [
   {
@@ -406,8 +406,10 @@
    "title": "Captcha Alert & Pause",
    "priority": "Critical",
    "start": "00:04",
-   "status": "in_progress",
-   "seq": 36
+   "status": "done",
+   "seq": 36,
+   "finished": "2026-11-25T20:20:27+00:00",
+   "note": "bot v217 detects (OCR + optional captcha*.png template), blocks clicks, uploads screenshot, waits for captcha_resume; UI urgent modal. Owner: record a captcha template with record.py when one appears for faster detection"
   },
   {
    "id": "GUIDE-11",
