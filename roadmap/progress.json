@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:07:36+00:00"
+  "heartbeat": "2026-11-25T19:10:12+00:00"
  },
  "items": [
   {
@@ -59,9 +59,11 @@
    "title": "'On This Page' Quick Jump Bar + 5-Step Getting Started Guide",
    "priority": "High",
    "start": "22:00",
-   "status": "in_progress",
+   "status": "done",
    "seq": 5,
-   "started": "2026-11-25T19:07:36+00:00"
+   "started": "2026-11-25T19:07:36+00:00",
+   "finished": "2026-11-25T19:10:12+00:00",
+   "note": "v-guide page"
   },
   {
    "id": "TASK-01",
@@ -69,8 +71,9 @@
    "title": "Smart Gem Farming",
    "priority": "High",
    "start": "22:00",
-   "status": "pending",
-   "seq": 6
+   "status": "in_progress",
+   "seq": 6,
+   "started": "2026-11-25T19:10:12+00:00"
   },
   {
    "id": "TOOLS-00",
@@ -87,8 +90,10 @@
    "title": "Annotated Panel Diagram (1-7) & Detailed Section Walkthrough",
    "priority": "High",
    "start": "22:12",
-   "status": "pending",
-   "seq": 8
+   "status": "done",
+   "seq": 8,
+   "finished": "2026-11-25T19:10:12+00:00",
+   "note": "v-guide page"
   },
   {
    "id": "TASK-02",
@@ -114,8 +119,10 @@
    "title": "Document 'In The City' Strip, Character Rotation Estimates & Freeze Days",
    "priority": "Medium",
    "start": "22:25",
-   "status": "pending",
-   "seq": 11
+   "status": "done",
+   "seq": 11,
+   "finished": "2026-11-25T19:10:12+00:00",
+   "note": "v-guide page"
   },
   {
    "id": "TASK-03",
@@ -132,8 +139,10 @@
    "title": "Complete Core Guide Page Build (Combines GUIDE-01 through GUIDE-03)",
    "priority": "High",
    "start": "22:38",
-   "status": "pending",
-   "seq": 13
+   "status": "done",
+   "seq": 13,
+   "finished": "2026-11-25T19:10:12+00:00",
+   "note": "v-guide page"
   },
   {
    "id": "TOOLS-02",
@@ -159,8 +168,10 @@
    "title": "'What the Status Means' Legend (7 States) & Offline/Unresponsive Alert",
    "priority": "High",
    "start": "22:51",
-   "status": "pending",
-   "seq": 16
+   "status": "done",
+   "seq": 16,
+   "finished": "2026-11-25T19:10:12+00:00",
+   "note": "v-guide page"
   },
   {
    "id": "MOD-02",
