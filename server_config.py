@@ -74,14 +74,53 @@ def server_id():
     return sid if sid.replace("-", "").replace("_", "").isalnum() else DEFAULT_ID
 
 
+_ERR = {"logged": 0.0}
+
+
+def _log(msg):
+    try:
+        import datetime
+        with open(os.path.join(BASE, "log.txt"), "a", encoding="utf-8") as f:
+            f.write(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] {msg}\n")
+    except Exception:
+        pass
+
+
+def _token():
+    try:
+        return open(os.path.join(BASE, "github_token.txt"), encoding="utf-8-sig").read().strip()
+    except Exception:
+        return ""
+
+
 def _fetch_index():
-    url = f"https://raw.githubusercontent.com/{OWNER}/{REPO}/main/servers/index.json?t={int(time.time())}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Kingbot-VPS", "Cache-Control": "no-cache"})
-    with urllib.request.urlopen(req, timeout=12) as r:
-        d = json.loads(r.read().decode("utf-8-sig"))
-    if not isinstance(d, dict) or not isinstance(d.get("servers"), list):
-        raise ValueError("servers/index.json has no server list")
-    return d
+    """GitHub contents API with the server's token (fresh), else raw.githubusercontent.com (may be minutes old)."""
+    errors = []
+    tok = _token()
+    if tok:
+        try:
+            url = f"https://api.github.com/repos/{OWNER}/{REPO}/contents/servers/index.json?t={int(time.time())}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Kingbot-VPS", "Authorization": f"Bearer {tok}",
+                                                       "Accept": "application/vnd.github+json"})
+            with urllib.request.urlopen(req, timeout=12) as r:
+                meta = json.loads(r.read().decode("utf-8"))
+            d = json.loads(base64.b64decode(meta["content"]).decode("utf-8-sig"))
+            if isinstance(d, dict) and isinstance(d.get("servers"), list):
+                return d
+            errors.append("API: no server list")
+        except Exception as e:
+            errors.append(f"API: {e!r}")
+    try:
+        url = f"https://raw.githubusercontent.com/{OWNER}/{REPO}/main/servers/index.json?t={int(time.time())}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Kingbot-VPS", "Cache-Control": "no-cache"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            d = json.loads(r.read().decode("utf-8-sig"))
+        if isinstance(d, dict) and isinstance(d.get("servers"), list):
+            return d
+        errors.append("raw: no server list")
+    except Exception as e:
+        errors.append(f"raw: {e!r}")
+    raise RuntimeError("; ".join(errors))
 
 
 def index():
@@ -93,7 +132,10 @@ def index():
             json.dump(d, open(CACHE, "w", encoding="utf-8"), ensure_ascii=False)
         except Exception:
             pass
-    except Exception:
+    except Exception as e:
+        if time.time() - _ERR["logged"] > 1800:
+            _ERR["logged"] = time.time()
+            _log(f"! servers/index.json could not be read ({e}) - using the last known paths")
         d = _index["data"]
         if d is None:
             try:
