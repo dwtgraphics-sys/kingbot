@@ -1041,6 +1041,7 @@ def one_round(settings):
     tasks = queue_tasks(tasks)                               # v197: one Queue Overview task
     tasks = march_priority(tasks, settings.get("march_control") or {})   # TASK-06
     smart.MARCH_CONTROL.clear(); smart.MARCH_CONTROL.update(settings.get("march_control") or {})
+    smart.COMMANDER_PRESETS.clear(); smart.COMMANDER_PRESETS.update(settings.get("commander_presets") or {})   # TASK-07
     qm_on = any(t.get("routine") == "queue_manager" and t.get("enabled", True) for t in tasks)
     for t in tasks:
         if not t.get("enabled", True):

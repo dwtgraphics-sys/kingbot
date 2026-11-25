@@ -253,6 +253,35 @@ def _search_deadline():
         return 15
 
 
+COMMANDER_PRESETS = {}  # TASK-07: dashboard commander_presets {task: {primary, secondary}} (set by bot.py every round)
+
+
+def _preset(task):
+    """TASK-07: (primary, secondary) commander names chosen in the dashboard for <task> ("" when none)."""
+    p = COMMANDER_PRESETS.get(task) if isinstance(COMMANDER_PRESETS, dict) else None
+    if not isinstance(p, dict):
+        return "", ""
+    return str(p.get("primary") or "").strip(), str(p.get("secondary") or "").strip()
+
+
+def _apply_preset(g, sleep, task):
+    """TASK-07: the New Troop window is open - swap in the task's preset commanders. Without a preset (or when
+    the swap fails) the loadout the game already put in is kept. Returns True when the preset was applied."""
+    c1, c2 = _preset(task)
+    if not c1:
+        return False
+    try:
+        ok = _rally_swap_commanders(g, sleep, c1, c2)
+    except Exception as e:
+        log(f"  ! {task}: commander preset failed: {e!r}")
+        ok = False
+    if not g.find_image("btn_march", 0.78):
+        recover_screen(g)
+        return False
+    log(f"    {task}: commanders {c1}{(' + ' + c2) if c2 else ''}" if ok else f"  ! {task}: preset commander {c1} not available - keeping the loadout")
+    return ok
+
+
 def gather(g, sleep, max_armies=5, kinds=None, reserve=0, balanced_mode=False, target_ratios=None):
     """Map > search (F) > resource type > SEARCH > GATHER > New Troop > MARCH, for each free march slot.
     Resource types rotate food > wood > stone > gold.
@@ -305,6 +334,9 @@ def gather(g, sleep, max_armies=5, kinds=None, reserve=0, balanced_mode=False, t
             log("  gather: all march slots are busy")
             press_key("esc"); sleep(1)
             break
+        if _preset("gathering_" + kind)[0] and not _apply_preset(g, sleep, "gathering_" + kind) \
+                and not g.find_image("btn_march", 0.78):
+            break                                                     # TASK-07: screen was reset
         if not _click_tpl(g, "btn_march", sleep, wait=3):
             log("  ! gather: MARCH button not found")
             press_key("esc"); sleep(1)
@@ -1268,6 +1300,8 @@ def rally_fort(g, sleep, level=10, preset=1, minutes=5, archers_only=True,
     count (0 = the maximum the commander can lead). Without a commander name the saved loadout
     <preset> is used as before. Never uses AP items or gems."""
     import time as _t
+    if not (primary_commander or "").strip():                       # TASK-07: per-task commander preset
+        primary_commander, secondary_commander = _preset("rallies")
     if _t.time() < RALLY_STATE["stop_until"]:
         log("  - rally_fort: paused (no action points earlier) - will try again later")
         return True
@@ -1780,6 +1814,7 @@ def join_rally(g, sleep, max_troops=600000, max_armies=2, quiet=False, min_ap_re
         nt = g.find_image("btn_new_troop", 0.8)
         if nt:
             g.click_rel(*nt[0]); sleep(2.5)
+            _apply_preset(g, sleep, "rallies")                       # TASK-07
         m = g.find_image("btn_march", 0.78)
         if m and int(max_march_time_minutes or 0) > 0:
             mins = _march_minutes(g, *m[0])
@@ -2240,6 +2275,8 @@ def attack_barbarians(g, sleep, min_level=1, max_level=10, hold=True, loadout=1,
     one after another, until action points run out (or max_attacks). use_ap_items: when AP runs out, use reserve
     AP items from the bag (never gems) and carry on."""
     import time as _t
+    if not (commander1 or "").strip():                              # TASK-07: per-task commander preset
+        commander1, commander2 = _preset("barbarians")
     if _t.time() < BARB_STATE["stop_until"]:
         log("  - attack_barbarians: paused (no action points earlier)")
         return True
