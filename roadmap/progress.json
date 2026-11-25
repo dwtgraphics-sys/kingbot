@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:12:37+04:00"
+  "heartbeat": "2026-11-26T00:14:40+04:00"
  },
  "items": [
   {
@@ -351,8 +351,10 @@
    "title": "Smart Interval Scheduling",
    "priority": "Critical",
    "start": "23:48",
-   "status": "in_progress",
-   "seq": 31
+   "status": "done",
+   "seq": 31,
+   "finished": "2026-11-25T20:14:40+00:00",
+   "note": "smart_schedule in settings; bot v214 sessions/breaks/daily cap/click+wait jitter; UI panel with progress bar in Scheduling"
   },
   {
    "id": "GUIDE-10",
