@@ -67,12 +67,14 @@ def pid_alive(pid):
         return False
 
 
-def ps(cmd, timeout=25):
+def ps(cmd, timeout=40):
+    """stdout, or None when PowerShell failed / timed out (unknown - not "nothing found")."""
     try:
-        return subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
-                              capture_output=True, text=True, timeout=timeout, creationflags=NOWIN).stdout
+        r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
+                           capture_output=True, text=True, timeout=timeout, creationflags=NOWIN)
+        return r.stdout if r.returncode == 0 else None
     except Exception:
-        return ""
+        return None
 
 
 def obs_running():
@@ -88,7 +90,22 @@ def sender_pids():
     """Chrome processes that use OUR profile folder (the user's own Chrome is never touched)."""
     out = ps("Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
              "Where-Object { $_.CommandLine -like '*stream_chrome*' } | ForEach-Object { $_.ProcessId }")
+    if out is None:
+        return None                      # could not check - never treat as "not running"
     return [int(x) for x in out.split() if x.strip().isdigit()]
+
+
+SENDER = {"proc": None, "at": 0.0}
+
+
+def sender_running():
+    p = SENDER["proc"]
+    if p is not None and p.poll() is None:
+        return True
+    pids = sender_pids()
+    if pids is None:                     # unknown: assume running if we started one in the last 10 minutes
+        return time.time() - SENDER["at"] < 600
+    return bool(pids)
 
 
 def start_obs():
@@ -106,7 +123,8 @@ def start_sender():
     if not os.path.exists(CHROME_EXE):
         log("! Chrome is not installed at " + CHROME_EXE)
         return False
-    subprocess.Popen([CHROME_EXE, f"--user-data-dir={CHROME_PROFILE}", "--use-fake-ui-for-media-stream",
+    SENDER["at"] = time.time()
+    SENDER["proc"] = subprocess.Popen([CHROME_EXE, f"--user-data-dir={CHROME_PROFILE}", "--use-fake-ui-for-media-stream",
                       "--autoplay-policy=no-user-gesture-required", "--disable-background-timer-throttling",
                       "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows",
                       "--no-first-run", "--no-default-browser-check", "--start-minimized", "--new-window", PUSH_URL],
@@ -116,19 +134,29 @@ def start_sender():
     return True
 
 
+def _run(args, timeout=45):
+    try:
+        subprocess.run(args, capture_output=True, timeout=timeout, creationflags=NOWIN)
+    except Exception as e:
+        log(f"! {args[0]} {args[-1]}: {e.__class__.__name__}")
+
+
 def stop_all(reason):
-    pids = sender_pids()
-    for p in pids:
-        subprocess.run(["taskkill", "/PID", str(p), "/T", "/F"], capture_output=True, timeout=15, creationflags=NOWIN)
+    pids = sender_pids() or []
+    if SENDER["proc"] is not None and SENDER["proc"].poll() is None:
+        pids.append(SENDER["proc"].pid)
+    SENDER["proc"] = None
+    for p in set(pids):
+        _run(["taskkill", "/PID", str(p), "/T", "/F"])
     had_obs = obs_running()
     if had_obs:   # graceful first (no "unclean shutdown" next time), then force
-        subprocess.run(["taskkill", "/IM", "obs64.exe"], capture_output=True, timeout=15, creationflags=NOWIN)
+        _run(["taskkill", "/IM", "obs64.exe"])
         for _ in range(10):
             time.sleep(1)
             if not obs_running():
                 break
         else:
-            subprocess.run(["taskkill", "/IM", "obs64.exe", "/F"], capture_output=True, timeout=15, creationflags=NOWIN)
+            _run(["taskkill", "/IM", "obs64.exe", "/F"])
     if pids or had_obs:
         log(f"stopped ({reason})")
 
@@ -173,7 +201,7 @@ def main():
                 last_health = now
                 if not obs_running():
                     start_obs()
-                if not sender_pids():
+                if not sender_running():
                     start_sender()
                 if active is not True:
                     since = datetime.datetime.now().astimezone().isoformat(timespec="seconds")

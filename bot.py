@@ -223,6 +223,16 @@ def sleep(sec):
         time.sleep(0.1)
 
 
+def _status_then_exit(**status):
+    """v193: tell the dashboard, then exit - but never wait more than 15 s for GitHub.
+    (14:02 on 25-11: write_status hung on the network, os._exit was never reached and the bot stayed dead.)"""
+    import threading
+    t = threading.Thread(target=lambda: ctl.write_status(**status), daemon=True)
+    t.start()
+    t.join(15)
+    os._exit(RESTART_CODE)
+
+
 def watchdog(limit=600):
     """If the bot shows no activity for `limit` seconds (stuck on a frozen window), restart it.
 
@@ -271,12 +281,7 @@ def watchdog(limit=600):
             if t0 and time.time() - t0 > TASK_LIMIT:
                 log(f"! task '{tname}' has been running for over {TASK_LIMIT // 60} minutes "
                     f"- aborting it and restarting the bot")
-                try:
-                    ctl.write_status(state="restarting", task=f"{tname} took too long")
-                except Exception:
-                    pass
-                time.sleep(3)
-                os._exit(RESTART_CODE)
+                _status_then_exit(state="restarting", task=f"{tname} took too long")
             quiet = time.time() - LAST_ACTIVITY[0]
             if quiet > 150 and time.time() - warned[0] > 300:
                 warned[0] = time.time()
@@ -286,12 +291,7 @@ def watchdog(limit=600):
             if quiet > limit:
                 log(f"! Kingbot was stuck for over {limit // 60} minutes"
                     + (f" in task '{tname}'" if tname else "") + ". Restarting ...")
-                try:
-                    ctl.write_status(state="restarting")
-                except Exception:
-                    pass
-                time.sleep(3)
-                os._exit(RESTART_CODE)
+                _status_then_exit(state="restarting")
     threading.Thread(target=run, daemon=True).start()
 
 

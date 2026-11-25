@@ -27,11 +27,17 @@ if (-not $proc) {
     Start-Bot
     exit 0
 }
-# running: is it alive? (heartbeat written every 15 s by the bot's own watchdog thread)
-if (Test-Path $hbFile) {
+# running: is it alive? heartbeat.txt is written every 15 s by the bot's watchdog thread (v193+).
+# Older bots have no heartbeat: then kingbot.pid (touched every 30 s while waiting) with a 20-minute limit.
+$started = ((Get-Date) - $proc.CreationDate).TotalSeconds
+$age = -1; $limit = 300
+if ((Test-Path $hbFile) -and (Get-Item $hbFile).LastWriteTime -gt $proc.CreationDate) {
     $age = ((Get-Date) - (Get-Item $hbFile).LastWriteTime).TotalSeconds
-    $started = ((Get-Date) - $proc.CreationDate).TotalSeconds
-    if ($age -gt 300 -and $started -gt 300) {
+} elseif (Test-Path $pidFile) {
+    $age = ((Get-Date) - (Get-Item $pidFile).LastWriteTime).TotalSeconds; $limit = 1200
+}
+if ($age -ge 0) {
+    if ($age -gt $limit -and $started -gt 300) {
         Say ("the bot (pid {0}) is frozen: no heartbeat for {1:N0} s - restarting it" -f $proc.ProcessId, $age)
         Stop-Process -Id $proc.ProcessId -Force
         Start-Sleep -Seconds 3
