@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:17:34+04:00"
+  "heartbeat": "2026-11-26T00:18:23+04:00"
  },
  "items": [
   {
@@ -395,8 +395,10 @@
    "title": "Speedup Calculator (Universal, Training, Building, Research & Healing)",
    "priority": "High",
    "start": "23:58",
-   "status": "in_progress",
-   "seq": 35
+   "status": "done",
+   "seq": 35,
+   "finished": "2026-11-25T20:18:23+00:00",
+   "note": "calculator live under Free tools (collapsible categories, totals, clear, localStorage)"
   },
   {
    "id": "TASK-09",
