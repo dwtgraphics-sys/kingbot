@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:15:15+04:00"
+  "heartbeat": "2026-11-26T00:15:17+04:00"
  },
  "items": [
   {
@@ -373,7 +373,7 @@
    "title": "Add Queue Overview Sync Button & Quick Server Controls",
    "priority": "High",
    "start": "23:58",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 33
   },
   {
