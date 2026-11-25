@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:15:04+04:00"
+  "heartbeat": "2026-11-26T01:19:34+04:00"
  },
  "items": [
   {
@@ -549,7 +549,7 @@
    "title": "Equipment Browser & Crafting Material Calculator",
    "priority": "Medium",
    "start": "00:57",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 49
   },
   {
