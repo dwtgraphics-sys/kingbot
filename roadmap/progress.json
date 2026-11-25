@@ -2,11 +2,7 @@
  "version": 18,
  "timezone": "Asia/Muscat",
  "window": "22:00-03:00",
- "lock": {
-  "run": "session_01SrCVZTXUaoi794cPWK4gUg",
-  "since": "2026-11-26T02:07:26+04:00",
-  "heartbeat": "2026-11-25T22:19:28+00:00"
- },
+ "lock": null,
  "items": [
   {
    "id": "MOD-01",
@@ -747,8 +743,10 @@
    "title": "On-Demand Live Screenshot & Action",
    "priority": "High",
    "start": "02:08",
-   "status": "pending",
-   "seq": 67
+   "status": "blocked",
+   "seq": 67,
+   "note": "Needs owner decision: a free tap at (X, Y) can press gem / INSTANT / purchase buttons or open Settings, which the standing rules forbid. Allow taps anywhere (bot then closes gem dialogs and returns to the city), or only on a short safe list (close X, back, city view)? 'Capture now' already exists (shot_request).",
+   "finished": "2026-11-25T22:20:21+00:00"
   },
   {
    "id": "TOOLS-06",
@@ -765,8 +763,10 @@
    "title": "'Good Habits' Section: Periodic Check-Ins, Start Small, Read Before Spend & Breaks",
    "priority": "Medium",
    "start": "02:16",
-   "status": "pending",
-   "seq": 69
+   "status": "done",
+   "seq": 69,
+   "note": "Guide > Good habits: highlighted 'look in now and then' card + start small, read before you spend, give the account a break",
+   "finished": "2026-11-25T22:20:21+00:00"
   },
   {
    "id": "TASK-18",
@@ -783,8 +783,10 @@
    "title": "'Support' Ticket System Rules: Attachments, Lifecycle, Quotas & Chat Widget Scope",
    "priority": "High",
    "start": "02:29",
-   "status": "pending",
-   "seq": 71
+   "status": "blocked",
+   "seq": 71,
+   "note": "No support-ticket system exists yet (no New ticket / Get help / tickets storage); documenting the rules would describe features that do not work. Needs owner decision: build tickets in kingbot-syn (who answers, Discord/Telegram sync?) or keep support via Discord/Telegram links.",
+   "finished": "2026-11-25T22:20:21+00:00"
   },
   {
    "id": "TOOLS-07",
@@ -801,8 +803,10 @@
    "title": "Viewport & Device Profile Randomizer",
    "priority": "Medium",
    "start": "02:39",
-   "status": "pending",
-   "seq": 73
+   "status": "blocked",
+   "seq": 73,
+   "note": "Needs owner decision: Kingbot drives the Windows PC client on a VPS, not emulators, so there are no virtual device profiles/IDs to randomize; clicks are already relative (click_rel) with +/-5 px jitter and wait jitter (TASK-08). Changing device identifiers would touch game accounts - confirm whether anything more is wanted.",
+   "finished": "2026-11-25T22:20:21+00:00"
   },
   {
    "id": "GUIDE-23",
@@ -810,8 +814,10 @@
    "title": "'Discord' Integration (/slots, /support, /ask, Invites, Contests, /suggest) & 'Your Review'",
    "priority": "Medium",
    "start": "02:42",
-   "status": "pending",
-   "seq": 74
+   "status": "blocked",
+   "seq": 74,
+   "note": "No Kingbot Discord bot (/link, /slots, /support, /ask, /suggest...) and no 'Your review' feature exist yet; documenting them would mislead. Needs owner decision: build the Discord bot (hosting + token) and the review/free-days reward first.",
+   "finished": "2026-11-25T22:20:21+00:00"
   },
   {
    "id": "MOD-06",
