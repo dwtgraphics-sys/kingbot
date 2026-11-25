@@ -3176,6 +3176,92 @@ def sunset_canyon(g, sleep, max_battles=7):
 SMART["sunset_canyon"] = sunset_canyon
 
 
+# ---------------- TASK-10: Guardians hunter (no AP, no potions; commanders from the "guardians" preset) ----------------
+GUARD_STATE = {"warned": 0.0}
+
+
+def hunt_guardians(g, sleep, max_attacks=2, search_radius=2):
+    """Zoomed-out map around the city -> a guardian (template guardian*.png, recorded once with record.py) ->
+    ATTACK -> New Troop with the dashboard "guardians" commanders -> MARCH. A window asking for action points or
+    items is closed (esc) and the hunt stops: it never uses AP items or gems."""
+    import glob, pyautogui, time as _t
+    from common import TEMPL_DIR, BUILTIN_DIR, close_gem_dialogs
+    names = sorted({os.path.splitext(os.path.basename(f))[0] for d in (TEMPL_DIR, BUILTIN_DIR)
+                    for f in glob.glob(os.path.join(d, "guardian*.png"))})
+    if not names:
+        if _t.time() - GUARD_STATE["warned"] > 24 * 3600:
+            GUARD_STATE["warned"] = _t.time()
+            log("  - hunt_guardians: no guardian picture yet (record 'guardian' once with record.py on the map)")
+            notify("info", "صيد الحراس: سجّل صورة الحارس مرة واحدة (guardian) من الخريطة حتى يتعرّف عليه البوت.")
+        return True
+    if _queue_full(g) or _march_cap_reached(g, "hunt_guardians"):
+        log("  hunt_guardians: no free march slot")
+        return True
+    if _on_map(g):
+        press_key("space"); sleep(4)
+    if not goto_map(g, sleep, "hunt_guardians"):
+        return True
+    cx, cy = g.to_screen(0.5, 0.5)
+    pyautogui.moveTo(cx, cy)
+    for _ in range(2):
+        pyautogui.scroll(-5 * 120); sleep(2)
+    pan_max = {1: 0, 2: 4, 3: len(GEM_PANS)}.get(int(search_radius or 2), 4)
+    sent, pans, tried, t0 = 0, 0, [], _t.time()
+    while sent < int(max_attacks) and pans <= pan_max and _t.time() - t0 < _search_deadline() * 8:
+        hits = []
+        for n in names:
+            try:
+                hits += g.find_image(n, 0.8, find_all=True) or []
+            except Exception:
+                pass
+        hits = [h for h in hits if all(abs(h[0] - t[0]) > 0.04 or abs(h[1] - t[1]) > 0.04 for t in tried)]
+        if not hits:
+            if pans >= pan_max:
+                break
+            x1, y1, x2, y2 = GEM_PANS[pans]
+            _drag(g, x1, y1, x2, y2); sleep(2)
+            pans += 1
+            continue
+        rx, ry = hits[0]
+        tried.append((rx, ry))
+        g.click_rel(rx, ry); sleep(2.5)
+        at = g.find_image("btn_attack_red", 0.78)
+        if not at:
+            log("  - hunt_guardians: no ATTACK button on this guardian (already attacked?)")
+            press_key("esc"); sleep(1)
+            continue
+        g.click_rel(*at[0]); sleep(3)
+        if close_gem_dialogs(g) or g.find_image("btn_use", 0.85):
+            log("  ! hunt_guardians: the game asks for action points / items - never used; hunt stopped")
+            press_key("esc"); sleep(1)
+            break
+        nt = g.find_image("btn_new_troop", 0.78)
+        if not nt:
+            log("  hunt_guardians: all march slots are busy")
+            press_key("esc"); sleep(1)
+            break
+        g.click_rel(*nt[0]); sleep(3)
+        _apply_preset(g, sleep, "guardians")
+        m = g.find_image("btn_march", 0.78)
+        if not m:
+            recover_screen(g)
+            break
+        g.click_rel(*m[0]); sleep(3)
+        if g.find_image("btn_march", 0.78):
+            log("  hunt_guardians: no troops left to send")
+            press_key("esc"); sleep(1)
+            break
+        sent += 1
+        log(f"  hunt_guardians: army sent to a guardian ({sent}/{int(max_attacks)})")
+    if _on_map(g):
+        press_key("space"); sleep(4)
+    log(f"  hunt_guardians: {sent} attack(s) sent")
+    return True
+
+
+SMART["hunt_guardians"] = hunt_guardians
+
+
 # ---------------- heal / build / research (v91) ----------------
 _OCR_CACHE = {}          # fingerprint -> (time, result)
 
