@@ -2,11 +2,7 @@
  "version": 18,
  "timezone": "Asia/Muscat",
  "window": "22:00-03:00",
- "lock": {
-  "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
-  "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:27:43+04:00"
- },
+ "lock": null,
  "items": [
   {
    "id": "MOD-01",
