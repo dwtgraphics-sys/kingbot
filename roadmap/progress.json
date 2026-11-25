@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZTXUaoi794cPWK4gUg",
   "since": "2026-11-26T02:07:26+04:00",
-  "heartbeat": "2026-11-25T22:07:37+00:00"
+  "heartbeat": "2026-11-25T22:19:28+00:00"
  },
  "items": [
   {
@@ -637,8 +637,10 @@
    "title": "Equipment Cards (Icon, Set Name & Stat Bonus), Seasonal Note & 'How To Use It' (Steps 1-2)",
    "priority": "Medium",
    "start": "01:36",
-   "status": "pending",
-   "seq": 57
+   "status": "done",
+   "seq": 57,
+   "note": "Verified: equipment cards with quality frame, slot/set, stats, seasonal note and HOW TO USE (1-2) already built in 3c7bf62",
+   "finished": "2026-11-25T22:07:56+00:00"
   },
   {
    "id": "TASK-15",
@@ -646,8 +648,10 @@
    "title": "If-This-Then-That Rules Engine",
    "priority": "High",
    "start": "01:37",
-   "status": "pending",
-   "seq": 58
+   "status": "done",
+   "seq": 58,
+   "note": "bot v227 automation.py apply_rules(): settings.automation_rules [{id,enabled,condition_metric,operator,threshold,action_type,target_task}] checked each round (this round only, logged as Rule ... TRIGGERED); dashboard rule builder under Scheduler with ❗; syn config/automation_rules.example.json",
+   "finished": "2026-11-25T22:19:27+00:00"
   },
   {
    "id": "GUIDE-18",
@@ -655,8 +659,10 @@
    "title": "'Smart Scheduler' Annotated Guide (1-4), UTC Ranges, Random Offset & Rule Validation",
    "priority": "Critical",
    "start": "01:38",
-   "status": "pending",
-   "seq": 59
+   "status": "done",
+   "seq": 59,
+   "note": "bot v227 sched_gate(): settings.sched_ranges up to 8 UTC ranges, overnight, daily seeded random offset <=30m, no new start with <15m left, manual START/STOP until next boundary, per-range profile; dashboard: toggle, UTC clock, presets 8-18h (16/18 Risky), red invalid ranges + save blocked (4h max / 1h break / 30m min / no overlap), Fit to the rules, Today's plan timeline + total; guide 1-4",
+   "finished": "2026-11-25T22:19:27+00:00"
   },
   {
    "id": "EARN-04",
@@ -664,8 +670,10 @@
    "title": "Apply Neo-Tactile Pill Buttons & Frosted Glassmorphism Cards to Mkasbi",
    "priority": "High",
    "start": "01:41",
-   "status": "pending",
-   "seq": 60
+   "status": "done",
+   "seq": 60,
+   "note": "My gains: neo-tactile pill buttons (resource/range/character) with pressed gold glow, frosted glass KPI/what-the-bot-did/metric/chart/table cards, pill growth badges, tactile gradient bar under 'net after sending'",
+   "finished": "2026-11-25T22:19:27+00:00"
   },
   {
    "id": "GUIDE-19",
@@ -673,8 +681,10 @@
    "title": "'Daily Gains' & 'Event Log' Annotated Guides (Filter Tabs, Grouping & Clear Screen)",
    "priority": "Medium",
    "start": "01:50",
-   "status": "pending",
-   "seq": 61
+   "status": "done",
+   "seq": 61,
+   "note": "Guide: Daily Gains (UTC inflows, spending not subtracted, ~1/min, 1-4) and Event Log (auto refresh, 7 days, 1-3); log now has Barbarian/Rally + Rewards tabs, duplicate grouping xN, red errors, Last 20/50/100, Clear screen (view only) + show all",
+   "finished": "2026-11-25T22:19:28+00:00"
   },
   {
    "id": "TASK-16",
@@ -682,8 +692,10 @@
    "title": "Performance & Yield Analytics",
    "priority": "Medium",
    "start": "01:52",
-   "status": "pending",
-   "seq": 62
+   "status": "done",
+   "seq": 62,
+   "note": "bot v227 uploads history/<server>/daily_stats.json hourly (30 days, per character, sealed when encrypted) + restarts counter; dashboard 'Performance & yield' on My gains: 7/30 days, per character, resources/gems/barbarians/rallies/active hours/restarts/power growth with mini charts and vs previous period",
+   "finished": "2026-11-25T22:19:28+00:00"
   },
   {
    "id": "MOD-05",
@@ -691,8 +703,10 @@
    "title": "Group Controls into 3 Logical Sections + Last 5 Commands Log",
    "priority": "Medium",
    "start": "01:56",
-   "status": "pending",
-   "seq": 63
+   "status": "done",
+   "seq": 63,
+   "note": "Assistant: 3 titled groups (Data Sync / Monitoring & Stream / Server Controls) + 'Recent commands (last 5)' strip with Success/Pending/Failed and time",
+   "finished": "2026-11-25T22:19:28+00:00"
   },
   {
    "id": "UX-05",
@@ -700,8 +714,10 @@
    "title": "Fixed 5-Tab Mobile Bottom Nav Bar + Floating Assistant Trigger",
    "priority": "Medium",
    "start": "01:56",
-   "status": "pending",
-   "seq": 64
+   "status": "done",
+   "seq": 64,
+   "note": "Mobile 5-tab bottom nav (My slots, My gains, Settings, Scheduler, Guide) with active state; per owner's rule NO floating assistant button - the assistant stays in the menu",
+   "finished": "2026-11-25T22:19:28+00:00"
   },
   {
    "id": "TOOLS-05",
@@ -709,8 +725,10 @@
    "title": "Commander Guide & Pairings Browser (Using Commander Assets)",
    "priority": "High",
    "start": "01:56",
-   "status": "pending",
-   "seq": 65
+   "status": "done",
+   "seq": 65,
+   "note": "Commander guide under Free tools: 81 commanders from kingbot-ui/commanders images, search, specialty + rarity filters, details with pairings, skill order, role (community recommendations; a few marked 'check in game')",
+   "finished": "2026-11-25T22:19:28+00:00"
   },
   {
    "id": "GUIDE-20",
@@ -718,8 +736,10 @@
    "title": "Installable PWA App ('Use It As An App') & Device Push Notifications (5 Alert Types)",
    "priority": "High",
    "start": "02:03",
-   "status": "pending",
-   "seq": 66
+   "status": "done",
+   "seq": 66,
+   "note": "manifest.webmanifest + sw.js (installable, network first), My Account: Install button + Android/iOS/Mac steps, Turn on notifications on this device, Send a test notification, 5 alert toggles (shown while the panel/app is open); password change resets device alerts and the Telegram link (bot v227 telegram_reset) and signs out other devices; guide cards",
+   "finished": "2026-11-25T22:19:28+00:00"
   },
   {
    "id": "TASK-17",
