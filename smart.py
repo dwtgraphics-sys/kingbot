@@ -198,10 +198,42 @@ def _marches_out(g):
     return int(n), int(mx or 5)
 
 
-def gather(g, sleep, max_armies=5, kinds=None, reserve=0):
+def _balanced_kinds(kinds, target_ratios, n):
+    """TASK-02: order of resource types for the next n marches - the type whose share of the city stock is the
+    furthest below its target share goes first (each march sent lowers that gap a little). Uses the last
+    resource-bar reading (control.RESOURCES); None if there is no reading yet."""
+    import control
+    stock = {k: float(control.RESOURCES.get(k) or 0) for k in GATHER_KINDS}
+    kinds = [k for k in (kinds or GATHER_KINDS) if k in GATHER_KINDS] or list(GATHER_KINDS)
+    tot = sum(stock[k] for k in kinds)
+    if tot <= 0:
+        return None
+    tr = {}
+    for k in kinds:
+        try:
+            tr[k] = max(0.0, float((target_ratios or {}).get(k, 25)))
+        except Exception:
+            tr[k] = 25.0
+    ts = sum(tr.values()) or 1.0
+    want = {k: tr[k] / ts for k in kinds}
+    share = {k: stock[k] / tot for k in kinds}
+    plan, bump = [], {k: 0.0 for k in kinds}
+    for _ in range(max(1, int(n))):
+        k = max(kinds, key=lambda x: want[x] - share[x] - bump[x])
+        plan.append(k)
+        bump[k] += 0.05                          # one march ≈ a small step; spreads a big gap over 2-3 types
+    log("    balanced gather: stock " + ", ".join(f"{k} {share[k]:.0%}/{want[k]:.0%}" for k in kinds) +
+        " -> " + " > ".join(plan))
+    return plan
+
+
+def gather(g, sleep, max_armies=5, kinds=None, reserve=0, balanced_mode=False, target_ratios=None):
     """Map > search (F) > resource type > SEARCH > GATHER > New Troop > MARCH, for each free march slot.
     Resource types rotate food > wood > stone > gold.
-    v136: reserve = march slots kept free (e.g. 1 for a barbarian fort rally)."""
+    v136: reserve = march slots kept free (e.g. 1 for a barbarian fort rally).
+    TASK-02: balanced_mode = instead of rotating, send each march to the type that is most below its target share
+    (target_ratios {"food": 40, "wood": 30, ...} in percent) of the city stock."""
+    plan = _balanced_kinds(kinds, target_ratios, max_armies) if balanced_mode else None
     try:
         reserve = max(0, min(4, int(reserve or 0)))
     except Exception:
@@ -221,7 +253,7 @@ def gather(g, sleep, max_armies=5, kinds=None, reserve=0):
             if n_out >= n_max - reserve:
                 log(f"  gather: {n_out}/{n_max} armies out - keeping {reserve} march slot(s) free as set in the dashboard")
                 break
-        kind = _next_kind(kinds)
+        kind = plan.pop(0) if plan else _next_kind(kinds)
         press_key("f"); sleep(3)
         if not _click_tpl(g, "icon_" + kind, sleep, 0.75):
             log("  ! gather: search panel did not open")

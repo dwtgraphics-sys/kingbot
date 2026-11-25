@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:13:27+00:00"
+  "heartbeat": "2026-11-25T19:14:21+00:00"
  },
  "items": [
   {
@@ -105,8 +105,10 @@
    "title": "Balanced Resource Gathering",
    "priority": "Medium",
    "start": "22:15",
-   "status": "pending",
-   "seq": 9
+   "status": "done",
+   "seq": 9,
+   "finished": "2026-11-25T19:14:21+00:00",
+   "note": "gather balanced_mode + target_ratios (most under-target type first); UI toggle + ratio inputs with current share; bot v208"
   },
   {
    "id": "TOOLS-01",
