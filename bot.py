@@ -54,6 +54,8 @@ def rally_probe_watch():
     t = next((x for x in d.get("tasks", []) if x.get("routine") == "join_rally"), None)
     if t is not None and not t.get("enabled"):
         return
+    if conduct_hold(d):                                      # GUIDE-13
+        return
     t = t or {}
     try:
         if find_window():
@@ -277,6 +279,9 @@ def captcha_watch(force=False):
         seen = smart.captcha_visible(g, force=force)
     except Exception:
         return
+    if not seen and smart.RELOGIN[0]:
+        relogin_wait(g)                                      # GUIDE-13: logged in from another device
+        return
     if not seen:
         return
     CAPTCHA_BUSY[0] = True
@@ -324,6 +329,45 @@ def captcha_watch(force=False):
             TASK_NOW[0] = time.time()
         CAPTCHA[0] = None
         control.CITY.pop("captcha", None)
+        CAPTCHA_BUSY[0] = False
+
+
+def relogin_wait(g):
+    """GUIDE-13: the game says the account was opened on another device. Wait relogin_cooldown_min minutes
+    (default 10, dashboard) before reconnecting, so the owner can play on the other device without being kicked."""
+    CAPTCHA_BUSY[0] = True
+    task_saved = list(TASK_NOW)
+    TASK_NOW[0] = 0
+    try:
+        mins = max(1, min(240, int((ctl.data or {}).get("relogin_cooldown_min") or 10)))
+        log(f"The account was opened on another device - waiting {mins} min before logging in again.")
+        try:
+            smart.notify("info", f"دخل أحد للحساب من جهاز آخر — البوت ينتظر {mins} دقيقة ثم يعود")
+        except Exception:
+            pass
+        end = time.time() + mins * 60
+        CAPTCHA[0] = "relogin"                               # no clicks while waiting
+        while time.time() < end:
+            check_stop()
+            LAST_ACTIVITY[0] = time.time()
+            ctl.poll()
+            ctl.write_status(state="waiting", task=f"logged in on another device - back in {max(0, int((end - time.time()) / 60))} min")
+            _touch_pid()
+            time.sleep(30)
+        CAPTCHA[0] = None
+        for name in ("btn_confirm_blue", "btn_confirm_word"):
+            p = g.find_image(name, 0.8)
+            if p:
+                g.click_rel(*p[0]); time.sleep(8)
+                break
+        else:
+            g.click_rel(0.5, 0.62); time.sleep(8)            # the dialog's single button
+        log("  relogin: reconnected after the cooldown")
+    finally:
+        smart.RELOGIN[0] = 0
+        CAPTCHA[0] = None
+        if task_saved[0]:
+            TASK_NOW[0] = time.time()
         CAPTCHA_BUSY[0] = False
 
 
@@ -1099,6 +1143,27 @@ def _unknown_routine(name):
     log(f"  ? routine '{name}' is switched on in the dashboard but not built yet - skipped")
 
 
+FIELD_TASKS = {"gather", "gather_gems", "rally_fort", "join_rally", "attack_barbarians", "hunt_guardians", "scout"}
+CONDUCT_LOGGED = [0.0]
+
+
+def conduct_hold(settings):
+    """GUIDE-13: while the governor's Conduct score (read from the profile) is below conduct_min (default 61),
+    field activities (marches, gathering, scouting) wait; city tasks go on. Resumes by itself at 61+."""
+    import control
+    try:
+        v = int(str((control.CITY.get("profile") or {}).get("conduct") or "").replace(",", "") or 0)
+    except Exception:
+        v = 0
+    lim = int((settings or {}).get("conduct_min") or 61)
+    if not v or v >= lim:
+        return False
+    if time.time() - CONDUCT_LOGGED[0] > 1800:
+        CONDUCT_LOGGED[0] = time.time()
+        log(f"Conduct score {v} is below {lim}: marches / gathering / scouting wait, city tasks go on.")
+    return True
+
+
 def one_round(settings):
 
     routines = load_json(ROUTINES_FILE, {})
@@ -1152,6 +1217,8 @@ def one_round(settings):
             continue
         name = t["routine"]
         if qm_on and name in QM_REPLACED:
+            continue
+        if name in FIELD_TASKS and conduct_hold(settings):     # GUIDE-13: conduct score below 61
             continue
         try:                                                 # v137: dashboard read requests between activities
             ctl.poll()

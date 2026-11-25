@@ -486,8 +486,43 @@ def _hour_in(rng, hour):
     return a <= hour < b if a < b else (hour >= a or hour < b)
 
 
+GEM_SCHED_FILE = os.path.join(BASE, "gem_sched_state.json")
+
+
+def _gem_sched(run_max_h=4, rest_min_h=1, offset_max_min=15, day_cap_h=18):
+    """GUIDE-13: gem farming runs of at most run_max_h hours, then at least rest_min_h hours of rest plus a random
+    0-offset_max_min minute start offset, and at most day_cap_h hours of gem gathering per character per UTC day.
+    Returns (allowed, reason)."""
+    import random, time as _t
+    st = load_json(GEM_SCHED_FILE, {}) or {}
+    key = (_char_key() or "main") if "_char_key" in globals() else "main"
+    day = _t.strftime("%Y-%m-%d", _t.gmtime())
+    c = st.get(key) or {}
+    if c.get("day") != day:
+        c = {"day": day, "used": 0.0, "run_start": c.get("run_start") if c.get("day") == day else None, "rest_until": c.get("rest_until", 0)}
+    now = _t.time()
+    if now < (c.get("rest_until") or 0):
+        return False, f"resting until {_t.strftime('%H:%M', _t.gmtime(c['rest_until']))} UTC"
+    if c.get("run_start"):
+        run = now - c["run_start"]
+        if run >= float(run_max_h) * 3600:
+            c["used"] = c.get("used", 0) + run
+            c["run_start"] = None
+            c["rest_until"] = now + float(rest_min_h) * 3600 + random.uniform(0, float(offset_max_min)) * 60
+            st[key] = c; save_json(GEM_SCHED_FILE, st)
+            return False, f"run of {run_max_h} h finished - resting at least {rest_min_h} h"
+    if c.get("used", 0) + ((now - c["run_start"]) if c.get("run_start") else 0) >= float(day_cap_h) * 3600:
+        st[key] = c; save_json(GEM_SCHED_FILE, st)
+        return False, f"{day_cap_h} h of gem gathering reached today"
+    if not c.get("run_start"):
+        c["run_start"] = now
+    st[key] = c; save_json(GEM_SCHED_FILE, st)
+    return True, ""
+
+
 def gather_gems(g, sleep, max_armies=4, day_limit=1200, max_level=0, search_radius=2, avoid_combat_zones=True,
-                quiet_hours_only=False, quiet_hours=(22, 6), commander_preset=0):
+                quiet_hours_only=False, quiet_hours=(22, 6), commander_preset=0,
+                gem_scheduler=True, run_max_hours=4, rest_min_hours=1, start_offset_max_min=15, day_cap_hours=18):
     """Look for gem deposits around the city (zoomed-out map) and send free armies to them.
     v115: stops once today's gems reach day_limit (0 = no limit).
     TASK-01 (Smart Gem Farming): max_level (2 = only level 1-2 deposits, 0 = any), search_radius 1-3 (how far the
@@ -498,6 +533,11 @@ def gather_gems(g, sleep, max_armies=4, day_limit=1200, max_level=0, search_radi
     if quiet_hours_only and not _hour_in(quiet_hours, time.gmtime().tm_hour):
         log(f"  - gather_gems: only in quiet hours {quiet_hours} UTC - not now")
         return True
+    if gem_scheduler:                                       # GUIDE-13: 4 h runs, 1 h rest, 18 h/day per character
+        ok, why = _gem_sched(run_max_hours, rest_min_hours, start_offset_max_min, day_cap_hours)
+        if not ok:
+            log(f"  - gather_gems: gem scheduler - {why}")
+            return True
     try:
         pan_max = {1: 0, 2: 4, 3: len(GEM_PANS)}.get(int(search_radius or 2), 4)
     except Exception:
@@ -1503,6 +1543,7 @@ def _today():
     return datetime.datetime.utcnow().strftime("%Y-%m-%d")
 
 
+RELOGIN = [0]                 # GUIDE-13: time the "logged in on another device" dialog was seen
 CAPTCHA_SCAN = [0.0, 0.0]     # TASK-09: last template check, last OCR check
 
 
@@ -1535,6 +1576,10 @@ def captcha_visible(g, force=False):
         h, w = img.shape[:2]
         txt = " ".join(_ocr_lines(img[int(0.12 * h):int(0.55 * h), int(0.25 * w):int(0.75 * w)], "captcha_ocr.png", scale=1.6))
     except Exception:
+        return False
+    if _re.search(r"another device|other device|logged in elsewhere|account.{0,20}(?:logged|signed) in", txt, _re.I):
+        log(f"  relogin: 'another device' on screen {txt[:100]!r}")
+        RELOGIN[0] = now                                     # GUIDE-13: handled by bot.relogin_wait
         return False
     hits = _re.findall(r"verif\w*|captcha|human|robot|puzzle|slide to|security check", txt, _re.I)
     if len(set(x.lower()[:6] for x in hits)) >= 2 or _re.search(r"verification|captcha", txt, _re.I):
