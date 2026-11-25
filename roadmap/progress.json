@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:10:43+04:00"
+  "heartbeat": "2026-11-26T00:12:35+04:00"
  },
  "items": [
   {
@@ -340,8 +340,10 @@
    "title": "'Live Screen' Annotated Guide (1-3), Hourly View Quota, Idle Timeout & Session Logging",
    "priority": "High",
    "start": "23:42",
-   "status": "in_progress",
-   "seq": 30
+   "status": "done",
+   "seq": 30,
+   "finished": "2026-11-25T20:12:35+00:00",
+   "note": "live screen: save picture, hourly quota badge (config/live.json, per browser), 5-min idle pause + Open again, one tab; guide 1-3. Session time+IP logging NOT built: needs a server endpoint (owner decision)"
   },
   {
    "id": "TASK-08",
