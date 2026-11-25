@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:10:12+00:00"
+  "heartbeat": "2026-11-25T19:11:44+00:00"
  },
  "items": [
   {
@@ -71,9 +71,11 @@
    "title": "Smart Gem Farming",
    "priority": "High",
    "start": "22:00",
-   "status": "in_progress",
+   "status": "done",
    "seq": 6,
-   "started": "2026-11-25T19:10:12+00:00"
+   "started": "2026-11-25T19:10:12+00:00",
+   "finished": "2026-11-25T19:11:44+00:00",
+   "note": "gather_gems options: max_level, search_radius, avoid_combat_zones (red-line check), quiet hours, jitter, commander_preset stored (used by TASK-07); UI options + today gems; bot v207"
   },
   {
    "id": "TOOLS-00",

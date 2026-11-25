@@ -358,9 +358,53 @@ def _gems_collected_today():
     return max(est, bar)
 
 
-def gather_gems(g, sleep, max_armies=4, day_limit=1200):
+def _combat_near(img, rx, ry, r=0.10):
+    """TASK-01: True if bright red march / attack lines or a fight are seen around (rx, ry) on the map.
+    Counts strongly saturated red pixels in a box around the spot (the map itself has almost none)."""
+    import cv2
+    h, w = img.shape[:2]
+    x0, x1 = max(0, int((rx - r) * w)), min(w, int((rx + r) * w))
+    y0, y1 = max(0, int((ry - r * 1.6) * h)), min(h, int((ry + r * 1.6) * h))
+    box = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2HSV)
+    if box.size == 0:
+        return False
+    red = cv2.countNonZero(cv2.inRange(box, (0, 170, 150), (6, 255, 255))) + \
+        cv2.countNonZero(cv2.inRange(box, (174, 170, 150), (180, 255, 255)))
+    share = red / float(box.shape[0] * box.shape[1])
+    if share > 0.012:
+        log(f"    gems: red lines / fight near the deposit ({share:.1%} red) - skipped")
+        return True
+    return False
+
+
+def _hour_in(rng, hour):
+    """TASK-01: rng = [from, to] in UTC hours (to may pass midnight: [22, 6])."""
+    try:
+        a, b = int(rng[0]) % 24, int(rng[1]) % 24
+    except Exception:
+        return True
+    if a == b:
+        return True
+    return a <= hour < b if a < b else (hour >= a or hour < b)
+
+
+def gather_gems(g, sleep, max_armies=4, day_limit=1200, max_level=0, search_radius=2, avoid_combat_zones=True,
+                quiet_hours_only=False, quiet_hours=(22, 6), commander_preset=0):
     """Look for gem deposits around the city (zoomed-out map) and send free armies to them.
-    v115: stops once today's gems reach day_limit (0 = no limit)."""
+    v115: stops once today's gems reach day_limit (0 = no limit).
+    TASK-01 (Smart Gem Farming): max_level (2 = only level 1-2 deposits, 0 = any), search_radius 1-3 (how far the
+    camera pans around the city), avoid_combat_zones (skip deposits with red lines / fights nearby),
+    quiet_hours_only + quiet_hours (UTC range), random pauses between sends. commander_preset is kept for the
+    task-presets feature (TASK-07): the march uses the game's default troop until then."""
+    import random
+    if quiet_hours_only and not _hour_in(quiet_hours, time.gmtime().tm_hour):
+        log(f"  - gather_gems: only in quiet hours {quiet_hours} UTC - not now")
+        return True
+    try:
+        pan_max = {1: 0, 2: 4, 3: len(GEM_PANS)}.get(int(search_radius or 2), 4)
+    except Exception:
+        pan_max = 4
+    max_level = int(max_level or 0)
     limit = int(day_limit or 0)
     if limit > 0:
         got = _gems_collected_today()
@@ -382,7 +426,7 @@ def gather_gems(g, sleep, max_armies=4, day_limit=1200):
         pyautogui.scroll(-5 * 120); sleep(2)
     sent, pans, tried = 0, 0, []
     steps = 0
-    while sent < int(max_armies) and pans <= len(GEM_PANS) and steps < 20:
+    while sent < int(max_armies) and pans <= pan_max and steps < 20:
         steps += 1
         if _queue_full(g):
             break
@@ -395,18 +439,28 @@ def gather_gems(g, sleep, max_armies=4, day_limit=1200):
             rx, ry = hits[0]
             tried.append((rx, ry))
             log(f"  gather_gems: gem deposit seen at {rx:.2f},{ry:.2f}")
+            if avoid_combat_zones and _combat_near(g.screenshot(), rx, ry):
+                continue
+            sleep(random.uniform(0.6, 2.4))                      # TASK-01: jitter - not the same rhythm every time
             _click_landing(g, rx, ry, sleep, waits=2); sleep(3)       # zooms in on that spot
             mine = g.find_image("gem_mine_core", 0.7)
             if mine:
                 _click_landing(g, *mine[0], sleep, waits=2); sleep(2)
                 lv = _gem_level(g)
-                r = _send_army(g, sleep)
+                if max_level and lv > max_level:
+                    log(f"  - gather_gems: level {lv} deposit skipped (only level 1-{max_level})")
+                    press_key("esc"); sleep(1)
+                    r = "skip"
+                else:
+                    r = _send_army(g, sleep)
                 if r == "sent":
                     sent += 1
                     d = _gem_day(sent_level=lv)
                     log(f"  gather_gems: army sent to a level {lv} gem deposit (today: {d['sends']} sends ≈ {d['est']} gems)")
                 elif r == "busy":
                     break
+                elif r == "skip":
+                    pass
                 else:
                     log("  - gather_gems: this deposit cannot be gathered (taken?)")
                     press_key("esc"); sleep(1)
@@ -417,7 +471,7 @@ def gather_gems(g, sleep, max_armies=4, day_limit=1200):
             for _ in range(2):
                 pyautogui.scroll(-5 * 120); sleep(2)
             continue
-        if pans >= len(GEM_PANS):
+        if pans >= pan_max:
             break
         x1, y1, x2, y2 = GEM_PANS[pans]
         sx, sy = g.to_screen(x1, y1); ex, ey = g.to_screen(x2, y2)
