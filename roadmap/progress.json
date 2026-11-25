@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:14:42+04:00"
+  "heartbeat": "2026-11-26T00:15:15+04:00"
  },
  "items": [
   {
@@ -362,8 +362,10 @@
    "title": "'Bot Settings' Annotated Guide (1-5), Commander Loading & Spend Warning",
    "priority": "High",
    "start": "23:55",
-   "status": "in_progress",
-   "seq": 32
+   "status": "done",
+   "seq": 32,
+   "finished": "2026-11-25T20:15:15+00:00",
+   "note": "documented the real Settings UI (filters are All/On/Favourites/Registered; no Changed filter, Discard bar or Copy-to-characters exist yet) + spend warning"
   },
   {
    "id": "MOD-03",
