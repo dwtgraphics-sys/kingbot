@@ -2408,7 +2408,11 @@ def _scan_building(g, sleep, kind, probe):
     if _t.time() - float(last) < 6 * 3600:
         return None
     log(f"    searching the city for the {kind} (this character's city layout)...")
+    t_end = _t.time() + 6 * 60                       # v204: a scan never blocks the bot for more than 6 minutes
     for (x, y) in CITY_GRID:
+        if _t.time() > t_end:
+            log(f"    ! {kind}: city search stopped after 6 minutes")
+            break
         if not _in_city(g):
             recover_screen(g)
             if not _city_reset(g, sleep):
