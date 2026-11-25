@@ -1,0 +1,30 @@
+name: check
+# The bot on the server installs a new version only after this check passes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  bot:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Every Python file compiles
+        run: python -m compileall -q -f .
+      - name: JSON files are valid and version.json has a number
+        shell: python
+        run: |
+          import json, glob, sys
+          for p in glob.glob("**/*.json", recursive=True):
+              json.load(open(p, encoding="utf-8-sig"))
+          v = json.load(open("version.json", encoding="utf-8"))["version"]
+          assert isinstance(v, int) and v > 0, "version.json must hold a positive whole number"
+          print("version", v)
+      - name: No secrets in the repository
+        shell: bash
+        run: |
+          if git grep -n -I -E "ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|[0-9]{8,}:AA[A-Za-z0-9_-]{30,}" -- . ; then
+            echo "A token was committed - remove it"; exit 1; fi
