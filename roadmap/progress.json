@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:19:34+04:00"
+  "heartbeat": "2026-11-26T01:22:51+04:00"
  },
  "items": [
   {
@@ -549,8 +549,10 @@
    "title": "Equipment Browser & Crafting Material Calculator",
    "priority": "Medium",
    "start": "00:57",
-   "status": "in_progress",
-   "seq": 49
+   "status": "done",
+   "seq": 49,
+   "finished": "2026-11-25T21:22:51+00:00",
+   "note": "Equipment & crafting tool: 98 pieces (fandom Blacksmith + riseofkingdomsguides tables; 57 pieces marked ≈ to verify), filters, cards, crafting list totals (materials, gold, summed stats); refine/special-talent costs not available"
   },
   {
    "id": "GUIDE-15",
@@ -558,7 +560,7 @@
    "title": "Alliance & Kingdom Management Rules: Members, Mobilization Board, Rallies, Titles & City Finder",
    "priority": "High",
    "start": "00:59",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 50
   },
   {
@@ -594,8 +596,10 @@
    "title": "Equipment & Crafting Calculator: 2-Tab Switcher (Equipment / My Crafting List), Search, Slot & Quality Pills",
    "priority": "High",
    "start": "01:16",
-   "status": "pending",
-   "seq": 54
+   "status": "done",
+   "seq": 54,
+   "finished": "2026-11-25T21:22:51+00:00",
+   "note": "built together with TOOLS-04: breadcrumb, badge, 2 tabs, search, SLOT/QUALITY pills with colours, live count"
   },
   {
    "id": "TASK-14",
