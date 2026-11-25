@@ -1514,7 +1514,7 @@ def read_resources(g, sleep=None):
 
 
 # ---------------- v105: day stats (30-day history), notifications, Telegram push ----------------
-STAT_KEYS = ("food", "wood", "stone", "gold", "gems", "barb", "rally", "rally_join", "mail", "recall", "merchant", "tavern")
+STAT_KEYS = ("food", "wood", "stone", "gold", "gems", "barb", "rally", "rally_join", "mail", "recall", "merchant", "tavern", "events_claim")
 
 
 def _stats_load():
@@ -2024,6 +2024,87 @@ def daily_objectives(g, sleep):
     return True
 
 
+# ---------------- TASK-12: Event Milestone Claimer ----------------
+EVENTS_STATE = {"warned": 0.0}
+
+
+def _red_badges(img, x1=0.0, x2=1.0, y1=0.0, y2=1.0):
+    """Small bright-red notification dots inside the box (relative coords) -> [(x, y)] relative, top to bottom."""
+    import cv2, numpy as np
+    h, w = img.shape[:2]
+    X1, X2, Y1, Y2 = int(x1 * w), int(x2 * w), int(y1 * h), int(y2 * h)
+    crop = img[Y1:Y2, X1:X2]
+    b, g_, r = cv2.split(crop.astype("int16"))
+    mask = ((r > 190) & (g_ < 70) & (b < 70)).astype("uint8") * 255
+    n, _l, st, cen = cv2.connectedComponentsWithStats(mask)
+    out = []
+    for i in range(1, n):
+        bw, bh, area = st[i][2], st[i][3], st[i][4]
+        if 5 <= bw <= 28 and 5 <= bh <= 28 and area >= 18 and 0.6 < bw / max(bh, 1) < 1.6:
+            out.append(((X1 + cen[i][0]) / w, (Y1 + cen[i][1]) / h))
+    return sorted(out, key=lambda p: p[1])
+
+
+def events(g, sleep, max_tabs=8, max_claims=20):
+    """TASK-12: open the Events hub (picture 'icon_events', recorded once with record.py), go through the event tabs
+    that show a red notification dot and press CLAIM on finished milestones. Only CLAIM buttons are pressed - never
+    GO / BUY / gems; a gem window is answered NO."""
+    import glob, cv2, time as _t
+    from common import TEMPL_DIR, BUILTIN_DIR, BASE, close_gem_dialogs
+    icons = sorted({os.path.splitext(os.path.basename(f))[0] for d in (TEMPL_DIR, BUILTIN_DIR)
+                    for f in glob.glob(os.path.join(d, "icon_events*.png"))})
+    if not icons:
+        if _t.time() - EVENTS_STATE["warned"] > 24 * 3600:
+            EVENTS_STATE["warned"] = _t.time()
+            log("  - events: no picture of the Events icon yet (record 'icon_events' once with record.py)")
+        return True
+    recover_screen(g)
+    pos = None
+    for n in icons:
+        p = g.find_image(n, 0.8)
+        if p:
+            pos = p[0]
+            break
+    if not pos:
+        log("  - events: the Events icon is not on the screen")
+        return True
+    g.click_rel(*pos); sleep(3)
+    claimed, seen = 0, set()
+    for _tab in range(int(max_tabs)):
+        img = g.screenshot()
+        cv2.imwrite(os.path.join(BASE, "claude_out", "events_hub.png"), img)
+        dots = [d for d in _red_badges(img, 0.02, 0.36, 0.12, 0.95) if (round(d[0], 2), round(d[1], 2)) not in seen]
+        if not dots:
+            break
+        dx, dy = dots[0]
+        seen.add((round(dx, 2), round(dy, 2)))
+        g.click_rel(max(0.05, dx - 0.08), dy + 0.02); sleep(2.5)        # the tab row under the dot
+        for _ in range(int(max_claims)):
+            if close_gem_dialogs(g):
+                log("  ! events: a gem window opened - answered NO, stopping")
+                recover_screen(g)
+                return True
+            c = g.find_image("btn_claim_green", 0.8) or g.find_image("btn_claim_obj", 0.8)
+            c = [p for p in (c or []) if p[0] > 0.36]                      # right side = reward rows only
+            if not c:
+                break
+            g.click_rel(*c[0]); sleep(2.5)
+            g.click_rel(0.5, 0.12); sleep(1.2)                              # close the reward card
+            claimed += 1
+            if claimed >= int(max_claims):
+                break
+    try:
+        if claimed:
+            stat("events_claim", claimed)
+    except Exception:
+        pass
+    log(f"  events: {claimed} milestone reward(s) claimed")
+    recover_screen(g)
+    return True
+
+
+SMART["events"] = events
+SMART["event_claims"] = events
 SMART["vip_chests"] = vip_chests
 SMART["daily_objectives"] = daily_objectives
 SMART["daily_rewards"] = daily_objectives

@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:09:21+04:00"
+  "heartbeat": "2026-11-26T01:10:32+04:00"
  },
  "items": [
   {
@@ -516,8 +516,10 @@
    "title": "Event Milestone Claimer",
    "priority": "Low",
    "start": "00:50",
-   "status": "pending",
-   "seq": 46
+   "status": "done",
+   "seq": 46,
+   "finished": "2026-11-25T21:10:32+00:00",
+   "note": "bot v223 'events' routine every 2-2.5h (off by default): Events icon (record icon_events once) -> red-dot tabs -> CLAIM only, gem window = NO; events_claim daily counter; dashboard toggle + info text"
   },
   {
    "id": "MOD-04",
