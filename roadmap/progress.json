@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:23:34+04:00"
+  "heartbeat": "2026-11-26T00:23:36+04:00"
  },
  "items": [
   {
@@ -450,8 +450,10 @@
    "title": "'Activity Groups' Remaining Groups: Rewards, Shops, Arena, Characters, Alliance & Kingdom Mgmt",
    "priority": "Medium",
    "start": "00:21",
-   "status": "in_progress",
-   "seq": 40
+   "status": "done",
+   "seq": 40,
+   "finished": "2026-11-25T20:23:36+00:00",
+   "note": "covered by GUIDE-11 dynamic groups list (Rewards, Shops, Arena... from the real activities); Leader-plan groups (alliance/kingdom management) do not exist in the bot - not documented"
   },
   {
    "id": "EARN-03",
