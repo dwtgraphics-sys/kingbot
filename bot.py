@@ -867,7 +867,7 @@ def get_game():
 TASK_STATE_FILE = os.path.join(BASE, "task_state.json")
 # activities that run on their own timer: a random interval between two numbers (minutes)
 DEFAULT_EVERY = {"collect_city": [30, 60], "daily_objectives": [480, 480], "alliance_tech": [120, 120], "alliance_gifts": [120, 180],
-                 "tavern": [8, 10], "sunset_canyon": [120, 180], "hunt_guardians": [60, 90],
+                 "tavern": [8, 10], "sunset_canyon": [120, 180], "hunt_guardians": [60, 90], "merchant": [30, 45],
                  "heal": [30, 45], "research": [30, 45], "build_upgrade": [30, 45], "read_mail": [20, 30], "read_profile": [60, 90], "read_characters": [720, 720], "read_marches": [15, 20], "materials": [60, 90], "read_commanders": [10080, 10080]}
 DAILY_ONCE = {"vip_chests", "vip_shop", "tavern_legendary"}     # v67: once per game day (UTC); the day is stored in task_state
 
@@ -1199,6 +1199,13 @@ def one_round(settings):
     for extra in ("daily_objectives", "vip_chests", "alliance_tech", "vip_shop", "tavern", "tavern_legendary", "sunset_canyon", "read_mail", "read_profile", "read_characters", "read_marches", "read_commanders"):   # v56
         if not any(t.get("routine") == extra for t in tasks):
             tasks.append({"routine": extra, "times": 1, "enabled": True})
+    mt = settings.get("merchant_tavern") or {}              # TASK-11: Mysterious Merchant & Tavern chests
+    if isinstance(mt, dict) and mt:
+        for t in tasks:
+            if t.get("routine") == "tavern" and "tavern_free_chests" in mt:
+                t["enabled"] = bool(mt.get("tavern_free_chests"))
+            if t.get("routine") == "merchant":
+                t["free_refresh"] = bool(mt.get("merchant_free_refresh"))   # resources only - always, not a choice
     eh = settings.get("events_hunter") or {}                 # TASK-10: Sunset Canyon & Guardians hunter
     if isinstance(eh, dict) and eh:
         for t in tasks:

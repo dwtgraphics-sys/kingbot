@@ -1514,7 +1514,7 @@ def read_resources(g, sleep=None):
 
 
 # ---------------- v105: day stats (30-day history), notifications, Telegram push ----------------
-STAT_KEYS = ("food", "wood", "stone", "gold", "gems", "barb", "rally", "rally_join", "mail", "recall")
+STAT_KEYS = ("food", "wood", "stone", "gold", "gems", "barb", "rally", "rally_join", "mail", "recall", "merchant", "tavern")
 
 
 def _stats_load():
@@ -2672,6 +2672,81 @@ def vip_shop(g, sleep, max_buys=60):
 SMART["vip_shop"] = vip_shop
 
 
+# ---------------- TASK-11: Mysterious Merchant (resources only, never gems) ----------------
+MERCHANT_STATE = {"warned": 0.0}
+
+
+def merchant(g, sleep, max_buys=8, free_refresh=False):
+    """City: when the Mysterious Merchant is visible (template merchant*.png, recorded once with record.py) open it
+    and buy every item priced in food / wood / stone / gold. Gem-priced items are skipped; a gem window is answered
+    NO and stops the visit. free_refresh: press Refresh only when the free-refresh button (merchant_free_refresh.png)
+    is seen - a paid refresh is never pressed."""
+    import glob, cv2, time as _t
+    from common import TEMPL_DIR, BUILTIN_DIR, close_gem_dialogs
+    icons = sorted({os.path.splitext(os.path.basename(f))[0] for d in (TEMPL_DIR, BUILTIN_DIR)
+                    for f in glob.glob(os.path.join(d, "merchant_icon*.png"))})
+    if not icons:
+        if _t.time() - MERCHANT_STATE["warned"] > 24 * 3600:
+            MERCHANT_STATE["warned"] = _t.time()
+            log("  - merchant: no picture of the merchant yet (record 'merchant_icon' once with record.py)")
+        return True
+    _city_reset(g, sleep)
+    pos = None
+    for n in icons:
+        p = g.find_image(n, 0.8)
+        if p:
+            pos = p[0]
+            break
+    if not pos:
+        log("  - merchant: the Mysterious Merchant is not in the city now")
+        return True
+    g.click_rel(*pos); sleep(3)
+    refreshed, bought = 0, 0
+    for _round in range(2):
+        img = g.screenshot(); h, w = img.shape[:2]
+        tried = set()
+        for _ in range(int(max_buys)):
+            img = g.screenshot()
+            btn = next(((x, y, bw, bh) for (x, y, bw, bh, gem) in _price_buttons(img)
+                        if not gem and (x // 12, y // 12) not in tried), None)
+            if not btn:
+                break
+            x, y, bw, bh = btn
+            tried.add((x // 12, y // 12))
+            g.click_rel((x + bw / 2) / w, (y + bh / 2) / h); sleep(1.8)
+            if close_gem_dialogs(g):
+                log("  ! merchant: a gem window appeared - answered NO and stopped")
+                recover_screen(g)
+                return True
+            for cname in ("btn_confirm_blue", "btn_confirm_word"):      # "buy with resources?" confirmation
+                c = g.find_image(cname, 0.82)
+                if c:
+                    g.click_rel(*c[0]); sleep(1.5)
+                    break
+            if close_gem_dialogs(g):
+                recover_screen(g)
+                return True
+            bought += 1
+        if not free_refresh or refreshed:
+            break
+        fr = g.find_image("merchant_free_refresh", 0.85)
+        if not fr:
+            break
+        g.click_rel(*fr[0]); sleep(2.5)
+        if close_gem_dialogs(g):
+            break
+        refreshed += 1
+    if bought:
+        stat("merchant", bought)
+    cv2.imwrite(os.path.join(BASE, "claude_out", "merchant_last.png"), g.screenshot())
+    log(f"  merchant: {bought} item(s) bought with resources" + (" (after a free refresh)" if refreshed else "") + ", gem items skipped")
+    recover_screen(g)
+    return True
+
+
+SMART["merchant"] = merchant
+
+
 def _drag(g, x1, y1, x2, y2, dur=0.6):
     sx, sy = g.to_screen(x1, y1); ex, ey = g.to_screen(x2, y2)
     pyautogui.moveTo(sx, sy); pyautogui.mouseDown()
@@ -2916,6 +2991,8 @@ def tavern(g, sleep, max_open=12):
     control.CITY["tavern"] = t[:80]
     control.CITY["tavern_read"] = _t.strftime("%H:%M")
     cv2.imwrite(os.path.join(BASE, "claude_out", "tavern_last.png"), img)
+    if opened:
+        stat("tavern", opened)                               # TASK-11: counter in the dashboard
     log(f"  tavern: {opened} free chest(s) opened   ({t[:80]})")
     g.click_rel(0.021, 0.025); sleep(2)                      # back
     recover_screen(g)
