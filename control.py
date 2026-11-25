@@ -11,6 +11,39 @@ from updater import local_version
 from common import LOG_FILE, ROUTINES_FILE, load_json, log
 
 import server_config
+import kb_crypto
+
+# v196: encryption. On when C:\RisBot\local_config.json has "KB_PASSPHRASE" (never uploaded to GitHub).
+PUBLIC_STATUS = ("updated", "version", "state", "task", "server_id", "sys", "shot_request_done")
+_ENC_WARN = {"at": 0.0}
+
+def enc_key():
+    p = server_config.get("KB_PASSPHRASE")
+    return kb_crypto.derive(p) if p else None
+
+def _seal_bytes(b):
+    k = enc_key()
+    return kb_crypto.seal_bytes(k, b) if k else b
+
+def _seal_json(obj, public=()):
+    k = enc_key()
+    return kb_crypto.seal_json(k, obj, public) if k else obj
+
+def _open_json(obj):
+    """Decrypt a sealed envelope; None when it cannot be read here (no / wrong passphrase)."""
+    if not kb_crypto.is_sealed(obj):
+        return obj
+    import time as _t
+    k = enc_key()
+    try:
+        if not k:
+            raise ValueError("it is encrypted but this server has no KB_PASSPHRASE in local_config.json")
+        return kb_crypto.open_json(k, obj)
+    except Exception as e:
+        if _t.time() - _ENC_WARN["at"] > 900:
+            _ENC_WARN["at"] = _t.time()
+            log(f"! dashboard settings cannot be decrypted: {e}")
+        return None
 GITHUB_OWNER = "dwtgraphics-sys"
 GITHUB_REPO = "kingbot-syn"
 TOKEN_FILE = r"C:\RisBot\github_token.txt"
@@ -322,7 +355,10 @@ class Control:
             return self.data, False
         try:
             raw = base64.b64decode(res["content"]).decode("utf-8-sig")
-            d = _clean(json.loads(raw))
+            d = _open_json(json.loads(raw))
+            if d is None:
+                return self.data, False
+            d = _clean(d)
         except Exception:
             return self.data, False
         self._last_sha = res.get("sha")
@@ -349,7 +385,7 @@ class Control:
         tmp_jpg = os.path.join(tempfile.gettempdir(), "kingbot_gh_screen.jpg")
         path = take_screenshot(tmp_jpg)
         if path and os.path.isfile(path):
-            ok = _gh_put_bytes(server_config.path("screen"), open(path, "rb").read(), "bot: screenshot")
+            ok = _gh_put_bytes(server_config.path("screen"), _seal_bytes(open(path, "rb").read()), "bot: screenshot")
             log("Screenshot uploaded to GitHub." if ok else "! GitHub screenshot upload failed.")
         else:
             log("! Screenshot failed.")
@@ -360,7 +396,7 @@ class Control:
         d = dict(self.data or {"running": True, "loop_minutes": 60, "tasks": []})
         d.update(changes)
         d["sent_at"] = _now()
-        ok = _gh_put_bytes(server_config.path("control"), json.dumps(d, ensure_ascii=False, indent=2).encode("utf-8"), "bot: update settings")
+        ok = _gh_put_bytes(server_config.path("control"), json.dumps(_seal_json(d, ("sent_at",)), ensure_ascii=False, indent=2).encode("utf-8"), "bot: update settings")
         if ok:
             self.data = _clean(d)
         return ok
@@ -393,4 +429,4 @@ class Control:
             "log": [l.rstrip("\n") for l in tail],
         }
         status.update(info)
-        _gh_put_bytes(server_config.path("status"), json.dumps(status, ensure_ascii=False, indent=2).encode("utf-8"), "bot: status")
+        _gh_put_bytes(server_config.path("status"), json.dumps(_seal_json(status, PUBLIC_STATUS), ensure_ascii=False, indent=2).encode("utf-8"), "bot: status")

@@ -357,7 +357,6 @@ def probe_if_asked():
 
 
 # ---------------- v144: live stream keeper (OBS virtual camera -> VDO.Ninja in a minimized Chrome) ----------------
-STREAM_ID, STREAM_PW = "kbb294c813b7", "ct1q-ZeP"
 OBS_EXE = r"C:\Users\Administrator\obs-studio\bin\64bit\obs64.exe"
 CHROME_EXE = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 _STREAM_LAST = [0.0]

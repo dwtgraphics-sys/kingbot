@@ -22,7 +22,12 @@ LOG_FILE = os.path.join(BASE, "log.txt")
 OBS_EXE = r"C:\Users\Administrator\obs-studio\bin\64bit\obs64.exe"
 CHROME_EXE = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 CHROME_PROFILE = os.path.join(BASE, "stream_chrome")
-STREAM_ID, STREAM_PW = "kbb294c813b7", "ct1q-ZeP"
+try:                                                    # v196: from local_config.json when set (not on GitHub)
+    import server_config as _sc
+    STREAM_ID = _sc.get("STREAM_ID") or "kbb294c813b7"
+    STREAM_PW = _sc.get("STREAM_PASSWORD") or "ct1q-ZeP"
+except Exception:
+    STREAM_ID, STREAM_PW = "kbb294c813b7", "ct1q-ZeP"
 VIEW_URL = f"https://vdo.ninja/?view={STREAM_ID}&password={STREAM_PW}&label=Kingbot"
 PUSH_URL = (f"https://vdo.ninja/?push={STREAM_ID}&webcam&videodevice=OBS&audiodevice=0&autostart"
             f"&password={STREAM_PW}&quality=1&label=Kingbot")
