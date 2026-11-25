@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:18:16+00:00"
+  "heartbeat": "2026-11-25T19:19:08+00:00"
  },
  "items": [
   {
@@ -194,8 +194,10 @@
    "title": "Live Command Execution Status & Debounce Lock",
    "priority": "High",
    "start": "22:59",
-   "status": "pending",
-   "seq": 17
+   "status": "done",
+   "seq": 17,
+   "finished": "2026-11-25T19:19:08+00:00",
+   "note": "button states + lock + dedupe + last success time; uses existing city.action_progress/action_done from the bot"
   },
   {
    "id": "UX-02",
@@ -203,8 +205,9 @@
    "title": "Live 'In The City' Queue Cards (Training, Materials & Healing)",
    "priority": "High",
    "start": "22:59",
-   "status": "pending",
-   "seq": 18
+   "status": "in_progress",
+   "seq": 18,
+   "started": "2026-11-25T19:19:08+00:00"
   },
   {
    "id": "TOOLS-02B",
