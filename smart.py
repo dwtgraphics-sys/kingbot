@@ -660,6 +660,71 @@ def attack_watch(g):
         ATTACK_NOTE["hits"] = 0
 
 
+# ---------------- TASK-05: auto-return & recall ----------------
+RECALL_STATE = {"hits": 0, "last": 0.0, "done": 0.0, "no_tpl": 0.0}
+
+
+def auto_recall(g, sleep, recall_on_threat=True, cooldown_minutes=10):
+    """TASK-05: when the red warning border shows twice in a row (an attack on our troops / city) while armies
+    are out gathering, call the gathering armies back to the city and log it (counter "recall" in Daily gains).
+    Recall = tap the army card in the right column (map view) -> the Return button (template btn_recall,
+    captured from the game with record.py). Without that template it only warns. Never uses gems / items."""
+    import time as _t
+    if not recall_on_threat:
+        return True
+    now = _t.time()
+    if now - RECALL_STATE["done"] < max(1, int(cooldown_minutes or 10)) * 60:
+        return True
+    r = _red_border_ratio(g.screenshot())
+    if r <= 0.30:
+        RECALL_STATE["hits"] = 0
+        return True
+    RECALL_STATE["hits"] = RECALL_STATE["hits"] + 1 if now - RECALL_STATE["last"] < 120 else 1
+    RECALL_STATE["last"] = now
+    if RECALL_STATE["hits"] < 2:
+        return True
+    RECALL_STATE["hits"] = 0
+    tpl = os.path.join(BASE, "builtin_templates", "btn_recall.png")
+    if not os.path.exists(tpl) and not os.path.exists(os.path.join(BASE, "templates", "btn_recall.png")):
+        if now - RECALL_STATE["no_tpl"] > 3600:
+            RECALL_STATE["no_tpl"] = now
+            log("! auto_recall: threat seen but the Return button picture (btn_recall) is not recorded yet - cannot recall")
+            notify("attack", "⚠️ الاستدعاء التلقائي: تهديد على جيوشك، لكن صورة زر «العودة» غير مسجلة بعد — استدعِ الجيوش يدوياً.")
+        return True
+    if not goto_map(g, sleep, "auto_recall"):
+        return True
+    img = g.screenshot()
+    called = 0
+    for k in range(5):
+        try:
+            st = _march_status(img, k)
+        except Exception:
+            break
+        if st != "gather":
+            continue
+        g.click_rel(0.983, MARCH_Y0 + MARCH_DY * k + 0.02); sleep(2)
+        hit = g.find_image("btn_recall", 0.8)
+        if hit:
+            g.click_rel(*hit[0]); sleep(1.5)
+            called += 1
+        else:
+            press_key("esc"); sleep(1)
+    RECALL_STATE["done"] = now
+    if called:
+        try:
+            stat("recall", called)
+        except Exception:
+            pass
+        log(f"  auto_recall: {called} gathering army(ies) called back to the city (threat seen)")
+        notify("attack", f"🏃 الاستدعاء التلقائي: أُعيد {called} جيش جمع إلى المدينة بسبب تهديد. " + _t.strftime("%H:%M", _t.gmtime()) + " UTC")
+    else:
+        log("  auto_recall: threat seen but no gathering army could be called back")
+    return True
+
+
+SMART["auto_recall"] = auto_recall
+
+
 # ---------------- alliance center: gifts + territory resources ----------------
 def _confirm_popup(g, sleep):
     c = g.find_image("btn_confirm_blue", 0.8)
@@ -1335,7 +1400,7 @@ def read_resources(g, sleep=None):
 
 
 # ---------------- v105: day stats (30-day history), notifications, Telegram push ----------------
-STAT_KEYS = ("food", "wood", "stone", "gold", "gems", "barb", "rally", "rally_join", "mail")
+STAT_KEYS = ("food", "wood", "stone", "gold", "gems", "barb", "rally", "rally_join", "mail", "recall")
 
 
 def _stats_load():

@@ -161,6 +161,26 @@ def attack_watch():
         watch_error("attack watch failed", e)
 
 
+RECALL_WATCH = [0.0]
+
+
+def recall_watch():
+    """TASK-05: every 30 s while waiting - Auto-Return & Recall (task auto_recall switched on in the dashboard)."""
+    if time.time() - RECALL_WATCH[0] < 30:
+        return
+    RECALL_WATCH[0] = time.time()
+    d = cur_data()
+    t = next((x for x in d.get("tasks", []) if x.get("routine") == "auto_recall" and x.get("enabled")), None)
+    if not t:
+        return
+    try:
+        if find_window():
+            smart.auto_recall(Game(), sleep, recall_on_threat=t.get("recall_on_threat", True),
+                              cooldown_minutes=t.get("cooldown_minutes", 10))
+    except Exception as e:
+        watch_error("auto_recall check failed", e)
+
+
 def shield_watch():
     """Every 30 s while waiting: if Auto Shield is switched on in the dashboard, look for an attack."""
     if time.time() - SHIELD_WATCH[0] < 30:
@@ -316,6 +336,7 @@ def idle(sec, **status):
         action_if_asked()
         claude_channel.check(sleep)
         shield_watch()
+        recall_watch()
         attack_watch()
         session_watch()
         stream_keeper()

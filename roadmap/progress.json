@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:20:36+00:00"
+  "heartbeat": "2026-11-25T19:21:48+00:00"
  },
  "items": [
   {
@@ -228,9 +228,11 @@
    "title": "Auto-Return & Recall",
    "priority": "High",
    "start": "23:02",
-   "status": "in_progress",
+   "status": "done",
    "seq": 20,
-   "started": "2026-11-25T19:20:36+00:00"
+   "started": "2026-11-25T19:20:36+00:00",
+   "finished": "2026-11-25T19:21:48+00:00",
+   "note": "auto_recall task + 30s watch (red warning x2 -> recall gathering armies, cooldown, log + notify, counter 'recall'); the Return button picture btn_recall must be recorded once with record.py - until then it only warns. bot v211"
   },
   {
    "id": "GUIDE-06",
