@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:24:19+04:00"
+  "heartbeat": "2026-11-26T00:24:36+04:00"
  },
  "items": [
   {
@@ -461,8 +461,10 @@
    "title": "Add Bar Value Labels, Trend Badges, Farming Efficiency & Net After Supply",
    "priority": "High",
    "start": "00:27",
-   "status": "in_progress",
-   "seq": 41
+   "status": "done",
+   "seq": 41,
+   "finished": "2026-11-25T20:24:36+00:00",
+   "note": "labels, DoD badges, efficiency (bot v219 records active_min), net after supply (sent_* counted once transport/donation exists)"
   },
   {
    "id": "GUIDE-13",
