@@ -111,6 +111,22 @@ class Telegram:
         if items:
             self.send("👑 Kingbot\n" + "\n".join(items[-15:]))
 
+    def _reset_if_asked(self):
+        """GUIDE-20: the panel password was changed -> forget the linked Telegram chat; the owner links it
+        again on purpose with /start."""
+        try:
+            at = str(((self.ctl.data or {}) if self.ctl else {}).get("telegram_reset") or "")
+            if not at or self.owner is None or not os.path.exists(OWNER_FILE):
+                return
+            import datetime
+            t = datetime.datetime.fromisoformat(at.replace("Z", "+00:00")).timestamp()
+            if t > os.path.getmtime(OWNER_FILE):
+                os.remove(OWNER_FILE)
+                self.owner = None
+                log("Telegram link reset (panel password changed) - send /start to the bot to link it again.")
+        except Exception:
+            pass
+
     # ---------- commands ----------
     def _handle(self, msg):
         chat = msg.get("chat", {}).get("id")
@@ -166,6 +182,7 @@ class Telegram:
         last_flush = 0
         while True:
             try:
+                self._reset_if_asked()
                 res = self._call("getUpdates", {"offset": self.offset, "timeout": 25}, timeout=35)
                 for u in res.get("result", []):
                     self.offset = u["update_id"] + 1

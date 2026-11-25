@@ -51,7 +51,12 @@ TOKEN_FILE = r"C:\RisBot\github_token.txt"
 ALLOWED_KEYS = {
     "running", "loop_minutes", "tasks", "run_now", "shot_request", "sent_at",
     "schedule", "probe_request", "daily_pause", "action_request", "freeze_until",
-    "presets", "char_rotation", "keep_screen", "stream"
+    "presets", "char_rotation", "keep_screen", "stream",
+    # v227: dashboard sections that were read by the bot but dropped here before
+    "march_control", "commander_presets", "smart_schedule", "events_hunter", "merchant_tavern",
+    "relogin_cooldown_min", "conduct_min", "schedule_profiles",
+    "automation_rules", "sched_ranges",         # TASK-15, GUIDE-18
+    "telegram_reset"                            # GUIDE-20
 }
 
 RESOURCES = {}

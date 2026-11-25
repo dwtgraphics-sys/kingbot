@@ -13,6 +13,7 @@ from control import Control, in_schedule
 import smart
 import claude_channel
 import queue_manager
+import automation
 smart.SMART["queue_manager"] = queue_manager.run
 START_VER = [0]
 RUN_NOW = [False]        # v150: the dashboard's "run now" button starts a round even while paused
@@ -1564,6 +1565,10 @@ def main():
     _single_instance()
     log(f"Kingbot v{local_version()} starting.")
     try:
+        smart.stat("restarts")                                 # TASK-16: restarts per day
+    except Exception:
+        pass
+    try:
         import server_config
         me = server_config.me()
         log(f"Server: {me.get('id')}" + (" (main, old file paths)" if me.get("legacy") else "")
@@ -1615,6 +1620,19 @@ def main():
                 log("Outside working hours (scheduler). Sleeping.")
                 idle(300, state="sleeping")
                 continue
+            try:                                                       # GUIDE-18: run ranges (UTC), offset, <15 min rule
+                rg_run, rg_wait, rg_prof, rg_why = automation.sched_gate(settings)
+            except Exception as e:
+                rg_run, rg_wait, rg_prof, rg_why = True, 0, "", ""
+                log(f"! smart scheduler ranges failed: {e!r}")
+            if not rg_run and not RUN_NOW[0]:
+                if time.time() - PAUSE_LOGGED[0] > 1800:
+                    log(f"Smart scheduler: {rg_why}.")
+                    PAUSE_LOGGED[0] = time.time()
+                idle(rg_wait, state="sleeping", task="smart scheduler: " + rg_why)
+                continue
+            if rg_prof:
+                settings = automation.apply_range_profile(settings, rg_prof)
             ss_state, ss_wait = smart_schedule_gate(settings)          # TASK-08
             if ss_state != "active" and not RUN_NOW[0]:
                 idle(ss_wait, state="sleeping", task="smart schedule: " + ("on a break" if ss_state == "break" else "daily hours used up"))
@@ -1631,6 +1649,19 @@ def main():
                 settings = schedule_profile(settings)                 # GUIDE-17: profile for a time window
             except Exception as e:
                 log(f"! scheduled profile failed: {e!r}")
+            try:                                                       # TASK-15: if-this-then-that rules
+                settings, rule_skip = automation.apply_rules(settings)
+            except Exception as e:
+                rule_skip = False
+                log(f"! automation rules failed: {e!r}")
+            try:
+                automation.publish_daily_stats()                       # TASK-16
+            except Exception:
+                pass
+            if rule_skip and not RUN_NOW[0]:
+                log("A rule says: skip this round.")
+                idle(min(900, int(settings.get("loop_minutes", 60)) * 60), state="sleeping", task="rule: skip this round")
+                continue
             if EFF[0]:
                 source += f", character {load_json(ROT_FILE, {}).get('name')}"
             if SCHED_PROF[0]:
