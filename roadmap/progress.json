@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:19:08+00:00"
+  "heartbeat": "2026-11-25T19:20:36+00:00"
  },
  "items": [
   {
@@ -205,9 +205,11 @@
    "title": "Live 'In The City' Queue Cards (Training, Materials & Healing)",
    "priority": "High",
    "start": "22:59",
-   "status": "in_progress",
+   "status": "done",
    "seq": 18,
-   "started": "2026-11-25T19:19:08+00:00"
+   "started": "2026-11-25T19:19:08+00:00",
+   "finished": "2026-11-25T19:20:36+00:00",
+   "note": "home panel uxq-box from city.qm (queue_manager), tiers from queue_manager settings, 1s countdown"
   },
   {
    "id": "TOOLS-02B",
@@ -226,8 +228,9 @@
    "title": "Auto-Return & Recall",
    "priority": "High",
    "start": "23:02",
-   "status": "pending",
-   "seq": 20
+   "status": "in_progress",
+   "seq": 20,
+   "started": "2026-11-25T19:20:36+00:00"
   },
   {
    "id": "GUIDE-06",
