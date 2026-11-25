@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:22:10+04:00"
+  "heartbeat": "2026-11-26T00:22:12+04:00"
  },
  "items": [
   {
@@ -439,7 +439,7 @@
    "title": "Sunset Canyon & Guardians Hunter",
    "priority": "Medium",
    "start": "00:19",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 39
   },
   {
