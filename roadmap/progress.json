@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:06:26+00:00"
+  "heartbeat": "2026-11-25T19:07:36+00:00"
  },
  "items": [
   {
@@ -48,8 +48,10 @@
    "title": "AI Assistant Chat Window with Quick Question Chips",
    "priority": "High",
    "start": "22:00",
-   "status": "pending",
-   "seq": 4
+   "status": "done",
+   "seq": 4,
+   "finished": "2026-11-25T19:07:36+00:00",
+   "note": "header subtitle, 4 chips + KB answers, free-text matches KB"
   },
   {
    "id": "GUIDE-01",
@@ -57,8 +59,9 @@
    "title": "'On This Page' Quick Jump Bar + 5-Step Getting Started Guide",
    "priority": "High",
    "start": "22:00",
-   "status": "pending",
-   "seq": 5
+   "status": "in_progress",
+   "seq": 5,
+   "started": "2026-11-25T19:07:36+00:00"
   },
   {
    "id": "TASK-01",
