@@ -393,7 +393,17 @@ def stream_keeper(force=False):
             out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True,
                                  text=True, timeout=15, creationflags=0x08000000).stdout
             if str(pid) in out:
-                return
+                # v193: stream_bot.py was updated after this copy started -> replace it with the new code
+                try:
+                    if os.path.getmtime(os.path.join(BASE, "stream_bot.py")) > os.path.getmtime(pid_file) + 5:
+                        subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True, timeout=30,
+                                       creationflags=0x08000000)
+                        log("  stream: stream_bot.py was updated - restarting it")
+                        pid = 0
+                except Exception:
+                    pass
+                if pid:
+                    return
         exe = sys.executable
         w = os.path.join(os.path.dirname(exe), "pythonw.exe")
         subprocess.Popen([w if os.path.exists(w) else exe, os.path.join(BASE, "stream_bot.py")], cwd=BASE,

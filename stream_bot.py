@@ -191,6 +191,11 @@ def main():
         return                                    # one copy only
     save(PID_FILE, os.getpid())
     log(f"stream_bot started (pid {os.getpid()})")
+    old_senders = sender_pids()
+    if old_senders:                              # left by an older stream_bot: start clean
+        for p in old_senders:
+            _run(["taskkill", "/PID", str(p), "/T", "/F"])
+        log(f"closed {len(old_senders)} old Chrome sender process(es)")
     active, since, last_health, last_out = None, None, 0.0, None
     while True:
         live = load(LIVE_FILE, {})
