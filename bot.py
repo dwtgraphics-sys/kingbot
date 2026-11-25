@@ -1396,6 +1396,11 @@ def smart_schedule_gate(settings):
 
 def smart_schedule_add(settings, seconds):
     """TASK-08: add the time of one round to today's active runtime."""
+    if seconds > 0:
+        try:
+            smart.stat("active_min", round(seconds / 60.0, 1))      # EARN-03: farming efficiency per active hour
+        except Exception:
+            pass
     cfg = _ss_cfg(settings)
     if not cfg["enabled"] or seconds <= 0:
         return
