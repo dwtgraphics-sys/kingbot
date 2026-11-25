@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:15:17+04:00"
+  "heartbeat": "2026-11-26T00:16:29+04:00"
  },
  "items": [
   {
@@ -373,8 +373,10 @@
    "title": "Add Queue Overview Sync Button & Quick Server Controls",
    "priority": "High",
    "start": "23:58",
-   "status": "in_progress",
-   "seq": 33
+   "status": "done",
+   "seq": 33,
+   "finished": "2026-11-25T20:16:29+00:00",
+   "note": "assistant: read_queues button, pause/resume, restart game/bot with confirm; bot v215 handles restart_game/restart_bot"
   },
   {
    "id": "UX-03",
