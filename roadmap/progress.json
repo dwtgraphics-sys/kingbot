@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:07:43+04:00"
+  "heartbeat": "2026-11-26T00:08:06+04:00"
  },
  "items": [
   {
@@ -296,7 +296,7 @@
    "title": "Verification Code Rules, Closing Sign-In Modal & Keyboard Character Warning",
    "priority": "High",
    "start": "23:29",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 26
   },
   {
