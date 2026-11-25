@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:01:37+00:00"
+  "heartbeat": "2026-11-25T19:03:39+00:00"
  },
  "items": [
   {
@@ -14,8 +14,10 @@
    "title": "Fix Duplicate Buttons Bug in Assistant Modal",
    "priority": "Critical",
    "start": "22:00",
-   "status": "pending",
-   "seq": 1
+   "status": "done",
+   "seq": 1,
+   "finished": "2026-11-25T19:03:39+00:00",
+   "note": "static buttons removed, astInit idempotent, phone sheet layout"
   },
   {
    "id": "EARN-01",
