@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:21:48+00:00"
+  "heartbeat": "2026-11-25T19:22:22+00:00"
  },
  "items": [
   {
@@ -240,8 +240,10 @@
    "title": "'Signing In To The Game' Annotated Diagram (Code vs. Password)",
    "priority": "Medium",
    "start": "23:04",
-   "status": "pending",
-   "seq": 21
+   "status": "done",
+   "seq": 21,
+   "finished": "2026-11-25T19:22:22+00:00",
+   "note": "guide section gd-signin"
   },
   {
    "id": "EARN-02",
@@ -258,8 +260,10 @@
    "title": "Unified 'Queue Overview' Sidebar Reader Replacing Legacy Queue Checks",
    "priority": "Critical",
    "start": "23:16",
-   "status": "pending",
-   "seq": 23
+   "status": "done",
+   "seq": 23,
+   "finished": "2026-11-25T19:22:22+00:00",
+   "note": "verified: queue_manager (v197/v204) reads + acts on training/heal/build/research/donate/materials/scouts; dashboard Live Queue Monitor has per-section switches + 1s countdowns; old city tasks are replaced in settings by qmTask. Old functions kept only where queue_manager calls them (build_upgrade/research/alliance_tech) - no risky deletions"
   },
   {
    "id": "TASK-06",
