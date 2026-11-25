@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:21:13+04:00"
+  "heartbeat": "2026-11-26T00:22:10+04:00"
  },
  "items": [
   {
@@ -428,8 +428,10 @@
    "title": "Speedup Calculator: 3-Tab Switcher (Speedups/Training/Healing), Collapsible Bag Grids & Denomination Inputs",
    "priority": "High",
    "start": "00:17",
-   "status": "in_progress",
-   "seq": 38
+   "status": "done",
+   "seq": 38,
+   "finished": "2026-11-25T20:22:10+00:00",
+   "note": "tabs + training (base time T1-T5, power) + healing (time from hospital) with sufficiency; resources per troop not shown (no verified data)"
   },
   {
    "id": "TASK-10",
