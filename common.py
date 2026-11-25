@@ -32,6 +32,7 @@ from PIL import ImageGrab
 
 pyautogui.FAILSAFE = True      # move mouse to a screen corner = emergency stop
 pyautogui.PAUSE = 0.05
+CAPTCHA = [None]               # TASK-09: id of the open verification (captcha) window; clicks are blocked
 CLICK_JITTER_PX = [0]          # TASK-08: set by bot.py from smart_schedule (0 = exact clicks)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -557,6 +558,8 @@ class Game:
             # would land in that window instead of the game.
             activate(self.hwnd)
             time.sleep(0.1)
+        if CAPTCHA[0]:                                        # TASK-09: a verification window is up - never click
+            return False
         if CLICK_JITTER_PX[0] > 0 and self.w and self.h:      # TASK-08: human-like +/- px click jitter
             j = CLICK_JITTER_PX[0]
             rx = min(0.999, max(0.001, rx + random.uniform(-j, j) / self.w))

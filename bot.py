@@ -262,10 +262,76 @@ def quick_requests():
         QUICK[1] = False
 
 
+CAPTCHA_BUSY = [False]
+
+
+def captcha_watch(force=False):
+    """TASK-09: a verification (captcha) window halts everything: no clicks, screenshot to the dashboard,
+    status captcha_required, urgent alert; wait until the dashboard says it is solved and it is really gone."""
+    if CAPTCHA_BUSY[0]:
+        return
+    g = CURRENT_GAME[0]
+    if g is None:
+        return
+    try:
+        seen = smart.captcha_visible(g, force=force)
+    except Exception:
+        return
+    if not seen:
+        return
+    CAPTCHA_BUSY[0] = True
+    import control
+    task_saved = list(TASK_NOW)
+    TASK_NOW[0] = 0                                          # the task timer and the stuck watchdog wait too
+    cid = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    CAPTCHA[0] = cid
+    try:
+        log("! VERIFICATION (captcha) window in the game - every click is stopped until it is solved.")
+        control.CITY["captcha"] = {"id": cid, "at": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z", "still": False}
+        try:
+            ctl.upload_screen("bot: captcha screenshot")
+        except Exception as e:
+            log(f"  captcha: screenshot upload failed {e!r}")
+        try:
+            smart.notify("captcha", "⚠️ نافذة تحقق (كابتشا) في اللعبة — البوت متوقف حتى تحلّها ثم اضغط «تم الحل — استئناف»")
+        except Exception:
+            pass
+        last = 0
+        while True:
+            check_stop()
+            LAST_ACTIVITY[0] = time.time()
+            ctl.poll()
+            if time.time() - last > 30:
+                last = time.time()
+                ctl.write_status(state="captcha_required", task="verification window - waiting for the owner")
+                _touch_pid()
+            if str((ctl.data or {}).get("captcha_resume") or "") == cid:
+                if smart.captcha_visible(g, force=True):
+                    if not control.CITY["captcha"].get("still"):
+                        log("  captcha: 'solved' pressed but the window is still there - still waiting")
+                        control.CITY["captcha"]["still"] = True
+                        try:
+                            ctl.upload_screen("bot: captcha screenshot")
+                        except Exception:
+                            pass
+                        last = 0
+                else:
+                    log("  captcha: solved - Kingbot continues.")
+                    break
+            time.sleep(5)
+    finally:
+        if task_saved[0]:
+            TASK_NOW[0] = time.time()
+        CAPTCHA[0] = None
+        control.CITY.pop("captcha", None)
+        CAPTCHA_BUSY[0] = False
+
+
 WAIT_JITTER = [0.0]     # TASK-08: +/- fraction applied to every wait (smart_schedule.jitter_percent)
 
 
 def sleep(sec):
+    captcha_watch()                                          # TASK-09 (checks every 10 s at most)
     if WAIT_JITTER[0] > 0 and sec > 0:
         sec = sec * (1 + random.uniform(-WAIT_JITTER[0], WAIT_JITTER[0]))
     end = time.time() + sec
@@ -359,6 +425,7 @@ def idle(sec, **status):
         probe_if_asked()
         action_if_asked()
         claude_channel.check(sleep)
+        captcha_watch()                                      # TASK-09
         shield_watch()
         recall_watch()
         attack_watch()

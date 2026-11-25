@@ -390,6 +390,16 @@ class Control:
         else:
             log("! Screenshot failed.")
 
+    def upload_screen(self, message="bot: screenshot"):
+        """TASK-09: upload the game picture now (the same file the dashboard shows as the latest screenshot)."""
+        if not self.root:
+            return False
+        import tempfile
+        path = take_screenshot(os.path.join(tempfile.gettempdir(), "kingbot_gh_screen.jpg"))
+        if path and os.path.isfile(path):
+            return _gh_put_bytes(server_config.path("screen"), _seal_bytes(open(path, "rb").read()), message)
+        return False
+
     def send_settings(self, changes):
         if not self.root:
             return False

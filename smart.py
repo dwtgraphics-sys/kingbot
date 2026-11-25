@@ -1503,6 +1503,46 @@ def _today():
     return datetime.datetime.utcnow().strftime("%Y-%m-%d")
 
 
+CAPTCHA_SCAN = [0.0, 0.0]     # TASK-09: last template check, last OCR check
+
+
+def captcha_visible(g, force=False):
+    """TASK-09: True when the game shows a verification (captcha) window. Templates named captcha*.png
+    (templates/ or builtin_templates/) are checked every 10 s; the centre of the screen is read by OCR every 2 min
+    (or at once with force=True). Never clicks."""
+    import time as _t, re as _re, glob
+    now = _t.time()
+    if not force and now - CAPTCHA_SCAN[0] < 10:
+        return False
+    CAPTCHA_SCAN[0] = now
+    try:
+        img = g.screenshot()
+    except Exception:
+        return False
+    from common import TEMPL_DIR, BUILTIN_DIR
+    names = {os.path.splitext(os.path.basename(f))[0] for d in (TEMPL_DIR, BUILTIN_DIR) for f in glob.glob(os.path.join(d, "captcha*.png"))}
+    for n in sorted(names):
+        try:
+            if g.find_image(n, 0.82, img=img):
+                log(f"  captcha: template {n} found")
+                return True
+        except Exception:
+            pass
+    if not force and now - CAPTCHA_SCAN[1] < 120:
+        return False
+    CAPTCHA_SCAN[1] = now
+    try:
+        h, w = img.shape[:2]
+        txt = " ".join(_ocr_lines(img[int(0.12 * h):int(0.55 * h), int(0.25 * w):int(0.75 * w)], "captcha_ocr.png", scale=1.6))
+    except Exception:
+        return False
+    hits = _re.findall(r"verif\w*|captcha|human|robot|puzzle|slide to|security check", txt, _re.I)
+    if len(set(x.lower()[:6] for x in hits)) >= 2 or _re.search(r"verification|captcha", txt, _re.I):
+        log(f"  captcha: text on screen {txt[:120]!r}")
+        return True
+    return False
+
+
 def notify(kind, text, d=None):
     """Dashboard notification (+ Telegram). kind: attack / mail / day / barb / rally / info."""
     import time as _t
