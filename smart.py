@@ -1611,9 +1611,16 @@ def alliance_tech(g, sleep, max_donations=20):
     """Alliance (O) > Technology > officer-recommended skill > blue DONATE (resources) until chances run out.
     The orange DONATE button costs gems and is never pressed."""
     from common import close_gem_dialogs
-    press_key("o"); sleep(3)
-    g.click_rel(0.532, 0.645); sleep(3)                      # Technology
-    rec = g.find_image("officer_rec", 0.8)
+    import queue_manager
+    rec = None
+    if queue_manager.tap_row(g, sleep, "donate"):           # v197: Queue Overview > Alliance Donations
+        rec = g.find_image("officer_rec", 0.8)
+        if not rec and not [p for p in g.find_image("btn_donate_res", 0.85) if p[0] > 0.6]:
+            recover_screen(g)
+    if not rec and not [p for p in g.find_image("btn_donate_res", 0.85) if p[0] > 0.6]:
+        press_key("o"); sleep(3)
+        g.click_rel(0.532, 0.645); sleep(3)                  # Technology
+        rec = g.find_image("officer_rec", 0.8)
     if rec:
         g.click_rel(rec[0][0], rec[0][1] + 0.03); sleep(3)   # recommended skill card
     else:
@@ -2284,7 +2291,6 @@ SMART["shop_probe"] = shop_probe
 
 
 # ---------------- city queues + marches for the dashboard (v69) ----------------
-QMAX = {}   # longest remaining time seen per queue -> progress bar
 
 
 def _ocr_lines(img_bgr, name="ocr_lines.png", scale=2.5, invert=False):
@@ -2323,27 +2329,6 @@ SECTIONS = {"unit training": "train", "unit healing": "heal", "building queues":
             "alliance donations": "don", "material production": "mat", "armament": "arm", "scout queues": "scout"}
 
 
-def _queue_bars(img):
-    """Progress bars inside the Queue Overview panel -> [(y0, y1)] (card background is light beige)."""
-    import numpy as np
-    h, w = img.shape[:2]
-    x0, x1 = int(0.048 * w), int(0.165 * w)
-    reg = img[:, x0:x1].astype(int)
-    d = np.abs(reg - np.array([237, 222, 196])).sum(axis=2)
-    rows = (d > 60).mean(axis=1) > 0.65
-    bars, y = [], int(0.11 * h)
-    while y < int(0.95 * h):
-        if rows[y]:
-            y2 = y
-            while y2 < h and rows[y2]:
-                y2 += 1
-            if 6 <= y2 - y <= 13:
-                bars.append((y, y2))
-            y = y2
-        y += 1
-    return bars, x0, x1
-
-
 QWORDS = {"heal": ("capacity", "heal"), "build": ("building", "upgrad"), "res": ("research", "tech"),
           "mat": ("producible", "produc", "material"), "skip": ("travel", "dispatch", "chance", "scout")}
 
@@ -2356,134 +2341,10 @@ QUEUE_STATUS_START = ("idle", "training", "time remaining", "chances", "producib
                       "travels", "remaining", "standing", "donate", "completed")
 
 
-def read_queue_panel(g, sleep):
-    """v169: parse the Queue Overview into [{section, name, status}] and publish it to the dashboard."""
-    import control, datetime as _dt
-    boxes, img = queue_panel(g, sleep)
-    if not boxes:
-        return []
-    h = img.shape[0]
-    rows, section = [], ""
-    for x1, y1, x2, y2, txt in sorted(boxes, key=lambda b: b[1]):
-        t = (txt or "").strip()
-        if not t:
-            continue
-        low = t.lower()
-        if any(low == s_ or low.startswith(s_) for s_ in QUEUE_SECTIONS):
-            section = t
-            continue
-        rows.append({"section": section, "text": t, "y": round((y1 + y2) / 2.0 / h, 3)})
-    items = []
-    for i, r in enumerate(rows):
-        if any(r["text"].lower().startswith(k) for k in QUEUE_STATUS_START):
-            continue
-        status = rows[i + 1]["text"] if i + 1 < len(rows) else ""
-        items.append({"section": r["section"], "name": r["text"], "status": status})
-    try:
-        control.CITY["queues"] = items
-        control.CITY["queues_at"] = _dt.datetime.now().strftime("%H:%M")
-    except Exception:
-        pass
-    log(f"  queues: {len(items)} row(s) read from the Queue Overview")
-    queue_close(g, sleep)
-    return items
-
-
 def read_queues(g, sleep):
-    """Queue Overview → rows read as text (v169), with the old bar reader kept as a fallback."""
-    import re, cv2, numpy as np, control, time as _t
-    if read_queue_panel(g, sleep):
-        return True
-    if not _in_city(g) and not _on_map(g):
-        recover_screen(g)
-    boxes_open, img = queue_panel(g, sleep)                  # v167: template + OCR title
-    if img is None:
-        log("  - read_queues: the Queue Overview panel did not open")
-        recover_screen(g)
-        return True
-    g.click_rel(0.188, 0.500); sleep(1.5)                    # close the panel (arrow)
-    h, w = img.shape[:2]
-    bars, x0, x1 = _queue_bars(img)
-    labs, bts = [], []
-    for (y0, y1) in bars:
-        labs.append(cv2.cvtColor(img[max(0, y0 - 17):y0 - 1, int(0.042 * w):x1 + 8], cv2.COLOR_BGR2GRAY))
-        bt = img[max(0, y0 - 1):y1 + 1, x0 - 8:x1 + 8]
-        bt = cv2.resize(bt, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
-        m = np.where(bt.min(axis=2) > 175, 0, 255).astype(np.uint8)
-        m = cv2.erode(m, np.ones((2, 2), np.uint8))          # thicker black text
-        n_, lab_, st_, _ = cv2.connectedComponentsWithStats(255 - m)
-        for i_ in range(1, n_):                              # drop the bar outline (touches the edges)
-            x_, y_, w_, h_, _a = st_[i_]
-            if x_ == 0 or y_ == 0 or x_ + w_ >= m.shape[1] or y_ + h_ >= m.shape[0] or w_ > 0.5 * m.shape[1]:
-                m[lab_ == i_] = 255
-        bts.append(m)
-
-    def sheet(parts, scale):
-        parts = [cv2.resize(p_, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC) for p_ in parts]
-        wmax = max(p_.shape[1] for p_ in parts)
-        sh = np.vstack([cv2.copyMakeBorder(p_, 14, 14, 20, 20 + wmax - p_.shape[1], cv2.BORDER_CONSTANT, value=255) for p_ in parts])
-        return cv2.cvtColor(sh, cv2.COLOR_GRAY2BGR)
-
-    lines = []
-    if bars:
-        ll = _ocr_lines(sheet(labs, 3), "queues_labels.png", scale=1)
-        bl = _ocr_lines(sheet(bts, 1), "queues_bars.png", scale=1)
-        if len(ll) == len(bars) and len(bl) == len(bars):
-            for i_, b_ in enumerate(bl):                     # retry a bar alone when its time was not read
-                if _secs(b_) is None and not re.search(r"compl|idle", b_, re.I):
-                    one = _ocr_lines(sheet([bts[i_]], 1.4), "queues_bar1.png", scale=1)
-                    if one and _secs(" ".join(one)) is not None:
-                        bl[i_] = " ".join(one)
-            lines = [f"{a_} {b_}" for a_, b_ in zip(ll, bl)]
-        else:
-            log(f"    read_queues: OCR lines did not line up ({len(ll)} labels, {len(bl)} bars, {len(bars)} found): {ll} {bl}")
-    out = []
-    for ln in lines:
-        low = ln.lower()
-        kind = "train"
-        for k, words in QWORDS.items():
-            if any(wd in low for wd in words):
-                kind = k
-                break
-        if kind == "skip":
-            continue
-        secs = _secs(ln)
-        title = re.split(r"\s(?:completed|complet|train\w*|heal\w*|upgrad\w*|research\w*|produc\w*)\b", ln, flags=re.I)[0].strip(" |:")
-        if kind == "heal":
-            title = "Healing"
-        key = kind + ":" + title
-        item = {"kind": kind, "title": title}
-        if secs is not None:
-            QMAX[key] = max(QMAX.get(key, 0), secs)
-            item["left"] = _fmt_left(secs)
-            item["pct"] = round(100 * (1 - secs / QMAX[key])) if QMAX[key] else 0
-        elif "complet" in low:
-            item.update(done=True, pct=100)
-            QMAX.pop(key, None)
-        elif re.search(r"train|heal|upgrad|research|produc", low):
-            item.update(left="", pct=0, busy=True)           # running, time not readable this time
-        else:
-            continue
-        out.append(item)
-    # donations / hospital capacity from a normal OCR pass of the whole panel
-    crop = img[int(0.10 * h):int(0.95 * h), int(0.005 * w):int(0.172 * w)]
-    for ln in _ocr_lines(crop, "queues_panel.png"):
-        low = ln.lower()
-        m = re.search(r"chances\D*(\d+)\s*/\s*(\d+)", low)
-        if m:
-            control.CITY["donations"] = f"{m.group(1)}/{m.group(2)}"
-        m = re.search(r"capacity\D*([\d,.]+)\s*/\s*([\d,.]+)", low)
-        if m:
-            control.CITY["hospital"] = f"{m.group(1)}/{m.group(2)}".replace(".", ",")
-    control.CITY["queues"] = out
-    control.CITY["queues_read"] = _t.strftime("%H:%M")
-    t = _ocr_image(img[int(0.105 * h):int(0.128 * h), int(0.935 * w):int(0.99 * w)], "marches_ocr.png", ("plain", "bin"))
-    m = re.search(r"(\d)\s*/\s*(\d)", t or "")
-    if m:
-        control.CITY["marches_out"], control.CITY["marches_max"] = int(m.group(1)), int(m.group(2))
-        control.CITY["marches_read"] = _t.strftime("%H:%M")
-    log(f"  read_queues: {len(bars)} bar(s), {len(out)} queue(s) read" + (f", marches {m.group(0)}" if m else "") +
-        f"   (OCR: {' | '.join(lines)[:200]})")
+    """v197: the Queue Overview is read by queue_manager (all sections, folded ones opened, scrolled to the end)."""
+    import queue_manager
+    queue_manager.scan(g, sleep)
     return True
 
 
@@ -2771,9 +2632,16 @@ def materials(g, sleep, kinds=("leather", "ore", "ebony", "bone"), every=None):
     import numpy as np
     from common import close_gem_dialogs
     kinds = [k for k in (kinds or []) if k in MAT_SLOTS] or ["leather", "ore", "ebony", "bone"]
-    _city_reset(g, sleep)
+    import queue_manager
     opened = False
-    mem = _bpos("blacksmith")
+    if queue_manager.tap_row(g, sleep, "materials"):        # v197: Queue Overview > Material Production
+        opened = _mat_open_window(g, sleep)
+        if not opened:
+            log("    materials: the Material Production row did not open the window - using the Blacksmith")
+            recover_screen(g)
+    if not opened:
+        _city_reset(g, sleep)
+    mem = None if opened else _bpos("blacksmith")
     if mem and _mat_try(g, sleep, mem[0], mem[1], need_name=False):
         opened = True
     if not opened and mem:                                   # v143: the camera can sit a little off - look near the old spot first
@@ -2946,53 +2814,6 @@ def sunset_canyon(g, sleep, max_battles=7):
 SMART["sunset_canyon"] = sunset_canyon
 
 
-def queue_probe(g, sleep):
-    """Open ☰ Queue Overview and tap Tech Research / Building Queue 1 / Unit Healing; save what opens."""
-    import cv2
-    from common import BASE
-    for name, y in (("research", 0.585), ("build", 0.462), ("heal", 0.382)):
-        if not _in_city(g):
-            press_key("space"); sleep(6)
-        g.click_rel(0.019, 0.143); sleep(2.5)
-        g.click_rel(0.09, y); sleep(3)
-        cv2.imwrite(os.path.join(BASE, "claude_out", "qp_%s.png" % name), g.screenshot())
-        g.click_rel(0.5, 0.5); sleep(1)
-        cv2.imwrite(os.path.join(BASE, "claude_out", "qp_%s2.png" % name), g.screenshot())
-        recover_screen(g); sleep(1)
-    return True
-
-
-SMART["queue_probe"] = queue_probe
-
-
-def queue_probe2(g, sleep):
-    import cv2
-    from common import BASE
-    def shot(n):
-        cv2.imwrite(os.path.join(BASE, "claude_out", "qq_%s.png" % n), g.screenshot())
-    if not _in_city(g):
-        press_key("space"); sleep(6)
-    g.click_rel(0.019, 0.143); sleep(2.5); g.click_rel(0.09, 0.382); sleep(3)
-    g.click_rel(0.538, 0.582); sleep(3); shot("heal")              # heal window
-    recover_screen(g); sleep(1)
-    if not _in_city(g):
-        press_key("space"); sleep(6)
-    g.click_rel(0.019, 0.143); sleep(2.5); g.click_rel(0.09, 0.462); sleep(3)
-    g.click_rel(0.500, 0.592); sleep(3); shot("build")             # upgrade window
-    recover_screen(g); sleep(1)
-    if not _in_city(g):
-        press_key("space"); sleep(6)
-    g.click_rel(0.019, 0.143); sleep(2.5); g.click_rel(0.09, 0.585); sleep(3)
-    shot("res_eco")
-    g.click_rel(0.193, 0.459); sleep(2); shot("res_mil")           # military tab
-    g.click_rel(0.71, 0.53); sleep(2); shot("res_node")            # a node
-    recover_screen(g)
-    return True
-
-
-SMART["queue_probe2"] = queue_probe2
-
-
 # ---------------- heal / build / research (v91) ----------------
 _OCR_CACHE = {}          # fingerprint -> (time, result)
 
@@ -3077,71 +2898,6 @@ QUEUE_WORDS = {
     "train": ("train", "barracks", "archery", "stable", "siege", "تدريب", "ثكنات", "الرماية", "إسطبل", "الحصار"),
 }
 
-
-def queue_entries(g, sleep, close=True):
-    """v153: open the ☰ Queue Overview and read every row as (y, label).
-
-    The panel lists the queues that are RUNNING, and each row carries the label of the
-    building above its progress bar - so the bot can pick a row by NAME instead of tapping a
-    fixed height. Returns [(relative y, text)].
-    """
-    if not _in_city(g):
-        press_key("space"); sleep(6)
-    # v160: the game's HUD is anchored in pixels, so one fixed point misses when the window
-    # size changes (it moved from 946x710 to 1031x773 today). Try the known spots in turn.
-    opened = False
-    for spot in ((0.019, 0.143), (0.019, 0.122), (0.019, 0.100), (0.021, 0.165), (0.019, 0.090)):
-        g.click_rel(*spot); sleep(1.8)
-        if g.find_image("queue_title", 0.8):
-            opened = True
-            break
-    if not opened:
-        log("  - queue overview: the panel did not open")
-        return []
-    img = g.screenshot()
-    h, w = img.shape[:2]
-    rows = []
-    try:
-        bars, x0, x1 = _queue_bars(img)
-        for (y0, y1) in bars:
-            crop = img[max(0, y0 - 20):max(1, y0 - 1), int(0.030 * w):x1 + 10]
-            if crop.size == 0:
-                continue
-            txt = " ".join(_ocr_lines(crop, "queue_row.png", scale=3)).strip()
-            rows.append((((y0 + y1) / 2.0) / h, txt))
-    except Exception as e:
-        log(f"  ! queue overview: reading the rows failed: {e!r}")
-    if close:
-        g.click_rel(0.188, 0.500); sleep(1.5)          # the arrow closes the panel
-        if g.find_image("queue_title", 0.8):
-            recover_screen(g)
-    log(f"  queue overview: {len(rows)} row(s)"
-        + (": " + " | ".join(t for _, t in rows if t) if rows else ""))
-    return rows
-
-
-QUEUE_ROWS_KEY = {"stable": "cavalry", "barracks": "infantry", "archery": "archer", "siege": "siege"}
-
-
-SCREEN_TEMPLATES = (
-    ("city", "queue_btn", 0.55),          # v188: the city HUD carries the queue button
-    ("start", "click_to_start", 0.80),
-    ("training_window", "btn_train", 0.80),
-    ("gem_dialog", "notice_title", 0.80),
-    ("map", "space_on_city", 0.75),
-)
-
-SCREEN_WORDS = (
-    ("queue_panel", ("queue overview",)),
-    ("profile", ("action points", "civilization", "highest acclaim")),
-    ("mail", ("new mail", "bulk editor", "read & claim all")),
-    ("alliance", ("technology", "territory", "alliance gifts")),
-    ("tavern", ("free chests", "legendary chests")),
-    ("training_window", ("unit training", "instant", "train")),
-)
-
-
-CLICK_PROBED = [False]
 
 
 def probe_click_mode(g, sleep, force=False):
@@ -3375,8 +3131,14 @@ def queue_panel(g, sleep):
     confirmed by its own title. Returns (ocr boxes, screenshot) or ([], None)."""
     def read(img):
         h, w = img.shape[:2]
-        boxes = _ocr_boxes(img[:, :int(0.45 * w)], "queue_ocr.png", 1.5)
-        return boxes, any("queue overview" in t.lower() for *_xy, t in boxes)
+        boxes = _ocr_boxes(img[:, :int(0.45 * w)], "queue_ocr.png", max(1.5, min(3.0, 900.0 / max(1, w))))
+        if any("queue overview" in t.lower() for *_xy, t in boxes):
+            return boxes, True
+        try:                                  # v197: on a small window the title OCR fails - trust the panel colour
+            import queue_manager
+            return boxes, queue_manager.panel_visible(img)
+        except Exception:
+            return boxes, False
 
     # v185: the button is part of the city HUD; on the map the click reaches nothing
     screen_now = what_screen(g)
@@ -3517,13 +3279,21 @@ def heal(g, sleep, speedups=False, use_bag=False):
         return True
     # v167: the queue panel only lists a "Unit Healing" section header, not the hospital, so
     # heal goes straight to the building (found by name) - the same lookup that works for training.
-    pt = find_building(g, sleep, "hospital")
-    if not pt:
-        log("  ! heal: the hospital was not found in this city")
-        recover_screen(g)
-        return True
-    g.click_rel(*pt); sleep(2)
-    hx = g.find_image("hex_heal", 0.8)
+    import queue_manager
+    hx = None
+    if queue_manager.tap_row(g, sleep, "heal"):          # v197: Queue Overview > Unit Healing -> the hospital
+        hx = g.find_image("hex_heal", 0.8)
+        if not hx:
+            g.click_rel(0.5, 0.5); sleep(2)                 # the camera is on the hospital - select it
+            hx = g.find_image("hex_heal", 0.8)
+    if not hx:
+        pt = find_building(g, sleep, "hospital")
+        if not pt:
+            log("  ! heal: the hospital was not found in this city")
+            recover_screen(g)
+            return True
+        g.click_rel(*pt); sleep(2)
+        hx = g.find_image("hex_heal", 0.8)
     if not hx:
         log("  - heal: the hospital is already healing (or no heal button)")
         if speedups:

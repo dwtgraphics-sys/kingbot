@@ -12,6 +12,8 @@ from updater import check_and_update, local_version
 from control import Control, in_schedule
 import smart
 import claude_channel
+import queue_manager
+smart.SMART["queue_manager"] = queue_manager.run
 START_VER = [0]
 RUN_NOW = [False]        # v150: the dashboard's "run now" button starts a round even while paused
 TASK_NOW = [0.0, ""]     # v154: (started at, task name) - a task that never ends is aborted
@@ -599,6 +601,18 @@ def _do_action(g, req):
             ctl.write_status(state="working", task="ui: learning the last failed element")
             name = smart.learn_element_from_failure(g, sleep)
             smart.notify("info", ("تعلّم عنصرًا جديدًا: " + name) if name else "لا يوجد فشل صالح للتعلّم منه")
+        elif do == "read_queues":                                # v197: Queue Overview read, for the live monitor
+            ctl.write_status(state="working", task="reading the Queue Overview")
+            queue_manager.scan(g, sleep)
+        elif do == "queue_manager":                              # v197: run the queue task now (dashboard / test)
+            t = next((x for x in queue_tasks(list((ctl.data or {}).get("tasks") or []))
+                      if x.get("routine") == "queue_manager"), {})
+            if isinstance(req.get("opts"), dict):                 # a one-off test with other switches
+                t = dict(t, **req["opts"])
+            import inspect
+            params = inspect.signature(queue_manager.run).parameters
+            ctl.write_status(state="working", task="queue manager")
+            queue_manager.run(g, sleep, **{k: v for k, v in t.items() if k in params and k not in ("g", "sleep")})
         elif do == "read_profile":
             smart.read_profile(g, sleep)
         elif do == "read_commanders":
@@ -977,10 +991,14 @@ def one_round(settings):
     for extra in ("daily_objectives", "vip_chests", "alliance_tech", "vip_shop", "tavern", "tavern_legendary", "sunset_canyon", "read_mail", "read_profile", "read_characters", "read_marches", "read_commanders"):   # v56
         if not any(t.get("routine") == extra for t in tasks):
             tasks.append({"routine": extra, "times": 1, "enabled": True})
+    tasks = queue_tasks(tasks)                               # v197: one Queue Overview task
+    qm_on = any(t.get("routine") == "queue_manager" and t.get("enabled", True) for t in tasks)
     for t in tasks:
         if not t.get("enabled", True):
             continue
         name = t["routine"]
+        if qm_on and name in QM_REPLACED:
+            continue
         try:                                                 # v137: dashboard read requests between activities
             ctl.poll()
             if (ctl.data or {}).get("action_request") or (ctl.data or {}).get("probe_request"):
@@ -1057,6 +1075,40 @@ def one_round(settings):
                 log("Paused from dashboard.")
                 return
         sleep(t.get("pause_after", 3))
+
+
+QM_REPLACED = {"train", "train_troops", "heal", "build_upgrade", "research", "alliance_tech", "materials", "scout",
+               "read_queues"}
+
+
+def queue_tasks(tasks):
+    """v197: the old separate tasks (train, heal, build_upgrade, research, alliance_tech, materials, scout) are one
+    task now: queue_manager, driven by the game's Queue Overview. Settings made before keep working: when the
+    dashboard has not sent a queue_manager task yet, it is built from the old ones (on/off and their options)."""
+    if any(t.get("routine") == "queue_manager" for t in tasks):
+        return tasks
+    old = {t.get("routine"): t for t in tasks}
+    def on(name, default=False):
+        t = old.get(name)
+        return bool(t.get("enabled", True)) if t else default
+    tr = old.get("train") or old.get("train_troops") or {}
+    qm = {"routine": "queue_manager", "enabled": True,
+          "train": on("train") or on("train_troops"), "heal": on("heal"), "build": on("build_upgrade"),
+          "research": on("research"), "donate": on("alliance_tech", True), "materials": on("materials"),
+          "scout": on("scout"), "donate_min": 10,
+          "inf_tier": tr.get("inf_tier", "4"), "arch_tier": tr.get("arch_tier", "4"),
+          "cav_tier": tr.get("cav_tier", "4"), "siege_tier": tr.get("siege_tier", "4"),
+          "fast": tr.get("fast", False), "use_bag": tr.get("use_bag", False),
+          "heal_speedups": (old.get("heal") or {}).get("speedups", False),
+          "build_mode": (old.get("build_upgrade") or {}).get("mode", "smart"),
+          "build_speedups": (old.get("build_upgrade") or {}).get("speedups", False),
+          "focus": (old.get("research") or {}).get("focus", "balanced"),
+          "research_speedups": (old.get("research") or {}).get("speedups", False),
+          "mat_kinds": (old.get("materials") or {}).get("kinds", ["leather", "ore", "ebony", "bone"])}
+    out = [t for t in tasks if t.get("routine") not in QM_REPLACED]
+    i = next((k + 1 for k, t in enumerate(out) if t.get("routine") == "collect_city"), 0)
+    out.insert(i, qm)
+    return out
 
 
 STATE_AR = {"no_screen": "الشاشة مطفأة (لا يوجد اتصال سطح مكتب بعيد)", "error": "حدث خطأ، سيحاول مجدداً", "working": "يعمل الآن", "waiting": "ينتظر الجولة القادمة", "sleeping": "خارج ساعات العمل",
