@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:17:08+00:00"
+  "heartbeat": "2026-11-25T19:18:16+00:00"
  },
  "items": [
   {
@@ -171,9 +171,11 @@
    "title": "Auto-Shield",
    "priority": "Critical",
    "start": "22:46",
-   "status": "in_progress",
+   "status": "done",
    "seq": 15,
-   "started": "2026-11-25T19:17:08+00:00"
+   "started": "2026-11-25T19:17:08+00:00",
+   "finished": "2026-11-25T19:18:16+00:00",
+   "note": "auto_shield: trigger_on_attack/scout, 8/24h, scheduled UTC times, urgent alert + city.shield status; UI options + status; bot v210 (bag shields only)"
   },
   {
    "id": "GUIDE-05",

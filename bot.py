@@ -175,7 +175,11 @@ def shield_watch():
             return
         g = Game()
         smart.auto_shield(g, sleep, mode=t.get("mode", "on_attack"), pct=t.get("pct", 20),
-                          react_scout=t.get("react_scout", False))
+                          react_scout=t.get("react_scout", False),
+                          trigger_on_attack=t.get("trigger_on_attack", True),          # TASK-04
+                          trigger_on_scout=t.get("trigger_on_scout", t.get("react_scout", False)),
+                          shield_duration_hours=t.get("shield_duration_hours", 8),
+                          scheduled_shield_times=t.get("scheduled_shield_times", ""))
     except Exception as e:
         watch_error("auto_shield check failed", e)
 

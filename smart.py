@@ -539,12 +539,13 @@ def _red_border_ratio(img):
     return red / max(tot, 1)
 
 
-def use_peace_shield(g, sleep):
-    """Items (I) > Boosts > 8-hour (else 24-hour) Peace Shield > USE. Returns True when USE was pressed."""
+def use_peace_shield(g, sleep, hours=8):
+    """Items (I) > Boosts > 8-hour (else 24-hour) Peace Shield > USE. Returns True when USE was pressed.
+    TASK-04: hours=24 tries the 24-hour shield first. Only shields already in the bag - never bought with gems."""
     press_key("i"); sleep(3)
     g.click_rel(0.432, 0.235); sleep(2)                      # Boosts tab
     done = False
-    for name in ("shield_8h", "shield_24h"):
+    for name in (("shield_24h", "shield_8h") if int(hours or 8) == 24 else ("shield_8h", "shield_24h")):
         hits = g.find_image(name, 0.85)
         if not hits:
             continue
@@ -561,10 +562,54 @@ def use_peace_shield(g, sleep):
     return done
 
 
-def auto_shield(g, sleep, mode="on_attack", pct=20, react_scout=False):
+SHIELD_STATE = {"active_until": 0.0, "sched_done": {}}
+
+
+def _shield_used(g, sleep, hours, why):
+    """TASK-04: shield on + urgent dashboard / Telegram alert + shield status for the dashboard card."""
+    import time as _t, control
+    if not use_peace_shield(g, sleep, hours):
+        notify("attack", "⚠️ الدرع التلقائي: لم أجد درع سلام في الحقيبة (" + why + "). " + _t.strftime("%H:%M", _t.gmtime()) + " UTC")
+        control.CITY["shield"] = {"state": "missing", "why": why, "t": _t.strftime("%Y-%m-%d %H:%M", _t.gmtime())}
+        return False
+    SHIELD_STATE["active_until"] = _t.time() + int(hours or 8) * 3600
+    control.CITY["shield"] = {"state": "on", "why": why, "hours": int(hours or 8), "t": _t.strftime("%Y-%m-%d %H:%M", _t.gmtime()),
+                              "until": _t.strftime("%Y-%m-%d %H:%M", _t.gmtime(SHIELD_STATE["active_until"]))}
+    notify("attack", "🛡️ الدرع التلقائي: تم تفعيل درع السلام (" + why + ") — حتى " + control.CITY["shield"]["until"] + " UTC")
+    return True
+
+
+def auto_shield(g, sleep, mode="on_attack", pct=20, react_scout=False, trigger_on_attack=True, trigger_on_scout=None,
+                shield_duration_hours=8, scheduled_shield_times=None):
     """Check for an attack on the city and turn on a peace shield.
-    Detection: red flashing border (needs two hits in a row). Hospital % and scout reactions are not built yet."""
-    import time as _t, cv2
+    Detection: red flashing border (needs two hits in a row). Hospital % mode is not built yet.
+    TASK-04: trigger_on_attack / trigger_on_scout (a single red flash is enough - scouting flashes only briefly),
+    shield_duration_hours 8 or 24, scheduled_shield_times ["HH:MM", ...] UTC (each at most once a day, within
+    10 minutes after the time). Uses only shields in the bag; an urgent alert goes to the dashboard + Telegram."""
+    import time as _t, cv2, datetime
+    if trigger_on_scout is None:
+        trigger_on_scout = bool(react_scout)
+    hours = 24 if str(shield_duration_hours) == "24" else 8
+    now_dt = datetime.datetime.utcnow()
+    if isinstance(scheduled_shield_times, str):
+        import re as _re
+        scheduled_shield_times = _re.findall(r"\d{1,2}:\d{2}", scheduled_shield_times)
+    for hm in (scheduled_shield_times or []):
+        try:
+            hh, mm = [int(x) for x in str(hm).strip().split(":")[:2]]
+        except Exception:
+            continue
+        at = now_dt.replace(hour=hh % 24, minute=mm % 60, second=0, microsecond=0)
+        key = f"{now_dt:%Y-%m-%d} {hh:02d}:{mm:02d}"
+        if 0 <= (now_dt - at).total_seconds() <= 600 and key not in SHIELD_STATE["sched_done"]:
+            SHIELD_STATE["sched_done"][key] = 1
+            if _t.time() < SHIELD_STATE["active_until"] - 600:
+                log(f"  auto_shield: scheduled shield {hm} UTC - a shield is still active, skipped")
+            else:
+                log(f"  auto_shield: scheduled shield time {hm} UTC")
+                _shield_used(g, sleep, hours, "موعد مجدول " + str(hm))
+    if not (trigger_on_attack or trigger_on_scout):
+        return True
     img = g.screenshot()
     r = _red_border_ratio(img)
     now = _t.time()
@@ -579,10 +624,13 @@ def auto_shield(g, sleep, mode="on_attack", pct=20, react_scout=False):
         ATTACK_STATE["hits"] = ATTACK_STATE["hits"] + 1 if now - ATTACK_STATE["last"] < 120 else 1
         ATTACK_STATE["last"] = now
         log(f"! auto_shield: red warning on screen ({r:.0%}), check {ATTACK_STATE['hits']}/2")
-        if ATTACK_STATE["hits"] >= 2 and now - ATTACK_STATE["shielded_at"] > 1800:
+        need = 2 if trigger_on_attack else 1
+        if trigger_on_scout:
+            need = 1
+        if ATTACK_STATE["hits"] >= need and now - ATTACK_STATE["shielded_at"] > 1800 and now > SHIELD_STATE["active_until"] - 600:
             if mode == "hospital_pct":
                 log("  auto_shield: hospital % mode is not ready yet - using the shield on attack instead")
-            if use_peace_shield(g, sleep):
+            if _shield_used(g, sleep, hours, "تحذير أحمر: هجوم أو تجسس" if need == 1 else "هجوم على المدينة"):
                 ATTACK_STATE["shielded_at"] = now
             ATTACK_STATE["hits"] = 0
     else:
@@ -4700,7 +4748,7 @@ def read_marches(g, sleep):
 SMART["read_marches"] = read_marches
 
 # ---------------- v129: keep profile / characters / marches across restarts ----------------
-PERSIST_KEYS = ("profile", "characters", "characters_at", "marches", "marches_at", "commanders", "commanders_at", "ap")
+PERSIST_KEYS = ("profile", "characters", "characters_at", "marches", "marches_at", "commanders", "commanders_at", "ap", "shield")
 
 
 def _persist_save():
