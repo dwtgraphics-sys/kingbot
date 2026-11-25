@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:14:40+04:00"
+  "heartbeat": "2026-11-26T00:14:42+04:00"
  },
  "items": [
   {
@@ -362,7 +362,7 @@
    "title": "'Bot Settings' Annotated Guide (1-5), Commander Loading & Spend Warning",
    "priority": "High",
    "start": "23:55",
-   "status": "pending",
+   "status": "in_progress",
    "seq": 32
   },
   {
