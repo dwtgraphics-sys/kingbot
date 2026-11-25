@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:25:59+04:00"
+  "heartbeat": "2026-11-26T01:26:11+04:00"
  },
  "items": [
   {
@@ -615,8 +615,10 @@
    "title": "Overflow Resource Donation",
    "priority": "Low",
    "start": "01:21",
-   "status": "in_progress",
-   "seq": 55
+   "status": "blocked",
+   "seq": 55,
+   "finished": "2026-11-25T21:26:11+00:00",
+   "note": "Needs owner decision: in Rise of Kingdoms city resources have no storage cap (the warehouse only protects an amount), so '90% of capacity' cannot be measured. Proposal: 'when food/wood/stone/gold is above N, send the extra to character/farm X through the Trading Post' (the game takes a transport tax). Confirm the threshold per resource, the receiving governor, and that the tax is acceptable - the bot has no transport routine yet and it moves resources between accounts."
   },
   {
    "id": "GUIDE-17",
