@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:16:30+04:00"
+  "heartbeat": "2026-11-26T00:17:32+04:00"
  },
  "items": [
   {
@@ -384,8 +384,10 @@
    "title": "Detailed 'Active Marches' Cards (Commanders, Target, Troops & Health)",
    "priority": "High",
    "start": "23:58",
-   "status": "in_progress",
-   "seq": 34
+   "status": "done",
+   "seq": 34,
+   "finished": "2026-11-25T20:17:32+00:00",
+   "note": "march cards: counter, commanders (popup OCR or preset), mission, troops, status, health bar (when the game shows a %); bot v216"
   },
   {
    "id": "TOOLS-03",
