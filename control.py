@@ -17,7 +17,7 @@ TOKEN_FILE = r"C:\RisBot\github_token.txt"
 ALLOWED_KEYS = {
     "running", "loop_minutes", "tasks", "run_now", "shot_request", "sent_at",
     "schedule", "probe_request", "daily_pause", "action_request", "freeze_until",
-    "presets", "char_rotation", "keep_screen"
+    "presets", "char_rotation", "keep_screen", "stream"
 }
 
 RESOURCES = {}
@@ -35,6 +35,44 @@ def _get_token():
     return os.environ.get("KINGBOT_GH_TOKEN", "").strip()
 
 _BAD_TOKEN = {"at": 0.0, "logged": 0.0}
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LIVE_FILE = os.path.join(BASE_DIR, "live_state.json")         # read by stream_bot.py
+STREAM_FILE = os.path.join(BASE_DIR, "stream_status.json")    # written by stream_bot.py
+
+def _raw_get(path):
+    """Public read with no token, through raw.githubusercontent.com (no 60-an-hour API limit;
+    the CDN may serve a copy up to a few minutes old). Same shape as the contents API."""
+    import hashlib, time as _t
+    url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/main/{path}?t={int(_t.time())}"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Kingbot-VPS", "Cache-Control": "no-cache"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            raw = r.read()
+        return {"content": base64.b64encode(raw).decode("ascii"), "sha": hashlib.sha1(raw).hexdigest()}
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            log(f"! GitHub read {path} HTTP {e.code}")
+    except Exception as e:
+        log(f"! GitHub read {path} error: {e}")
+    return None
+
+def _write_live(data=None, info=None):
+    """What the dashboard wants + what the bot does now, for stream_bot.py (local file, no API calls)."""
+    try:
+        cur = load_json(LIVE_FILE, {}) if os.path.isfile(LIVE_FILE) else {}
+        if data is not None:
+            cur.update(running=bool(data.get("running", True)), freeze_until=data.get("freeze_until"),
+                       stream=data.get("stream") if isinstance(data.get("stream"), dict) else {})
+        if info:
+            cur.update({k: info.get(k) for k in ("state", "task") if k in info})
+        import time as _t
+        cur["ts"] = _t.time()
+        tmp = LIVE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cur, f, ensure_ascii=False)
+        os.replace(tmp, LIVE_FILE)
+    except Exception:
+        pass
 
 def _gh_request(path, method="GET", payload=None):
     """GitHub contents API. The repo is public, so reads also work with no token
@@ -45,6 +83,8 @@ def _gh_request(path, method="GET", payload=None):
         token = ""          # token was refused lately: read anonymously
     if not token and method != "GET":
         return None
+    if not token:
+        return _raw_get(path)
     url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{path}"
     if method == "GET":
         url += f"?t={int(datetime.datetime.now().timestamp())}"
@@ -226,7 +266,7 @@ def take_screenshot(dest):
 
 class Control:
     def __init__(self):
-        self.root = "github://dwtgraphics-sys/kingbot-syn" if _get_token() else None
+        self.root = "github://dwtgraphics-sys/kingbot-syn"
         self.file = "control/control.json"
         self.data = None
         self.shot_done = None
@@ -238,7 +278,7 @@ class Control:
 
     def poll(self):
         import time
-        self.root = "github://dwtgraphics-sys/kingbot-syn" if _get_token() else None
+        self.root = "github://dwtgraphics-sys/kingbot-syn"
         if not self.root:
             return None, False
         now_ts = time.time()
@@ -248,6 +288,8 @@ class Control:
         first = not self.seen
         self.seen = True
         res = _gh_request("control/control.json", "GET")
+        if self.data is not None:
+            _write_live(self.data)
         if not isinstance(res, dict) or "content" not in res:
             return self.data, False
         if res.get("sha") == self._last_sha and self.data is not None:
@@ -259,6 +301,7 @@ class Control:
             return self.data, False
         self._last_sha = res.get("sha")
         self.data = d
+        _write_live(d)
         sig = json.dumps(
             {k: v for k, v in d.items() if k not in ("shot_request", "action_request", "probe_request", "sent_at")},
             sort_keys=True, ensure_ascii=False, default=str
@@ -302,6 +345,10 @@ class Control:
         if CITY:
             info.setdefault("city", dict(CITY))
         self.last = dict(info, version=local_version(), updated=_now())
+        _write_live(None, info)
+        st = load_json(STREAM_FILE, None) if os.path.isfile(STREAM_FILE) else None
+        if isinstance(st, dict):
+            info.setdefault("stream", st)
         if not self.root:
             return
         try:

@@ -278,6 +278,7 @@ def idle(sec, **status):
         shield_watch()
         attack_watch()
         session_watch()
+        stream_keeper()
         rn = (ctl.data or {}).get("run_now")
         if rn and rn != getattr(ctl, "run_now_done", None):
             ctl.run_now_done = rn
@@ -344,41 +345,31 @@ def _proc_running(image, title_part=None):
 
 
 def stream_keeper(force=False):
-    """Keep the game stream alive: OBS with its virtual camera, and a minimized Chrome page that sends
-    the OBS camera to VDO.Ninja. Never touches the game. Checked at most every 10 minutes."""
-    import subprocess
-    st = ((ctl.data or {}).get("stream") or {})
-    if st.get("enabled", True) is False:
-        return
-    if not force and time.time() - _STREAM_LAST[0] < 600:
+    """v192: the live stream is run by stream_bot.py (its own process). It starts and stops OBS and the
+    Chrome sender by itself when the dashboard pauses, freezes or resumes the bot. Here we only make sure
+    that stream_bot.py is running (checked at most once a minute)."""
+    import subprocess, sys
+    if not force and time.time() - _STREAM_LAST[0] < 60:
         return
     _STREAM_LAST[0] = time.time()
     try:
-        if os.path.exists(OBS_EXE) and not _proc_running("obs64.exe"):
-            subprocess.Popen([OBS_EXE, "--startvirtualcam", "--minimize-to-tray", "--disable-shutdown-check"],
-                             cwd=os.path.dirname(OBS_EXE), creationflags=0x00000008)
-            log("  stream: OBS started with the virtual camera")
-            time.sleep(12)
-        if os.path.exists(CHROME_EXE) and not _proc_running("chrome.exe", "Kingbot"):
-            url = (f"https://vdo.ninja/?push={STREAM_ID}&webcam&videodevice=OBS&audiodevice=0&autostart"
-                   f"&password={STREAM_PW}&quality=1&label=Kingbot")
-            prof = os.path.join(BASE, "stream_chrome")
-            subprocess.Popen([CHROME_EXE, f"--user-data-dir={prof}", "--use-fake-ui-for-media-stream",
-                              "--autoplay-policy=no-user-gesture-required", "--disable-background-timer-throttling",
-                              "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows",
-                              "--no-first-run", "--no-default-browser-check", "--start-minimized", "--new-window", url],
-                             creationflags=0x00000008)
-            log("  stream: Chrome sender started (minimized)")
-            time.sleep(8)
-            try:
-                g = get_game()
-                if g:
-                    g.focus()                                # the game stays in front for the bot
-            except Exception:
-                pass
+        pid_file = os.path.join(BASE, "stream_bot.pid")
+        try:
+            pid = int(open(pid_file, encoding="utf-8").read().strip())
+        except Exception:
+            pid = 0
+        if pid:
+            out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True,
+                                 text=True, timeout=15, creationflags=0x08000000).stdout
+            if str(pid) in out:
+                return
+        exe = sys.executable
+        w = os.path.join(os.path.dirname(exe), "pythonw.exe")
+        subprocess.Popen([w if os.path.exists(w) else exe, os.path.join(BASE, "stream_bot.py")], cwd=BASE,
+                         creationflags=0x00000008 | 0x08000000)
+        log("  stream: stream_bot.py started (live stream follows the dashboard)")
     except Exception as e:
         log(f"  ! stream keeper failed: {e!r}")
-
 
 
 # ---------------- v145: keep the screen alive after Remote Desktop disconnects (tscon to console) ----------------
@@ -757,6 +748,15 @@ def _refresh_after_switch():
             save_json(pf, store)
         st = load_json(TASK_STATE_FILE, {})
         st["read_profile"] = time.time() + 60 * 60
+        # v192: read this character's commanders (picture + level) on every switch
+        ctl.write_status(state="working", task="reading the commanders of this character")
+        try:
+            if smart.read_commanders(g, sleep) != "retry":
+                st["read_commanders"] = time.time() + 7 * 24 * 3600
+        except (Stop, SystemExit, pyautogui.FailSafeException):
+            raise
+        except Exception as e:
+            log(f"  ! commanders read after switch failed: {e!r}")
         save_json(TASK_STATE_FILE, st)
         ctl.write_status(state="working", task="profile updated after character switch")
     except (Stop, SystemExit, pyautogui.FailSafeException):

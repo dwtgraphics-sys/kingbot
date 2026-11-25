@@ -28,3 +28,4 @@ templates/
 __pycache__/
 *.bak*
 *.PNG
+stream_status.json
