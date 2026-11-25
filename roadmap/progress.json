@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:07:27+04:00"
+  "heartbeat": "2026-11-26T01:09:21+04:00"
  },
  "items": [
   {
@@ -505,8 +505,10 @@
    "title": "'Worth Knowing' Rules: Rally Caps/Filters, Traveler's Tales, City Upgrade Bag & Baulur Timing",
    "priority": "High",
    "start": "00:46",
-   "status": "in_progress",
-   "seq": 45
+   "status": "done",
+   "seq": 45,
+   "finished": "2026-11-25T21:09:21+00:00",
+   "note": "rally daily cap (UTC) + only-players filter (OCR of rally row) in bot v222 + dashboard options/info; guide cards. Not built (no such activity in the bot / needs owner decision): gathering recall with 15/30/60 backoff, Traveler's Tales, Mobilization/Bastion, Baulur; city-upgrade bag items stay unused (rule documented)"
   },
   {
    "id": "TASK-12",

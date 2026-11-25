@@ -3,7 +3,7 @@
 Smart activities: Kingbot finds the buttons on screen by itself (no recording needed).
 A recorded routine with the same name always takes priority over the smart one.
 """
-import os, time, tempfile
+import os, re, time, tempfile
 from common import log, pyautogui, click_mode, set_click_mode, CLICK_MODES, press_key, recover_screen, BASE, load_json, save_json
 
 RESOURCE_BUBBLES = ["res_food", "res_wood", "res_stone", "res_gold"]
@@ -1824,16 +1824,30 @@ def _march_minutes(g, mx, my):
 
 
 def join_rally(g, sleep, max_troops=600000, max_armies=2, quiet=False, min_ap_reserve=0, max_march_time_minutes=0,
-               target_types="forts", commander_preset=0):
+               target_types="forts", commander_preset=0, daily_cap=0, only_players=""):
     """War page (two blue flags) -> rallies on 'Barbarian Fort' only -> skip if the rally already has
     max_troops or more -> JOIN -> MARCH with the troops the game selects. Never uses AP items or gems.
     TASK-03: min_ap_reserve = do not join when the last action-points reading (governor profile) is at or below it
     (AP items are never used); max_march_time_minutes = back out when the march would take longer (0 = any);
     target_types: "forts" (barbarian forts - the only type the bot can recognise for now); commander_preset is
-    kept for the task-presets feature (TASK-07)."""
+    kept for the task-presets feature (TASK-07).
+    GUIDE-14: daily_cap = stop joining after this many joins in the UTC game day (0 = no cap);
+    only_players = comma/line separated player names (or IDs) - join only rallies whose row text shows one of them
+    (the rally list shows names, so an ID matches only when the row shows it)."""
     import cv2, time as _t
     import control
     from common import BASE
+    try:
+        cap = int(daily_cap or 0)
+        if cap > 0:
+            done = int(((_stats_load().get("days") or {}).get(_today()) or {}).get("rally_join", 0))
+            if done >= cap:
+                if not quiet:
+                    log(f"  - join_rally: daily cap reached ({done}/{cap} joins today, UTC) - waiting for the reset")
+                return True
+    except Exception:
+        pass
+    wanted = _rally_players(only_players)
     try:
         res_ap, ap = int(min_ap_reserve or 0), control.CITY.get("ap") or {}
         if res_ap and ap.get("max") and int(ap.get("cur", 0)) <= res_ap:
@@ -1880,6 +1894,11 @@ def join_rally(g, sleep, max_troops=600000, max_armies=2, quiet=False, min_ap_re
                     log(f"  - join_rally: fort rally already has {amount:,} troops (limit {int(max_troops):,}) - skipped")
                 continue
             if _t.time() - JOINED.get(key + txt[:12], 0) < 300:
+                continue
+            if wanted and not _rally_from_wanted(img, fx, fy, wanted):
+                JOINED[key + txt[:12]] = _t.time()
+                if not quiet:
+                    log("  - join_rally: rally leader is not in 'join only the rallies of these players' - skipped")
                 continue
             target = (fx, fy, amount, key + txt[:12])
             break
@@ -1939,6 +1958,33 @@ def join_rally(g, sleep, max_troops=600000, max_armies=2, quiet=False, min_ap_re
 
 
 SMART["join_rally"] = join_rally
+
+
+def _rally_players(only_players):
+    """GUIDE-14: 'Join only the rallies of these players' -> list of lower-case names/IDs (empty = everyone)."""
+    if isinstance(only_players, (list, tuple)):
+        items = only_players
+    else:
+        items = re.split(r"[,\n;\u060c]+", str(only_players or ""))
+    return [re.sub(r"\s+", " ", str(x)).strip().lower() for x in items if str(x).strip()]
+
+
+def _rally_from_wanted(img, fx, fy, wanted):
+    """Read the text of one rally row on the War page and look for any wanted leader name / ID."""
+    try:
+        h, w = img.shape[:2]
+        y1, y2 = max(0, int((fy - 0.06) * h)), min(h, int((fy + 0.09) * h))
+        x1, x2 = max(0, int((fx - 0.45) * w)), min(w, int((fx + 0.30) * w))
+        row = " ".join(b[4] for b in _ocr_boxes(img[y1:y2, x1:x2], "jr_leader.png", 2.0))
+        flat = re.sub(r"[^0-9a-z\u0600-\u06ff]+", "", row.lower())
+        for name in wanted:
+            n = re.sub(r"[^0-9a-z\u0600-\u06ff]+", "", name)
+            if n and n in flat:
+                return True
+        log(f"    join_rally: rally row read as '{row[:60]}' - no wanted player")
+    except Exception as e:
+        log(f"    join_rally: leader check failed ({e!r}) - skipped")
+    return False
 
 
 # ---------------- VIP chests + daily objectives ----------------

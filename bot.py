@@ -63,7 +63,8 @@ def rally_probe_watch():
                              max_armies=t.get("max_armies", 2), quiet=True,
                              min_ap_reserve=t.get("min_ap_reserve", 0),                 # TASK-03
                              max_march_time_minutes=t.get("max_march_time_minutes", 0),
-                             target_types=t.get("target_types", "forts"), commander_preset=t.get("commander_preset", 0))
+                             target_types=t.get("target_types", "forts"), commander_preset=t.get("commander_preset", 0),
+                             daily_cap=t.get("daily_cap", 0), only_players=t.get("only_players", ""))   # GUIDE-14
     except Exception as e:
         if "screen grab failed" not in str(e):
             log(f"! join_rally watch failed: {e!r}")
