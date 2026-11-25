@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:22:51+04:00"
+  "heartbeat": "2026-11-26T01:23:08+04:00"
  },
  "items": [
   {
@@ -560,8 +560,10 @@
    "title": "Alliance & Kingdom Management Rules: Members, Mobilization Board, Rallies, Titles & City Finder",
    "priority": "High",
    "start": "00:59",
-   "status": "in_progress",
-   "seq": 50
+   "status": "blocked",
+   "seq": 50,
+   "finished": "2026-11-25T21:23:08+00:00",
+   "note": "Needs owner decision: Leader/R4/King tools act on OTHER players (accept/reject/kick members, set ranks, remove armies from rallies, appoint titles). Which character holds R4/R5/King, and do you want the bot to do these actions or only read and export (members, mobilization board, rallies, titles, city ledger)? Also needs one recording session of the alliance member / mobilization / title screens."
   },
   {
    "id": "TASK-13",
