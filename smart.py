@@ -3368,14 +3368,26 @@ def build_upgrade(g, sleep, mode="smart", speedups=False, use_bag=False):
         log("  - build_upgrade: both builders are busy"); return True
     if not queue_goto(g, sleep, "build") and not _queue_card(g, sleep, 0.462):
         log("  ! build_upgrade: the Queue Overview did not open"); recover_screen(g); return True
-    up = g.find_image("hex_upgrade", 0.85)
-    if not up:
-        log("  - build_upgrade: no free builder / no upgrade button"); recover_screen(g); return True
-    g.click_rel(*up[0]); sleep(3)
+    import queue_manager as _qm
+    sleep(1.0)
+    spot = _qm.glowing_button(g)                         # v204: the row selects the building; Upgrade glows under it
+    if spot:
+        g.click_rel(*spot); sleep(3)
+    else:
+        up = g.find_image("hex_upgrade", 0.85)
+        if not up:
+            log("  - build_upgrade: no free builder / no upgrade button"); _save_failure(g, "build_row", note="no glowing button"); recover_screen(g); return True
+        g.click_rel(*up[0]); sleep(3)
     img = g.screenshot()
     h, w = img.shape[:2]
-    title = " ".join(_ocr_lines(img[int(0.285 * h):int(0.32 * h), int(0.3 * w):int(0.7 * w)], "build_title.png", scale=2))
+    title = _qm.window_title(g, img) or " ".join(_ocr_lines(img[int(0.285 * h):int(0.32 * h), int(0.3 * w):int(0.7 * w)], "build_title.png", scale=2))
     b = g.find_image("btn_upgrade_blue", 0.8, img=img)
+    if not b:                                            # v204: the blue UPGRADE button by its text (never INSTANT)
+        hits = [x for x in _ocr_boxes(img[int(0.5 * h):, int(0.5 * w):], "build_btn.png", 1.8)
+                if "upgrade" in x[4].lower() and "instant" not in x[4].lower()]
+        if hits:
+            x1, y1, x2, y2, _t = hits[-1]
+            b = [((int(0.5 * w) + (x1 + x2) / 2) / w, (int(0.5 * h) + (y1 + y2) / 2) / h)]
     if not b:
         log(f"  - build_upgrade: '{title}' cannot be upgraded now (requirements?)"); recover_screen(g); return True
     g.click_rel(*b[0]); sleep(3)
@@ -3404,6 +3416,16 @@ def research(g, sleep, focus="balanced", speedups=False, use_bag=False):
         log("  - research: a research is already running"); return True
     if not queue_goto(g, sleep, "res") and not _queue_card(g, sleep, 0.585):
         log("  ! research: the Queue Overview did not open"); recover_screen(g); return True
+    try:                                                 # v204: row -> Academy selected -> its glowing Research button
+        import queue_manager as _qm
+        sleep(1.0)
+        spot = _qm.glowing_button(g)
+        if spot:
+            g.click_rel(*spot); sleep(3)
+            log(f"    research: academy window '{_qm.window_title(g)[:40]}'")
+            cv2.imwrite(os.path.join(BASE, "claude_out", "res_window.png"), g.screenshot())
+    except Exception as e:
+        log(f"    ! research: glowing button: {e!r}")
     tab = focus
     if focus == "balanced":
         tab = "economy" if RES_STATE["last"] == "military" else "military"
