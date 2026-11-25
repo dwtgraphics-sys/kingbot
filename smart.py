@@ -2900,6 +2900,30 @@ QUEUE_WORDS = {
 
 
 
+QUEUE_ROWS_KEY = {"stable": "cavalry", "barracks": "infantry", "archery": "archer", "siege": "siege"}
+
+
+SCREEN_TEMPLATES = (
+    ("city", "queue_btn", 0.55),          # v188: the city HUD carries the queue button
+    ("start", "click_to_start", 0.80),
+    ("training_window", "btn_train", 0.80),
+    ("gem_dialog", "notice_title", 0.80),
+    ("map", "space_on_city", 0.75),
+)
+
+SCREEN_WORDS = (
+    ("queue_panel", ("queue overview",)),
+    ("profile", ("action points", "civilization", "highest acclaim")),
+    ("mail", ("new mail", "bulk editor", "read & claim all")),
+    ("alliance", ("technology", "territory", "alliance gifts")),
+    ("tavern", ("free chests", "legendary chests")),
+    ("training_window", ("unit training", "instant", "train")),
+)
+
+
+CLICK_PROBED = [False]
+
+
 def probe_click_mode(g, sleep, force=False):
     """v183: find a click method that reaches the game, using a harmless action (the queue panel).
 
