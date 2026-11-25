@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Shared helpers: find the game window, screenshots, clicks, image search."""
-import ctypes, json, os, time, datetime
+import ctypes, json, os, time, datetime, random
 from ctypes import wintypes
 
 user32 = ctypes.windll.user32
@@ -32,6 +32,7 @@ from PIL import ImageGrab
 
 pyautogui.FAILSAFE = True      # move mouse to a screen corner = emergency stop
 pyautogui.PAUSE = 0.05
+CLICK_JITTER_PX = [0]          # TASK-08: set by bot.py from smart_schedule (0 = exact clicks)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROUTINES_FILE = os.path.join(BASE, "routines.json")
@@ -556,6 +557,10 @@ class Game:
             # would land in that window instead of the game.
             activate(self.hwnd)
             time.sleep(0.1)
+        if CLICK_JITTER_PX[0] > 0 and self.w and self.h:      # TASK-08: human-like +/- px click jitter
+            j = CLICK_JITTER_PX[0]
+            rx = min(0.999, max(0.001, rx + random.uniform(-j, j) / self.w))
+            ry = min(0.999, max(0.001, ry + random.uniform(-j, j) / self.h))
         mode = click_mode()
         if mode == "interception":
             r = self._click_interception(rx, ry)

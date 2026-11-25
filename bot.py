@@ -262,7 +262,12 @@ def quick_requests():
         QUICK[1] = False
 
 
+WAIT_JITTER = [0.0]     # TASK-08: +/- fraction applied to every wait (smart_schedule.jitter_percent)
+
+
 def sleep(sec):
+    if WAIT_JITTER[0] > 0 and sec > 0:
+        sec = sec * (1 + random.uniform(-WAIT_JITTER[0], WAIT_JITTER[0]))
     end = time.time() + sec
     while time.time() < end:
         check_stop()
@@ -1223,6 +1228,85 @@ def _single_instance():
     _touch_pid()
 
 
+# ---------------- TASK-08: smart interval scheduling (human-like sessions and breaks, daily hour cap) ----------------
+import control
+SS_FILE = os.path.join(BASE, "smart_schedule_state.json")
+
+
+def _ss_cfg(settings):
+    c = (settings or {}).get("smart_schedule") or {}
+    def num(k, d, lo, hi):
+        try:
+            return max(lo, min(hi, float(c.get(k, d))))
+        except Exception:
+            return d
+    return {"enabled": bool(c.get("enabled")), "limit_h": num("daily_active_hours_limit", 14, 1, 24),
+            "work_min": num("work_session_minutes", 90, 10, 600), "break_min": num("break_duration_minutes", 20, 1, 240),
+            "jitter": num("jitter_percent", 15, 0, 50) / 100.0}
+
+
+def _ss_state():
+    st = load_json(SS_FILE, {}) or {}
+    day = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+    if st.get("day") != day:                          # a new game day (00:00 UTC): counters start again
+        st = {"day": day, "active_sec": 0.0, "session_start": None, "session_len": 0, "break_until": 0}
+    return st
+
+
+def _ss_publish(cfg, st, state):
+    try:
+        control.CITY["smart_schedule"] = {"enabled": cfg["enabled"], "state": state, "active_h": round(st.get("active_sec", 0) / 3600, 2),
+                                          "limit_h": cfg["limit_h"], "break_until": st.get("break_until") or 0, "day": st.get("day"),
+                                          "at": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"}
+    except Exception:
+        pass
+
+
+def smart_schedule_gate(settings):
+    """TASK-08: (state, seconds to rest) - state 'active' (go on), 'break' or 'done' (daily cap reached)."""
+    cfg = _ss_cfg(settings)
+    WAIT_JITTER[0] = cfg["jitter"] if cfg["enabled"] else 0.0
+    CLICK_JITTER_PX[0] = 5 if cfg["enabled"] else 0
+    if not cfg["enabled"]:
+        control.CITY.pop("smart_schedule", None)
+        return "active", 0
+    st, now = _ss_state(), time.time()
+    if st.get("active_sec", 0) >= cfg["limit_h"] * 3600:
+        save_json(SS_FILE, st); _ss_publish(cfg, st, "done")
+        return "done", 300
+    if now < (st.get("break_until") or 0):
+        _ss_publish(cfg, st, "break")
+        return "break", min(120, st["break_until"] - now)
+    if not st.get("session_start"):
+        j = cfg["jitter"]
+        st["session_start"] = now
+        st["session_len"] = cfg["work_min"] * 60 * (1 + random.uniform(-j, j))
+        st["break_until"] = 0
+        log(f"Smart schedule: new work session of about {st['session_len'] / 60:.0f} min "
+            f"({st.get('active_sec', 0) / 3600:.1f} / {cfg['limit_h']:g} h today).")
+    elif now - st["session_start"] >= st.get("session_len", cfg["work_min"] * 60):
+        j = cfg["jitter"]
+        rest = cfg["break_min"] * 60 * (1 + random.uniform(-j, j))
+        st["session_start"], st["break_until"] = None, now + rest
+        log(f"Smart schedule: taking a break of about {rest / 60:.0f} min.")
+        save_json(SS_FILE, st); _ss_publish(cfg, st, "break")
+        return "break", min(120, rest)
+    save_json(SS_FILE, st); _ss_publish(cfg, st, "active")
+    return "active", 0
+
+
+def smart_schedule_add(settings, seconds):
+    """TASK-08: add the time of one round to today's active runtime."""
+    cfg = _ss_cfg(settings)
+    if not cfg["enabled"] or seconds <= 0:
+        return
+    st = _ss_state()
+    st["active_sec"] = st.get("active_sec", 0) + seconds
+    if st["active_sec"] >= cfg["limit_h"] * 3600:
+        log(f"Smart schedule: {cfg['limit_h']:g} active hours reached today - resting until the game reset (00:00 UTC).")
+    save_json(SS_FILE, st); _ss_publish(cfg, st, "done" if st["active_sec"] >= cfg["limit_h"] * 3600 else "active")
+
+
 def main():
     _single_instance()
     log(f"Kingbot v{local_version()} starting.")
@@ -1278,6 +1362,10 @@ def main():
                 log("Outside working hours (scheduler). Sleeping.")
                 idle(300, state="sleeping")
                 continue
+            ss_state, ss_wait = smart_schedule_gate(settings)          # TASK-08
+            if ss_state != "active" and not RUN_NOW[0]:
+                idle(ss_wait, state="sleeping", task="smart schedule: " + ("on a break" if ss_state == "break" else "daily hours used up"))
+                continue
             try:
                 settings = rotation_settings(settings)
             except (Stop, NewSettings, SystemExit, pyautogui.FailSafeException):
@@ -1299,8 +1387,15 @@ def main():
             no_sleep()
             session_watch()                                  # v170: bring a disconnected screen back first
             stream_keeper()
+            t_round = time.time()
             try:
-                one_round(settings)
+                try:
+                    one_round(settings)
+                finally:
+                    try:
+                        smart_schedule_add(settings, time.time() - t_round)   # TASK-08
+                    except Exception:
+                        pass
             except (Stop, NewSettings, SystemExit, pyautogui.FailSafeException):
                 raise
             except Exception as e:
