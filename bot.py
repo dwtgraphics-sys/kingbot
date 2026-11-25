@@ -665,6 +665,30 @@ def _do_action(g, req):
             params = inspect.signature(queue_manager.run).parameters
             ctl.write_status(state="working", task="queue manager")
             queue_manager.run(g, sleep, **{k: v for k, v in t.items() if k in params and k not in ("g", "sleep")})
+        elif do == "restart_game":                               # MOD-03: assistant quick server control
+            ctl.write_status(state="working", task="restarting the game (from the dashboard)")
+            log("  restarting the game client (dashboard request)")
+            import subprocess, game_launcher
+            for exe in ("MASS.exe", "UnityCrashHandler64.exe"):
+                subprocess.run(["taskkill", "/f", "/im", exe], capture_output=True)
+            sleep(6)
+            try:
+                if os.path.exists(game_launcher.LAST_TRY_FILE):
+                    os.remove(game_launcher.LAST_TRY_FILE)       # start again at once, not after the 90 s guard
+            except Exception:
+                pass
+            game_launcher.ensure_game_running(sleep)
+            smart.notify("info", "أُعيد تشغيل اللعبة بطلب من لوحة التحكم")
+            return
+        elif do == "restart_bot":                                # MOD-03: assistant quick server control
+            import control
+            log("Restarting Kingbot (dashboard request) ...")
+            try:
+                control.CITY["action_done"] = str(req.get("id", ""))
+                ctl.write_status(state="working", task="restarting the bot (from the dashboard)")
+            except Exception:
+                pass
+            sys.exit(RESTART_CODE)
         elif do == "read_profile":
             smart.read_profile(g, sleep)
         elif do == "read_commanders":
