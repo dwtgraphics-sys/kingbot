@@ -1534,11 +1534,42 @@ def _rally_count(img, fx, fy):
 JOINED = {}     # fort row key -> time, to avoid joining the same rally twice
 
 
-def join_rally(g, sleep, max_troops=600000, max_armies=2, quiet=False):
+def _march_minutes(g, mx, my):
+    """TASK-03: the march time shown next to MARCH (h:mm:ss / mm:ss) in minutes, or None if not readable."""
+    import re
+    img = g.screenshot()
+    h, w = img.shape[:2]
+    crop = img[max(0, int((my - 0.09) * h)):min(h, int((my + 0.03) * h)), max(0, int((mx - 0.30) * w)):min(w, int((mx + 0.08) * w))]
+    try:
+        t = " ".join(b[4] for b in _ocr_boxes(crop, "jr_time.png", scale=2.0))
+    except Exception:
+        return None
+    m = re.search(r"(\d{1,2}):(\d{2}):(\d{2})", t) or re.search(r"(?<!\d)()(\d{1,2}):(\d{2})(?!\d)", t)
+    if not m:
+        return None
+    hh = int(m.group(1) or 0)
+    return hh * 60 + int(m.group(2)) + int(m.group(3)) / 60.0
+
+
+def join_rally(g, sleep, max_troops=600000, max_armies=2, quiet=False, min_ap_reserve=0, max_march_time_minutes=0,
+               target_types="forts", commander_preset=0):
     """War page (two blue flags) -> rallies on 'Barbarian Fort' only -> skip if the rally already has
-    max_troops or more -> JOIN -> MARCH with the troops the game selects. Never uses AP items or gems."""
+    max_troops or more -> JOIN -> MARCH with the troops the game selects. Never uses AP items or gems.
+    TASK-03: min_ap_reserve = do not join when the last action-points reading (governor profile) is at or below it
+    (AP items are never used); max_march_time_minutes = back out when the march would take longer (0 = any);
+    target_types: "forts" (barbarian forts - the only type the bot can recognise for now); commander_preset is
+    kept for the task-presets feature (TASK-07)."""
     import cv2, time as _t
+    import control
     from common import BASE
+    try:
+        res_ap, ap = int(min_ap_reserve or 0), control.CITY.get("ap") or {}
+        if res_ap and ap.get("max") and int(ap.get("cur", 0)) <= res_ap:
+            if not quiet:
+                log(f"  - join_rally: action points {ap.get('cur')}/{ap.get('max')} at or below the reserve {res_ap} - not joining")
+            return True
+    except Exception:
+        pass
     if not g.find_image("icon_war", 0.75):
         if not quiet:
             log("  - join_rally: no alliance rally right now (two-flags icon not shown)")
@@ -1596,6 +1627,16 @@ def join_rally(g, sleep, max_troops=600000, max_armies=2, quiet=False):
         nt = g.find_image("btn_new_troop", 0.8)
         if nt:
             g.click_rel(*nt[0]); sleep(2.5)
+        m = g.find_image("btn_march", 0.78)
+        if m and int(max_march_time_minutes or 0) > 0:
+            mins = _march_minutes(g, *m[0])
+            if mins is not None and mins > int(max_march_time_minutes):
+                log(f"  - join_rally: march would take {mins:.1f} min (limit {int(max_march_time_minutes)}) - not joining")
+                JOINED[key] = _t.time()
+                recover_screen(g)
+                break
+            if mins is not None:
+                log(f"    join_rally: march time {mins:.1f} min")
         m = g.find_image("btn_march", 0.78)
         if not m:
             log("  ! join_rally: could not join this rally (own rally, already marching, full or no AP) - skipping it")

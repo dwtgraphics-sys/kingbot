@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:14:21+00:00"
+  "heartbeat": "2026-11-25T19:15:16+00:00"
  },
  "items": [
   {
@@ -138,8 +138,10 @@
    "title": "Auto-Join Rallies",
    "priority": "High",
    "start": "22:31",
-   "status": "pending",
-   "seq": 12
+   "status": "done",
+   "seq": 12,
+   "finished": "2026-11-25T19:15:16+00:00",
+   "note": "join_rally: min_ap_reserve (city.ap), max march time (OCR), target_types forts, preset stored; UI options + joined-today; bot v209. 'alliance' rally targets need templates - forts only for now"
   },
   {
    "id": "GUIDE-04",

@@ -58,7 +58,10 @@ def rally_probe_watch():
     try:
         if find_window():
             smart.join_rally(Game(), sleep, max_troops=t.get("max_troops", 600000),
-                             max_armies=t.get("max_armies", 2), quiet=True)
+                             max_armies=t.get("max_armies", 2), quiet=True,
+                             min_ap_reserve=t.get("min_ap_reserve", 0),                 # TASK-03
+                             max_march_time_minutes=t.get("max_march_time_minutes", 0),
+                             target_types=t.get("target_types", "forts"), commander_preset=t.get("commander_preset", 0))
     except Exception as e:
         if "screen grab failed" not in str(e):
             log(f"! join_rally watch failed: {e!r}")
