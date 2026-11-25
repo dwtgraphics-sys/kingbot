@@ -6,7 +6,7 @@ Fallback: the shared Google Drive folder "RisBot_updates".
 Looks for files named Kingbot_vN.zip (or older RisBot_vN.zip) and installs the highest N if it is newer.
 Your recordings (routines.json, templates/), tasks.json and log.txt are never overwritten.
 """
-import io, os, re, json, zipfile, urllib.request
+import io, os, re, json, zipfile, urllib.request, urllib.error
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 FOLDER_ID = "1CS-oG5Zi7iXeHtYO2RbKHkUgctOMJbNe"
@@ -109,9 +109,15 @@ def _gh(url, raw=False):
     tok = _gh_token()
     if tok:
         h["Authorization"] = f"Bearer {tok}"
-    req = urllib.request.Request(url, headers=h)
-    with urllib.request.urlopen(req, timeout=40) as r:
-        data = r.read()
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=40) as r:
+            data = r.read()
+    except urllib.error.HTTPError as e:
+        if e.code != 401 or "Authorization" not in h:
+            raise
+        h.pop("Authorization")      # public repo: retry without the refused token
+        with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=40) as r:
+            data = r.read()
     return data if raw else json.loads(data.decode("utf-8"))
 
 

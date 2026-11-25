@@ -34,18 +34,23 @@ def _get_token():
             pass
     return os.environ.get("KINGBOT_GH_TOKEN", "").strip()
 
+_BAD_TOKEN = {"at": 0.0, "logged": 0.0}
+
 def _gh_request(path, method="GET", payload=None):
+    """GitHub contents API. The repo is public, so reads also work with no token
+    (or with a revoked one); writes need a valid token in github_token.txt."""
+    import time as _t
     token = _get_token()
-    if not token:
+    if _t.time() - _BAD_TOKEN["at"] < 600:
+        token = ""          # token was refused lately: read anonymously
+    if not token and method != "GET":
         return None
     url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{path}"
     if method == "GET":
         url += f"?t={int(datetime.datetime.now().timestamp())}"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "Kingbot-VPS"
-    }
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "Kingbot-VPS"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     if data is not None:
         headers["Content-Type"] = "application/json"
@@ -54,7 +59,16 @@ def _gh_request(path, method="GET", payload=None):
         with urllib.request.urlopen(req, timeout=12) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
-        if e.code != 404:
+        if e.code == 401 and token:
+            _BAD_TOKEN["at"] = _t.time()
+            if _t.time() - _BAD_TOKEN["logged"] > 600:
+                _BAD_TOKEN["logged"] = _t.time()
+                log("! GitHub token in github_token.txt was refused (401: expired or revoked). "
+                    "Control is still read without it, but status cannot be sent - put a new token in github_token.txt.")
+            if method == "GET":
+                return _gh_request(path, method, payload)
+            return None
+        if e.code != 404 and not (e.code == 401 and method != "GET"):
             log(f"! GitHub API {method} {path} HTTP {e.code}")
         return None
     except Exception as e:
