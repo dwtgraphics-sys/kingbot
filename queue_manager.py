@@ -77,6 +77,8 @@ def secs(t):
 
 def fraction(t, word):
     m = re.search(word + r"\D{0,4}([\d,.\s]+?)\s*/\s*([\d,.\s]+)", norm(t))
+    if not m:                                   # the label itself was misread: take the first "a/b" of the card
+        m = re.search(r"(\d[\d,.]*)\s*/\s*(\d[\d,.]*)", norm(t))
     if not m:
         return None
     a, b = (int(re.sub(r"\D", "", x) or 0) for x in m.groups())
@@ -85,6 +87,7 @@ def fraction(t, word):
 
 def section_of(text):
     t = norm(text)
+    t = re.sub(r"(unit|building|tech|alliance|material|armament|scout)(?=[a-z])", r"\1 ", t)
     for key, words in SECTIONS:
         if any(t.startswith(w) for w in words):
             return key
@@ -113,11 +116,11 @@ def row_name(section, text):
     t = clean(text)
     low = t.lower()
     if section == "build":
-        m = re.search(r"building queue\s*(\d)", low)
+        m = re.search(r"bu?i?l?ding\s*queue\s*(\d)", low)
         return f"Building Queue {m.group(1)}" if m else (t if re.search(r"[A-Za-z]{3,}", t) else None)
     if section == "scout":
-        m = re.search(r"scout\s*([abc])\b", low)
-        return f"Scout {m.group(1).upper()}" if m else None
+        m = re.search(r"scout\s*([abc8])(?:\b|$)", low)
+        return f"Scout {'B' if m.group(1) == '8' else m.group(1).upper()}" if m else None
     if section == "train":
         if not unit_of(t):
             return None
@@ -278,7 +281,7 @@ def close_panel(g, sleep):
 
 def _scroll(g, sleep, up=False):
     import smart
-    a, b = (0.30, 0.80) if up else (0.80, 0.30)
+    a, b = (0.35, 0.75) if up else (0.75, 0.45)
     smart._drag(g, 0.085, a, 0.085, b)
     sleep(1.3)
 
@@ -291,8 +294,10 @@ def scan(g, sleep, publish=True):
         return None
     h = img.shape[0]
     rows, section, expanded, prev_sig = [], None, set(), None
-    for page in range(6):
+    dump = []
+    for page in range(10):
         lines = ocr_panel(img)
+        dump.append(f"--- page {page}: " + " || ".join(t for _y, _x, t in sorted(lines)))
         page_rows, end_section, headers = parse_lines(lines, section)
         # a folded section: its header is followed directly by the next header -> tap it open once
         folded = None
@@ -319,7 +324,15 @@ def scan(g, sleep, publish=True):
         img = g.screenshot()
         if not panel_visible(img):
             break
-    _scroll(g, sleep, up=True)                # leave the panel at the top for the next reader
+    for _ in range(3):
+        _scroll(g, sleep, up=True)            # leave the panel at the top for the next reader
+    try:
+        import os
+        from common import BASE
+        with open(os.path.join(BASE, "claude_out", "qm_lines.txt"), "w", encoding="utf-8") as f:
+            f.write("\n".join(dump))
+    except Exception:
+        pass
     qm = build(rows)
     LAST["qm"] = qm
     n = len(qm["train"]) + len(qm["build"]) + len(qm["research"]) + len(qm["scout"]) + \
