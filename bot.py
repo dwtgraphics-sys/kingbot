@@ -1045,6 +1045,51 @@ def _apply_preset(settings, slot):
     return eff
 
 
+SCHED_PROF = [""]
+
+
+def _hm(t):
+    try:
+        h, m = str(t).strip().split(":")
+        return int(h) * 60 + int(m)
+    except Exception:
+        return None
+
+
+def schedule_profile(settings, now=None):
+    """GUIDE-17: settings['schedule_profiles'] = [{from: 'HH:MM', to: 'HH:MM', profile: name, on: bool}] in UTC.
+    Inside a window the bot plays that saved profile (tasks + loop); when the window ends it goes back to the user's
+    own settings by itself (nothing is overwritten). Character rotation keeps working - only the activities change."""
+    import control
+    rows = [r for r in (settings.get("schedule_profiles") or []) if isinstance(r, dict) and r.get("on", True) is not False]
+    presets = settings.get("presets") or {}
+    t = now if now is not None else datetime.datetime.utcnow()
+    cur = t.hour * 60 + t.minute
+    hit = None
+    for r in rows:
+        a, b = _hm(r.get("from")), _hm(r.get("to"))
+        if a is None or b is None or a == b or not r.get("profile"):
+            continue
+        if (a < b and a <= cur < b) or (a > b and (cur >= a or cur < b)):
+            hit = r
+            break
+    name = (hit or {}).get("profile") or ""
+    p = presets.get(name) if name else None
+    if name and not p:
+        name = ""
+    if name != SCHED_PROF[0]:
+        log(f"Scheduled profile: {'now using ' + repr(name) if name else 'window ended - back to your own settings'}")
+        SCHED_PROF[0] = name
+    if not name:
+        control.CITY.pop("sched_profile", None)
+        return settings
+    control.CITY["sched_profile"] = {"profile": name, "from": hit.get("from"), "to": hit.get("to")}
+    eff = dict(settings)
+    eff["tasks"] = p.get("tasks") or settings.get("tasks", [])
+    eff["loop_minutes"] = p.get("loop_minutes") or settings.get("loop_minutes", 60)
+    return eff
+
+
 def _do_switch(slot):
     """Switch the game to slot['name'] and check it. True = the game is on that character now."""
     g = get_game()
@@ -1582,8 +1627,14 @@ def main():
                 import traceback
                 log(f"! character rotation failed: {e!r}")
                 log(traceback.format_exc()[-600:])
+            try:
+                settings = schedule_profile(settings)                 # GUIDE-17: profile for a time window
+            except Exception as e:
+                log(f"! scheduled profile failed: {e!r}")
             if EFF[0]:
                 source += f", character {load_json(ROT_FILE, {}).get('name')}"
+            if SCHED_PROF[0]:
+                source += f", scheduled profile '{SCHED_PROF[0]}'"
             log(f"Round started (settings from {source}).")
             RUN_NOW[0] = False
             try:

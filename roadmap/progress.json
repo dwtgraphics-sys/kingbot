@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZRB3gzQZzmf7uqVth6",
   "since": "2026-11-26T01:07:16+04:00",
-  "heartbeat": "2026-11-26T01:26:11+04:00"
+  "heartbeat": "2026-11-26T01:27:43+04:00"
  },
  "items": [
   {
@@ -626,8 +626,10 @@
    "title": "'Profiles' System (Ready-Made & My Profiles up to 20) & Scheduler Profile Overrides",
    "priority": "High",
    "start": "01:25",
-   "status": "pending",
-   "seq": 56
+   "status": "done",
+   "seq": 56,
+   "finished": "2026-11-25T21:27:43+00:00",
+   "note": "bot v226 schedule_profile(): settings.schedule_profiles [{from,to,profile,on}] UTC windows (overnight ok) use a saved profile's tasks/loop and revert when the window ends; dashboard profile dropdown (4 ready-made + my profiles max 20), rename, time-window rows, ❗ info, guide card"
   },
   {
    "id": "TOOLS-04C",
