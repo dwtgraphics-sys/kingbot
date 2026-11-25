@@ -1,0 +1,737 @@
+{
+ "version": 18,
+ "timezone": "Asia/Muscat",
+ "window": "22:00-03:00",
+ "lock": null,
+ "items": [
+  {
+   "id": "MOD-01",
+   "sheet": "Assistant Modal",
+   "title": "Fix Duplicate Buttons Bug in Assistant Modal",
+   "priority": "Critical",
+   "start": "22:00",
+   "status": "pending",
+   "seq": 1
+  },
+  {
+   "id": "EARN-01",
+   "sheet": "Mkasbi Overhaul",
+   "title": "Fix Clipped Columns & Compact Large Numbers in Daily Gains Table",
+   "priority": "Critical",
+   "start": "22:00",
+   "status": "pending",
+   "seq": 2
+  },
+  {
+   "id": "UX-01",
+   "sheet": "Full App UX",
+   "title": "2x3 Live Resource & Action Points (AP) Cards Grid",
+   "priority": "Critical",
+   "start": "22:00",
+   "status": "pending",
+   "seq": 3
+  },
+  {
+   "id": "AI-01",
+   "sheet": "AI Assistant & Support",
+   "title": "AI Assistant Chat Window with Quick Question Chips",
+   "priority": "High",
+   "start": "22:00",
+   "status": "pending",
+   "seq": 4
+  },
+  {
+   "id": "GUIDE-01",
+   "sheet": "Guide & Rules",
+   "title": "'On This Page' Quick Jump Bar + 5-Step Getting Started Guide",
+   "priority": "High",
+   "start": "22:00",
+   "status": "pending",
+   "seq": 5
+  },
+  {
+   "id": "TASK-01",
+   "sheet": "Feature Ideas",
+   "title": "Smart Gem Farming",
+   "priority": "High",
+   "start": "22:00",
+   "status": "pending",
+   "seq": 6
+  },
+  {
+   "id": "TOOLS-00",
+   "sheet": "Menu & Free Tools",
+   "title": "Top Bar (Notifications Badge 9+, AR/EN Switcher) & Main Hamburger Dropdown Menu",
+   "priority": "Critical",
+   "start": "22:00",
+   "status": "pending",
+   "seq": 7
+  },
+  {
+   "id": "GUIDE-02",
+   "sheet": "Guide & Rules",
+   "title": "Annotated Panel Diagram (1-7) & Detailed Section Walkthrough",
+   "priority": "High",
+   "start": "22:12",
+   "status": "pending",
+   "seq": 8
+  },
+  {
+   "id": "TASK-02",
+   "sheet": "Feature Ideas",
+   "title": "Balanced Resource Gathering",
+   "priority": "Medium",
+   "start": "22:15",
+   "status": "pending",
+   "seq": 9
+  },
+  {
+   "id": "TOOLS-01",
+   "sheet": "Menu & Free Tools",
+   "title": "Unified Navigation Drawer with Free Tools & Community Links",
+   "priority": "High",
+   "start": "22:19",
+   "status": "pending",
+   "seq": 10
+  },
+  {
+   "id": "GUIDE-03",
+   "sheet": "Guide & Rules",
+   "title": "Document 'In The City' Strip, Character Rotation Estimates & Freeze Days",
+   "priority": "Medium",
+   "start": "22:25",
+   "status": "pending",
+   "seq": 11
+  },
+  {
+   "id": "TASK-03",
+   "sheet": "Feature Ideas",
+   "title": "Auto-Join Rallies",
+   "priority": "High",
+   "start": "22:31",
+   "status": "pending",
+   "seq": 12
+  },
+  {
+   "id": "GUIDE-04",
+   "sheet": "Guide & Rules",
+   "title": "Complete Core Guide Page Build (Combines GUIDE-01 through GUIDE-03)",
+   "priority": "High",
+   "start": "22:38",
+   "status": "pending",
+   "seq": 13
+  },
+  {
+   "id": "TOOLS-02",
+   "sheet": "Menu & Free Tools",
+   "title": "Alliance Mail Generator (Colors, Formatting, Templates & One-Click Copy)",
+   "priority": "High",
+   "start": "22:39",
+   "status": "pending",
+   "seq": 14
+  },
+  {
+   "id": "TASK-04",
+   "sheet": "Feature Ideas",
+   "title": "Auto-Shield",
+   "priority": "Critical",
+   "start": "22:46",
+   "status": "pending",
+   "seq": 15
+  },
+  {
+   "id": "GUIDE-05",
+   "sheet": "Guide & Rules",
+   "title": "'What the Status Means' Legend (7 States) & Offline/Unresponsive Alert",
+   "priority": "High",
+   "start": "22:51",
+   "status": "pending",
+   "seq": 16
+  },
+  {
+   "id": "MOD-02",
+   "sheet": "Assistant Modal",
+   "title": "Live Command Execution Status & Debounce Lock",
+   "priority": "High",
+   "start": "22:59",
+   "status": "pending",
+   "seq": 17
+  },
+  {
+   "id": "UX-02",
+   "sheet": "Full App UX",
+   "title": "Live 'In The City' Queue Cards (Training, Materials & Healing)",
+   "priority": "High",
+   "start": "22:59",
+   "status": "pending",
+   "seq": 18
+  },
+  {
+   "id": "TOOLS-02B",
+   "sheet": "Menu & Free Tools",
+   "title": "Alliance Mail Generator: Top Social Bar, 3-Tab Switcher, 8-Button Formatting Grid & Selection Editor",
+   "priority": "High",
+   "start": "22:59",
+   "status": "pending",
+   "seq": 19
+  },
+  {
+   "id": "TASK-05",
+   "sheet": "Feature Ideas",
+   "title": "Auto-Return & Recall",
+   "priority": "High",
+   "start": "23:02",
+   "status": "pending",
+   "seq": 20
+  },
+  {
+   "id": "GUIDE-06",
+   "sheet": "Guide & Rules",
+   "title": "'Signing In To The Game' Annotated Diagram (Code vs. Password)",
+   "priority": "Medium",
+   "start": "23:04",
+   "status": "pending",
+   "seq": 21
+  },
+  {
+   "id": "EARN-02",
+   "sheet": "Mkasbi Overhaul",
+   "title": "Add Game Resource Icons, 'All' Tab & Time-Range Pills",
+   "priority": "High",
+   "start": "23:13",
+   "status": "pending",
+   "seq": 22
+  },
+  {
+   "id": "GUIDE-07",
+   "sheet": "Guide & Rules",
+   "title": "Unified 'Queue Overview' Sidebar Reader Replacing Legacy Queue Checks",
+   "priority": "Critical",
+   "start": "23:16",
+   "status": "pending",
+   "seq": 23
+  },
+  {
+   "id": "TASK-06",
+   "sheet": "Feature Ideas",
+   "title": "March Priority & Timeout",
+   "priority": "High",
+   "start": "23:17",
+   "status": "pending",
+   "seq": 24
+  },
+  {
+   "id": "TOOLS-02C",
+   "sheet": "Menu & Free Tools",
+   "title": "Mail Editor Box, 2,000-Char Counter (Tags Included), Draft Persistence, Save & Live Parchment Preview",
+   "priority": "High",
+   "start": "23:18",
+   "status": "pending",
+   "seq": 25
+  },
+  {
+   "id": "GUIDE-08",
+   "sheet": "Guide & Rules",
+   "title": "Verification Code Rules, Closing Sign-In Modal & Keyboard Character Warning",
+   "priority": "High",
+   "start": "23:29",
+   "status": "pending",
+   "seq": 26
+  },
+  {
+   "id": "TASK-07",
+   "sheet": "Feature Ideas",
+   "title": "Task Commander Presets",
+   "priority": "High",
+   "start": "23:33",
+   "status": "pending",
+   "seq": 27
+  },
+  {
+   "id": "AI-02",
+   "sheet": "AI Assistant & Support",
+   "title": "Chat Input Bar with Send Button & Accuracy Disclaimer",
+   "priority": "Medium",
+   "start": "23:38",
+   "status": "pending",
+   "seq": 28
+  },
+  {
+   "id": "TOOLS-02D",
+   "sheet": "Menu & Free Tools",
+   "title": "'How To Use It' (1-3), Mail FAQ Accordion (5 Questions), Leader Plan Promo Card & 'More Free Tools'",
+   "priority": "Medium",
+   "start": "23:38",
+   "status": "pending",
+   "seq": 29
+  },
+  {
+   "id": "GUIDE-09",
+   "sheet": "Guide & Rules",
+   "title": "'Live Screen' Annotated Guide (1-3), Hourly View Quota, Idle Timeout & Session Logging",
+   "priority": "High",
+   "start": "23:42",
+   "status": "pending",
+   "seq": 30
+  },
+  {
+   "id": "TASK-08",
+   "sheet": "Feature Ideas",
+   "title": "Smart Interval Scheduling",
+   "priority": "Critical",
+   "start": "23:48",
+   "status": "pending",
+   "seq": 31
+  },
+  {
+   "id": "GUIDE-10",
+   "sheet": "Guide & Rules",
+   "title": "'Bot Settings' Annotated Guide (1-5), Commander Loading & Spend Warning",
+   "priority": "High",
+   "start": "23:55",
+   "status": "pending",
+   "seq": 32
+  },
+  {
+   "id": "MOD-03",
+   "sheet": "Assistant Modal",
+   "title": "Add Queue Overview Sync Button & Quick Server Controls",
+   "priority": "High",
+   "start": "23:58",
+   "status": "pending",
+   "seq": 33
+  },
+  {
+   "id": "UX-03",
+   "sheet": "Full App UX",
+   "title": "Detailed 'Active Marches' Cards (Commanders, Target, Troops & Health)",
+   "priority": "High",
+   "start": "23:58",
+   "status": "pending",
+   "seq": 34
+  },
+  {
+   "id": "TOOLS-03",
+   "sheet": "Menu & Free Tools",
+   "title": "Speedup Calculator (Universal, Training, Building, Research & Healing)",
+   "priority": "High",
+   "start": "23:58",
+   "status": "pending",
+   "seq": 35
+  },
+  {
+   "id": "TASK-09",
+   "sheet": "Feature Ideas",
+   "title": "Captcha Alert & Pause",
+   "priority": "Critical",
+   "start": "00:04",
+   "status": "pending",
+   "seq": 36
+  },
+  {
+   "id": "GUIDE-11",
+   "sheet": "Guide & Rules",
+   "title": "'Activity Groups' Overview: Gathering, Combat, City & Alliance Groups",
+   "priority": "Medium",
+   "start": "00:08",
+   "status": "pending",
+   "seq": 37
+  },
+  {
+   "id": "TOOLS-03B",
+   "sheet": "Menu & Free Tools",
+   "title": "Speedup Calculator: 3-Tab Switcher (Speedups/Training/Healing), Collapsible Bag Grids & Denomination Inputs",
+   "priority": "High",
+   "start": "00:17",
+   "status": "pending",
+   "seq": 38
+  },
+  {
+   "id": "TASK-10",
+   "sheet": "Feature Ideas",
+   "title": "Sunset Canyon & Guardians Hunter",
+   "priority": "Medium",
+   "start": "00:19",
+   "status": "pending",
+   "seq": 39
+  },
+  {
+   "id": "GUIDE-12",
+   "sheet": "Guide & Rules",
+   "title": "'Activity Groups' Remaining Groups: Rewards, Shops, Arena, Characters, Alliance & Kingdom Mgmt",
+   "priority": "Medium",
+   "start": "00:21",
+   "status": "pending",
+   "seq": 40
+  },
+  {
+   "id": "EARN-03",
+   "sheet": "Mkasbi Overhaul",
+   "title": "Add Bar Value Labels, Trend Badges, Farming Efficiency & Net After Supply",
+   "priority": "High",
+   "start": "00:27",
+   "status": "pending",
+   "seq": 41
+  },
+  {
+   "id": "GUIDE-13",
+   "sheet": "Guide & Rules",
+   "title": "'Worth Knowing' Rules: Gem Farming 18h/Day Cap, Smart Scheduler & Conduct Score (<61)",
+   "priority": "High",
+   "start": "00:33",
+   "status": "pending",
+   "seq": 42
+  },
+  {
+   "id": "TASK-11",
+   "sheet": "Feature Ideas",
+   "title": "Mysterious Merchant & Tavern Chests",
+   "priority": "Medium",
+   "start": "00:35",
+   "status": "pending",
+   "seq": 43
+  },
+  {
+   "id": "TOOLS-03C",
+   "sheet": "Menu & Free Tools",
+   "title": "All Speedups Total Card, Combined Totals, 'How To Use It' (1-3), Training FAQ, Promo & Site Footer",
+   "priority": "Medium",
+   "start": "00:37",
+   "status": "pending",
+   "seq": 44
+  },
+  {
+   "id": "GUIDE-14",
+   "sheet": "Guide & Rules",
+   "title": "'Worth Knowing' Rules: Rally Caps/Filters, Traveler's Tales, City Upgrade Bag & Baulur Timing",
+   "priority": "High",
+   "start": "00:46",
+   "status": "pending",
+   "seq": 45
+  },
+  {
+   "id": "TASK-12",
+   "sheet": "Feature Ideas",
+   "title": "Event Milestone Claimer",
+   "priority": "Low",
+   "start": "00:50",
+   "status": "pending",
+   "seq": 46
+  },
+  {
+   "id": "MOD-04",
+   "sheet": "Assistant Modal",
+   "title": "Inline Latest Screenshot Preview & Stream Status Indicator",
+   "priority": "Medium",
+   "start": "00:57",
+   "status": "pending",
+   "seq": 47
+  },
+  {
+   "id": "UX-04",
+   "sheet": "Full App UX",
+   "title": "Character/Account Switcher, 4 Summary KPIs & 'What the Bot Did' Cards",
+   "priority": "High",
+   "start": "00:57",
+   "status": "pending",
+   "seq": 48
+  },
+  {
+   "id": "TOOLS-04",
+   "sheet": "Menu & Free Tools",
+   "title": "Equipment Browser & Crafting Material Calculator",
+   "priority": "Medium",
+   "start": "00:57",
+   "status": "pending",
+   "seq": 49
+  },
+  {
+   "id": "GUIDE-15",
+   "sheet": "Guide & Rules",
+   "title": "Alliance & Kingdom Management Rules: Members, Mobilization Board, Rallies, Titles & City Finder",
+   "priority": "High",
+   "start": "00:59",
+   "status": "pending",
+   "seq": 50
+  },
+  {
+   "id": "TASK-13",
+   "sheet": "Feature Ideas",
+   "title": "Auto-Build Alliance Flags/Fortress",
+   "priority": "Medium",
+   "start": "01:06",
+   "status": "pending",
+   "seq": 51
+  },
+  {
+   "id": "GUIDE-16",
+   "sheet": "Guide & Rules",
+   "title": "'Settings Per Character' & Rotation Rules (General vs. Per-Character, Order & Switch Now)",
+   "priority": "Critical",
+   "start": "01:12",
+   "status": "pending",
+   "seq": 52
+  },
+  {
+   "id": "AI-03",
+   "sheet": "AI Assistant & Support",
+   "title": "Quick Support Channel Pills (Discord / WhatsApp / Support)",
+   "priority": "High",
+   "start": "01:16",
+   "status": "pending",
+   "seq": 53
+  },
+  {
+   "id": "TOOLS-04B",
+   "sheet": "Menu & Free Tools",
+   "title": "Equipment & Crafting Calculator: 2-Tab Switcher (Equipment / My Crafting List), Search, Slot & Quality Pills",
+   "priority": "High",
+   "start": "01:16",
+   "status": "pending",
+   "seq": 54
+  },
+  {
+   "id": "TASK-14",
+   "sheet": "Feature Ideas",
+   "title": "Overflow Resource Donation",
+   "priority": "Low",
+   "start": "01:21",
+   "status": "pending",
+   "seq": 55
+  },
+  {
+   "id": "GUIDE-17",
+   "sheet": "Guide & Rules",
+   "title": "'Profiles' System (Ready-Made & My Profiles up to 20) & Scheduler Profile Overrides",
+   "priority": "High",
+   "start": "01:25",
+   "status": "pending",
+   "seq": 56
+  },
+  {
+   "id": "TOOLS-04C",
+   "sheet": "Menu & Free Tools",
+   "title": "Equipment Cards (Icon, Set Name & Stat Bonus), Seasonal Note & 'How To Use It' (Steps 1-2)",
+   "priority": "Medium",
+   "start": "01:36",
+   "status": "pending",
+   "seq": 57
+  },
+  {
+   "id": "TASK-15",
+   "sheet": "Feature Ideas",
+   "title": "If-This-Then-That Rules Engine",
+   "priority": "High",
+   "start": "01:37",
+   "status": "pending",
+   "seq": 58
+  },
+  {
+   "id": "GUIDE-18",
+   "sheet": "Guide & Rules",
+   "title": "'Smart Scheduler' Annotated Guide (1-4), UTC Ranges, Random Offset & Rule Validation",
+   "priority": "Critical",
+   "start": "01:38",
+   "status": "pending",
+   "seq": 59
+  },
+  {
+   "id": "EARN-04",
+   "sheet": "Mkasbi Overhaul",
+   "title": "Apply Neo-Tactile Pill Buttons & Frosted Glassmorphism Cards to Mkasbi",
+   "priority": "High",
+   "start": "01:41",
+   "status": "pending",
+   "seq": 60
+  },
+  {
+   "id": "GUIDE-19",
+   "sheet": "Guide & Rules",
+   "title": "'Daily Gains' & 'Event Log' Annotated Guides (Filter Tabs, Grouping & Clear Screen)",
+   "priority": "Medium",
+   "start": "01:50",
+   "status": "pending",
+   "seq": 61
+  },
+  {
+   "id": "TASK-16",
+   "sheet": "Feature Ideas",
+   "title": "Performance & Yield Analytics",
+   "priority": "Medium",
+   "start": "01:52",
+   "status": "pending",
+   "seq": 62
+  },
+  {
+   "id": "MOD-05",
+   "sheet": "Assistant Modal",
+   "title": "Group Controls into 3 Logical Sections + Last 5 Commands Log",
+   "priority": "Medium",
+   "start": "01:56",
+   "status": "pending",
+   "seq": 63
+  },
+  {
+   "id": "UX-05",
+   "sheet": "Full App UX",
+   "title": "Fixed 5-Tab Mobile Bottom Nav Bar + Floating Assistant Trigger",
+   "priority": "Medium",
+   "start": "01:56",
+   "status": "pending",
+   "seq": 64
+  },
+  {
+   "id": "TOOLS-05",
+   "sheet": "Menu & Free Tools",
+   "title": "Commander Guide & Pairings Browser (Using Commander Assets)",
+   "priority": "High",
+   "start": "01:56",
+   "status": "pending",
+   "seq": 65
+  },
+  {
+   "id": "GUIDE-20",
+   "sheet": "Guide & Rules",
+   "title": "Installable PWA App ('Use It As An App') & Device Push Notifications (5 Alert Types)",
+   "priority": "High",
+   "start": "02:03",
+   "status": "pending",
+   "seq": 66
+  },
+  {
+   "id": "TASK-17",
+   "sheet": "Feature Ideas",
+   "title": "On-Demand Live Screenshot & Action",
+   "priority": "High",
+   "start": "02:08",
+   "status": "pending",
+   "seq": 67
+  },
+  {
+   "id": "TOOLS-06",
+   "sheet": "Menu & Free Tools",
+   "title": "Recurring Event Calendar (UTC Schedule & Resource Tips)",
+   "priority": "Medium",
+   "start": "02:15",
+   "status": "pending",
+   "seq": 68
+  },
+  {
+   "id": "GUIDE-21",
+   "sheet": "Guide & Rules",
+   "title": "'Good Habits' Section: Periodic Check-Ins, Start Small, Read Before Spend & Breaks",
+   "priority": "Medium",
+   "start": "02:16",
+   "status": "pending",
+   "seq": 69
+  },
+  {
+   "id": "TASK-18",
+   "sheet": "Feature Ideas",
+   "title": "Smart Webhook Alerts",
+   "priority": "High",
+   "start": "02:23",
+   "status": "pending",
+   "seq": 70
+  },
+  {
+   "id": "GUIDE-22",
+   "sheet": "Guide & Rules",
+   "title": "'Support' Ticket System Rules: Attachments, Lifecycle, Quotas & Chat Widget Scope",
+   "priority": "High",
+   "start": "02:29",
+   "status": "pending",
+   "seq": 71
+  },
+  {
+   "id": "TOOLS-07",
+   "sheet": "Menu & Free Tools",
+   "title": "Seasonal Crystal Tech Cost & Time Calculator",
+   "priority": "High",
+   "start": "02:35",
+   "status": "pending",
+   "seq": 72
+  },
+  {
+   "id": "TASK-19",
+   "sheet": "Feature Ideas",
+   "title": "Viewport & Device Profile Randomizer",
+   "priority": "Medium",
+   "start": "02:39",
+   "status": "pending",
+   "seq": 73
+  },
+  {
+   "id": "GUIDE-23",
+   "sheet": "Guide & Rules",
+   "title": "'Discord' Integration (/slots, /support, /ask, Invites, Contests, /suggest) & 'Your Review'",
+   "priority": "Medium",
+   "start": "02:42",
+   "status": "pending",
+   "seq": 74
+  },
+  {
+   "id": "MOD-06",
+   "sheet": "Assistant Modal",
+   "title": "Comprehensive Assistant Modal Overhaul (Combines MOD-01 through MOD-05)",
+   "priority": "Critical",
+   "start": "02:55",
+   "status": "pending",
+   "seq": 75
+  },
+  {
+   "id": "EARN-05",
+   "sheet": "Mkasbi Overhaul",
+   "title": "Complete Mkasbi Dashboard Overhaul (Combines EARN-01 through EARN-04)",
+   "priority": "Critical",
+   "start": "02:55",
+   "status": "pending",
+   "seq": 76
+  },
+  {
+   "id": "UX-06",
+   "sheet": "Full App UX",
+   "title": "Complete Live Status & Mobile App UX Overhaul (Combines UX-01 through UX-05)",
+   "priority": "Critical",
+   "start": "02:55",
+   "status": "pending",
+   "seq": 77
+  },
+  {
+   "id": "AI-04",
+   "sheet": "AI Assistant & Support",
+   "title": "Complete AI Assistant & Support Hub Build (Combines AI-01 through AI-03)",
+   "priority": "High",
+   "start": "02:55",
+   "status": "pending",
+   "seq": 78
+  },
+  {
+   "id": "GUIDE-24",
+   "sheet": "Guide & Rules",
+   "title": "'Questions (FAQ Accordion)' (13 Core FAQs) & 'Still Stuck? Open Support' Card",
+   "priority": "High",
+   "start": "02:55",
+   "status": "pending",
+   "seq": 79
+  },
+  {
+   "id": "TASK-20",
+   "sheet": "Feature Ideas",
+   "title": "Network Drop Auto-Resume",
+   "priority": "High",
+   "start": "02:55",
+   "status": "pending",
+   "seq": 80
+  },
+  {
+   "id": "TOOLS-08",
+   "sheet": "Menu & Free Tools",
+   "title": "Complete Header, Main Menu & 6 Free Tools Build (Combines TOOLS-00 through TOOLS-07)",
+   "priority": "High",
+   "start": "02:55",
+   "status": "pending",
+   "seq": 81
+  }
+ ]
+}
