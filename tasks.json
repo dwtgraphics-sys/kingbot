@@ -1,0 +1,11 @@
+{
+  "loop_minutes": 60,
+  "tasks": [
+    { "routine": "collect_city",   "times": 1, "enabled": true },
+    { "routine": "alliance_help",  "times": 1, "enabled": true },
+    { "routine": "gather",         "times": 4, "enabled": true },
+    { "routine": "train",          "times": 1, "enabled": true },
+    { "routine": "research",       "times": 1, "enabled": true },
+    { "routine": "rally_fort",     "enabled": true, "primary_commander": "", "secondary_commander": "" }
+  ]
+}

@@ -1,0 +1,206 @@
+{
+ "res_food": {
+  "width": 1396
+ },
+ "res_wood": {
+  "width": 1396
+ },
+ "res_stone": {
+  "width": 1396
+ },
+ "res_gold": {
+  "width": 1396
+ },
+ "alliance_help": {
+  "width": 1396
+ },
+ "icon_wood": {
+  "width": 1897
+ },
+ "city_build_icon": {
+  "width": 1897
+ },
+ "btn_search": {
+  "width": 1897
+ },
+ "map_search_icon": {
+  "width": 1897
+ },
+ "btn_new_troop": {
+  "width": 1897
+ },
+ "btn_march": {
+  "width": 1897
+ },
+ "icon_stone": {
+  "width": 1897
+ },
+ "icon_food": {
+  "width": 1897
+ },
+ "icon_gold": {
+  "width": 1897
+ },
+ "btn_gather": {
+  "width": 1897
+ },
+ "queue_full": {
+  "width": 1897
+ },
+ "gem_icon": {
+  "width": 1897
+ },
+ "gem_mine_core": {
+  "width": 1897
+ },
+ "btn_no": {
+  "width": 1897
+ },
+ "btn_confirm_word": {
+  "width": 1897
+ },
+ "notice_title": {
+  "width": 1897
+ },
+ "space_on_map": {
+  "width": 1897
+ },
+ "space_on_city": {
+  "width": 1897
+ },
+ "shield_8h": {
+  "width": 946
+ },
+ "shield_24h": {
+  "width": 946
+ },
+ "btn_use": {
+  "width": 946
+ },
+ "title_peace_shield": {
+  "width": 946
+ },
+ "btn_confirm_blue": {
+  "width": 946
+ },
+ "btn_territory_claim": {
+  "width": 946
+ },
+ "btn_info_hex": {
+  "width": 946
+ },
+ "btn_speedup_hex": {
+  "width": 946
+ },
+ "btn_train": {
+  "width": 1897
+ },
+ "btn_speedup_big": {
+  "width": 946
+ },
+ "btn_rally": {
+  "width": 946
+ },
+ "qin_face": {
+  "width": 946
+ },
+ "qin_army_icon": {
+  "width": 946
+ },
+ "archer_check_on": {
+  "width": 946
+ },
+ "btn_back": {
+  "width": 946
+ },
+ "txt_barb_fort": {
+  "width": 946
+ },
+ "btn_join_plus": {
+  "width": 946
+ },
+ "btn_x": {
+  "width": 946
+ },
+ "icon_war": {
+  "width": 946
+ },
+ "btn_tap_join": {
+  "width": 946
+ },
+ "btn_claim_green": {
+  "width": 946
+ },
+ "btn_claim_obj": {
+  "width": 946
+ },
+ "click_to_start": {
+  "width": 946
+ },
+ "officer_rec": {
+  "width": 946
+ },
+ "btn_donate_res": {
+  "width": 946
+ },
+ "btn_x2": {
+  "width": 946
+ },
+ "btn_attack_red": {
+  "width": 946
+ },
+ "hold_pos_off": {
+  "width": 946
+ },
+ "barb_tab_on": {
+  "width": 946
+ },
+ "chat_close": {
+  "width": 946
+ },
+ "vip_shop_title": {
+  "width": 946
+ },
+ "btn_vipshop_hex": {
+  "width": 946
+ },
+ "queue_title": {
+  "width": 946
+ },
+ "tavern_silver_title": {
+  "width": 946
+ },
+ "btn_confirm_cmd": {
+  "width": 946
+ },
+ "canyon_challenge": {
+  "width": 946
+ },
+ "canyon_skip_off": {
+  "width": 946
+ },
+ "canyon_ok": {
+  "width": 946
+ },
+ "canyon_list_title": {
+  "width": 946
+ },
+ "heal_title": {
+  "width": 946
+ },
+ "btn_heal_blue": {
+  "width": 946
+ },
+ "btn_upgrade_blue": {
+  "width": 946
+ },
+ "hex_upgrade": {
+  "width": 946
+ },
+ "hex_heal": {
+  "width": 946
+ },
+ "queue_btn": {
+  "width": 1031
+ }
+}

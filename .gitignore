@@ -1,0 +1,30 @@
+# secrets - never commit
+github_token.txt
+telegram*.txt
+telegram_owner.txt
+*.token
+# runtime state, logs and pictures from the server
+log.txt
+launcher.log
+failures.jsonl
+*.pid
+*_state*.json
+gems_day*.json
+persist_city.json
+profiles_by_char.json
+building_pos.json
+mat_scan_cd.json
+rotation_state.json
+stats_days.json
+gather_next.txt
+action_done.txt
+click_mode.txt
+launch_last_try.txt
+claude_cmd.json
+claude_done.json
+claude_out/
+stream_chrome/
+templates/
+__pycache__/
+*.bak*
+*.PNG

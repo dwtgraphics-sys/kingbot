@@ -1,0 +1,61 @@
+{
+ "version": 1,
+ "comment": "Kingbot UI registry - one entry per button/element. Lookup order: template picture -> OCR text -> relative to another element -> remembered position. Add an element here instead of writing code.",
+ "elements": {
+  "alliance_help_button": {
+   "template": "alliance_help2",
+   "multiscale": true,
+   "ocr_labels": ["help", "مساعدة", "المساعدة"],
+   "screen": "any",
+   "note": "handshake button (city HUD, above the bottom row); icon found at any scale"
+  },
+  "queue_button": {
+   "template": "queue_btn",
+   "threshold": 0.55,
+   "fallback": [0.0219, 0.1332],
+   "screen": "city",
+   "note": "three-line button under the age label; opens Queue Overview"
+  },
+  "info_button": {
+   "template": "btn_info_hex",
+   "screen": "building_panel",
+   "note": "the small (i) hexagon shown when a building is selected"
+  },
+  "train_button": {
+   "ocr_labels": ["train", "تدريب"],
+   "relative_to": "info_button",
+   "offset": [0.074, 0.0],
+   "screen": "building_panel",
+   "note": "the Train button of a selected military building; no readable text on this client"
+  },
+  "speedup_button": {
+   "template": "btn_speedup_hex",
+   "screen": "building_panel",
+   "note": "the speedup hexagon shown next to a building that is training"
+  },
+  "use_button": {
+   "template": "btn_use",
+   "screen": "speedup_panel",
+   "note": "USE inside the speedup window"
+  },
+  "claim_button": {
+   "template": "btn_claim_green",
+   "ocr_labels": ["claim", "استلام"],
+   "screen": "any"
+  },
+  "confirm_button": {
+   "template": "btn_confirm_cmd",
+   "ocr_labels": ["confirm", "تأكيد"],
+   "screen": "any"
+  },
+  "no_button": {
+   "template": "btn_no",
+   "screen": "gem_dialog",
+   "note": "the NO of a spend-gems window; never skipped"
+  },
+  "close_button": {
+   "template": "btn_x",
+   "screen": "any"
+  }
+ }
+}
