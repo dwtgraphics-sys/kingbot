@@ -227,6 +227,32 @@ def _balanced_kinds(kinds, target_ratios, n):
     return plan
 
 
+MARCH_CONTROL = {}      # TASK-06: dashboard march_control (set by bot.py every round)
+
+
+def _march_cap_reached(g, label):
+    """TASK-06: True when max_concurrent_marches armies are already out (0 / missing = no own limit)."""
+    try:
+        cap = int(MARCH_CONTROL.get("max_concurrent_marches") or 0)
+    except Exception:
+        cap = 0
+    if cap <= 0:
+        return False
+    n_out, _ = _marches_out(g)
+    if n_out is not None and n_out >= cap:
+        log(f"  {label}: {n_out} armies out - the dashboard limit is {cap} at the same time")
+        return True
+    return False
+
+
+def _search_deadline():
+    """TASK-06: seconds one map search / march-list read may take before it is abandoned (default 15)."""
+    try:
+        return max(5, min(120, int(MARCH_CONTROL.get("search_timeout_seconds") or 15)))
+    except Exception:
+        return 15
+
+
 def gather(g, sleep, max_armies=5, kinds=None, reserve=0, balanced_mode=False, target_ratios=None):
     """Map > search (F) > resource type > SEARCH > GATHER > New Troop > MARCH, for each free march slot.
     Resource types rotate food > wood > stone > gold.
@@ -253,7 +279,10 @@ def gather(g, sleep, max_armies=5, kinds=None, reserve=0, balanced_mode=False, t
             if n_out >= n_max - reserve:
                 log(f"  gather: {n_out}/{n_max} armies out - keeping {reserve} march slot(s) free as set in the dashboard")
                 break
+        if _march_cap_reached(g, "gather"):
+            break
         kind = plan.pop(0) if plan else _next_kind(kinds)
+        t_search = time.time()
         press_key("f"); sleep(3)
         if not _click_tpl(g, "icon_" + kind, sleep, 0.75):
             log("  ! gather: search panel did not open")
@@ -262,6 +291,11 @@ def gather(g, sleep, max_armies=5, kinds=None, reserve=0, balanced_mode=False, t
         if not _click_tpl(g, "btn_search", sleep, wait=4):
             log("  ! gather: SEARCH button not found")
             press_key("esc"); sleep(1)
+            break
+        if time.time() - t_search > _search_deadline():
+            log(f"  ! gather: the {kind} search took longer than {_search_deadline()} s - stopped, back to the city")
+            press_key("esc"); sleep(1)
+            recover_screen(g)
             break
         if not _click_tpl(g, "btn_gather", sleep, wait=3):
             log(f"  - gather: no free {kind} point found, trying the next type")
@@ -458,8 +492,14 @@ def gather_gems(g, sleep, max_armies=4, day_limit=1200, max_level=0, search_radi
         pyautogui.scroll(-5 * 120); sleep(2)
     sent, pans, tried = 0, 0, []
     steps = 0
+    t_start = time.time()
     while sent < int(max_armies) and pans <= pan_max and steps < 20:
         steps += 1
+        if _march_cap_reached(g, "gather_gems"):
+            break
+        if time.time() - t_start > _search_deadline() * (sent + 2) * 2:      # TASK-06: never hang on the map
+            log(f"  ! gather_gems: the gem search is taking too long - stopped, back to the city")
+            break
         if _queue_full(g):
             break
         if limit > 0 and _gems_collected_today() >= limit:

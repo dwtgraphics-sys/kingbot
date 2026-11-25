@@ -67,6 +67,25 @@ def rally_probe_watch():
             log(f"! join_rally watch failed: {e!r}")
 
 
+MARCH_GROUPS = {"rallies": ("rally_fort", "join_rally"), "gathering": ("gather_gems", "gather"),
+                "barbarians": ("attack_barbarians",)}
+
+
+def march_priority(tasks, mc):
+    """TASK-06: march tasks run in the dashboard order (march_control.priority_order, e.g. ["rallies", "gathering",
+    "barbarians"]); they keep the first places the march tasks had, every other task keeps its place."""
+    order = [x for x in (mc.get("priority_order") or []) if x in MARCH_GROUPS]
+    if not order:
+        return tasks
+    rank = {r: i for i, grp in enumerate(order) for r in MARCH_GROUPS[grp]}
+    slots = [i for i, t in enumerate(tasks) if t.get("routine") in rank]
+    moved = sorted((tasks[i] for i in slots), key=lambda t: rank[t["routine"]])
+    out = list(tasks)
+    for i, t in zip(slots, moved):
+        out[i] = t
+    return out
+
+
 PAUSE_LOGGED = [0]
 
 
@@ -1020,6 +1039,8 @@ def one_round(settings):
         if not any(t.get("routine") == extra for t in tasks):
             tasks.append({"routine": extra, "times": 1, "enabled": True})
     tasks = queue_tasks(tasks)                               # v197: one Queue Overview task
+    tasks = march_priority(tasks, settings.get("march_control") or {})   # TASK-06
+    smart.MARCH_CONTROL.clear(); smart.MARCH_CONTROL.update(settings.get("march_control") or {})
     qm_on = any(t.get("routine") == "queue_manager" and t.get("enabled", True) for t in tasks)
     for t in tasks:
         if not t.get("enabled", True):

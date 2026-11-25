@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZUFFnSz3KuxR7vQTip",
   "since": "2026-11-25T19:01:37+00:00",
-  "heartbeat": "2026-11-25T19:23:24+00:00"
+  "heartbeat": "2026-11-25T19:24:33+00:00"
  },
  "items": [
   {
@@ -273,9 +273,11 @@
    "title": "March Priority & Timeout",
    "priority": "High",
    "start": "23:17",
-   "status": "in_progress",
+   "status": "done",
    "seq": 24,
-   "started": "2026-11-25T19:23:24+00:00"
+   "started": "2026-11-25T19:23:24+00:00",
+   "finished": "2026-11-25T19:24:33+00:00",
+   "note": "settings.march_control: max_concurrent_marches (gather/gems), search_timeout_seconds (gather search + gem search abort -> back to city), priority_order reorders rally/gather/barbarian tasks; UI panel in tasks page; bot v212"
   },
   {
    "id": "TOOLS-02C",
