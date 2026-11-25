@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:35:16+04:00"
+  "heartbeat": "2026-11-26T00:36:14+04:00"
  },
  "items": [
   {
@@ -483,8 +483,10 @@
    "title": "Mysterious Merchant & Tavern Chests",
    "priority": "Medium",
    "start": "00:35",
-   "status": "in_progress",
-   "seq": 43
+   "status": "done",
+   "seq": 43,
+   "finished": "2026-11-25T20:36:14+00:00",
+   "note": "merchant routine v221 (needs owner: record 'merchant_icon' template once; optional 'merchant_free_refresh'); tavern existed (free only) + counters"
   },
   {
    "id": "TOOLS-03C",
