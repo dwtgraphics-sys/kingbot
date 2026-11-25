@@ -520,10 +520,24 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
 
 
 def send_scout(g, sleep, name):
-    """Scout row -> the game selects the scout camp -> Explore -> Explore (send). False when not possible."""
+    """Idle scout -> Scout Camp -> its glowing button (Explore) -> the window's Explore/Send button.
+    The Queue Overview rows of idle scouts do not move the camera (tested 25-11), so the camp is found by name."""
     import smart
-    if not tap_row(g, sleep, "scout", [norm(name)]):
+    from common import close_gem_dialogs
+    pt = smart.find_building(g, sleep, "scout_camp")
+    if not pt:
+        log("    ! scout: the Scout Camp was not found in this city")
+        smart.recover_screen(g)
         return False
+    g.click_rel(*pt); sleep(2)
+    spot = glowing_button(g)
+    if not spot:
+        log("    ! scout: no Explore button under the Scout Camp")
+        smart._save_failure(g, "scout_camp", note="no glowing button under the camp")
+        smart.recover_screen(g)
+        return False
+    g.click_rel(*spot); sleep(2.5)
+    sent = False
     for _ in range(2):
         img = g.screenshot()
         hit = None
@@ -535,12 +549,13 @@ def send_scout(g, sleep, name):
         if not hit:
             break
         g.click_rel(*hit); sleep(2.5)
-    smart._save_failure(g, "scout_after", note="after the scout Explore buttons")
-    from common import close_gem_dialogs
+        sent = True
     close_gem_dialogs(g)
+    if not sent:
+        smart._save_failure(g, "scout_after", note="no Explore / Send button found")
+    log(f"  scout: {name} " + ("sent to explore" if sent else "NOT sent (button not found)"))
     smart.recover_screen(g)
-    return True
-
+    return sent
 
 # ------------------------------------------------------------------ v201: the route the game itself offers
 # Tapping a row in the Queue Overview moves the camera to that building and selects it; the action the row is
@@ -630,13 +645,17 @@ TIER_DX = {1: -6, 2: 46, 3: 98, 4: 150, 5: 200}
 def train_unit(g, sleep, unit, tier=4):
     """Unit Training row (infantry / archer / cavalry / siege) -> Train -> tier -> TRAIN (never INSTANT)."""
     from common import close_gem_dialogs
-    if not press_row_action(g, sleep, "train", match=lambda r: unit_of(r["name"]) == unit):
-        log(f"    train: the {unit} row was not found")
-        return False
-    if not window_open(g, ("training", "train")):
-        log(f"    ! train: {unit}: the training window did not open (title '{window_title(g)[:40]}')")
-        import smart
+    import smart
+    for attempt in range(2):                 # the first tap after the camera moved is sometimes swallowed
+        if not press_row_action(g, sleep, "train", match=lambda r: unit_of(r["name"]) == unit):
+            log(f"    train: the {unit} row was not found")
+            return False
+        if window_open(g, ("training", "train")):
+            break
+        log(f"    ! train: {unit}: the training window did not open (title '{window_title(g)[:40]}')"
+            + (" - trying once more" if attempt == 0 else ""))
         smart.recover_screen(g)
+    else:
         return False
     try:
         tier = max(1, min(5, int(tier)))

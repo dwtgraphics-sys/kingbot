@@ -608,6 +608,7 @@ BUILDING_WORDS = {
     "alliance_center": ("alliance center", "مركز التحالف"),
     "city_hall": ("city hall", "قاعة المدينة"),
     "watchtower": ("watchtower", "برج المراقبة"),
+    "scout_camp": ("scout camp", "scouts camp", "معسكر الكشافة", "الكشافة"),
 }
 
 # v159: the game's command list names the TROOP being trained, not the building.
