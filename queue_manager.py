@@ -40,11 +40,11 @@ TROOP_UNITS = {
     "archer": ("crossbow", "bowman", "archer", "longbow", "chu-ko", "chukonu", "yumi", "camel", "hwacha", "slinger",
                "amazon"),
     "cavalry": ("knight", "cavalry", "horse", "lancer", "mamluk", "conquistador", "cataphract", "rider", "keshik",
-                "elephant", "bear", "teutonic"),
+                "elephant", "bear", "teutonic", "knig", "kmg", "kngt", "kight"),
     "siege": ("catapult", "trebuchet", "ballista", "siege", "mangonel", "battering"),
 }
 UNIT_BUILDING = {"infantry": "barracks", "archer": "archery", "cavalry": "stable", "siege": "siege"}
-DONE_WORDS = ("completed", "complete", "collect", "finished", "ready")
+DONE_WORDS = ("completed", "complete", "collect", "finished", "ready", "healed")
 LAST = {"qm": None}
 
 
@@ -99,7 +99,7 @@ def section_of(text):
     return None
 
 
-STATUS_RE = re.compile(r"\b(idle|[il1]?d[lti1]e|standing by|standing|training|healing|upgrading|researching|producing|exploring|returning|"
+STATUS_RE = re.compile(r"\b(idle|troop healed|healed|[il1]?d[lti1]e|standing by|standing|training|healing|upgrading|researching|producing|exploring|returning|"
                        r"next chance|donate|completed?|ready|collect|travels with|remaining|chances|capacity|"
                        r"producible)\b|\d{1,2}\s*[:.]\s*\d{2}\s*[:.]\s*\d{2}")
 
@@ -318,6 +318,9 @@ def scan(g, sleep, publish=True):
     if img is None:
         log("  ! queue_manager: the Queue Overview did not open")
         return None
+    for _ in range(3):                        # always read from the top (a scrolled panel hides Unit Training)
+        _scroll(g, sleep, up=True)
+    img = g.screenshot()
     h = img.shape[0]
     rows, section, expanded, prev_sig = [], None, set(), None
     dump = []
@@ -426,6 +429,9 @@ def tap_row(g, sleep, section, words=None, match=None, prefer_idle=False):
     img = open_panel(g, sleep)
     if img is None:
         return False
+    for _ in range(3):
+        _scroll(g, sleep, up=True)
+    img = g.screenshot()
     h = img.shape[0]
     cur = None
     for page in range(6):
@@ -475,7 +481,11 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
             if train_unit(g, sleep, r["unit"], tiers.get(r["unit"], 4)):
                 did.append("train " + r["unit"])
     h = qm["heal"]
-    if heal and h and (h.get("wounded") is None or h["wounded"] > 0) and h["state"] in ("idle", "done", "unknown"):
+    if heal and h and h["state"] == "done":               # "Troop Healed - Completed": tapping it collects them
+        if tap_row(g, sleep, "heal"):
+            did.append("healed troops collected")
+            smart.recover_screen(g)
+    elif heal and h and (h.get("wounded") is None or h["wounded"] > 0) and h["state"] in ("idle", "unknown"):
         if heal_now(g, sleep):
             did.append("heal")
     if build and qm["build"] and any(r["state"] in ("idle", "done") for r in qm["build"]):
@@ -595,6 +605,21 @@ def window_title(g, img=None):
     return " ".join(smart._ocr_lines(crop, "qm_title.png", scale=2.5)).lower()
 
 
+def window_open(g, words, img=None):
+    """A game window is open: its title has one of `words`, or (title unreadable) the city behind it is dimmed."""
+    import numpy as np
+    img = g.screenshot() if img is None else img
+    t = window_title(g, img)
+    if any(w_ in t for w_ in words):
+        return True
+    if t.strip():
+        return False
+    h, w = img.shape[:2]
+    corners = [img[int(.80 * h):int(.95 * h), int(.02 * w):int(.12 * w)], img[int(.80 * h):int(.95 * h), int(.88 * w):int(.98 * w)]]
+    dark = float(np.mean([c.mean() for c in corners]))
+    return dark < 45
+
+
 def close_window(g, sleep):
     g.click_rel(*rel(g, 231, -142)); sleep(1.5)
 
@@ -608,9 +633,8 @@ def train_unit(g, sleep, unit, tier=4):
     if not press_row_action(g, sleep, "train", match=lambda r: unit_of(r["name"]) == unit):
         log(f"    train: the {unit} row was not found")
         return False
-    t = window_title(g)
-    if "training" not in t and "train" not in t:
-        log(f"    ! train: {unit}: the training window did not open (title '{t[:40]}')")
+    if not window_open(g, ("training", "train")):
+        log(f"    ! train: {unit}: the training window did not open (title '{window_title(g)[:40]}')")
         import smart
         smart.recover_screen(g)
         return False
@@ -638,9 +662,8 @@ def heal_now(g, sleep):
     from common import close_gem_dialogs
     if not press_row_action(g, sleep, "heal"):
         return False
-    t = window_title(g)
-    if "heal" not in t:
-        log(f"    ! heal: the healing window did not open (title '{t[:40]}')")
+    if not window_open(g, ("heal",)):
+        log(f"    ! heal: the healing window did not open (title '{window_title(g)[:40]}')")
         import smart
         smart.recover_screen(g)
         return False
@@ -666,9 +689,8 @@ def produce_materials(g, sleep, kinds=("leather", "ore", "ebony", "bone"), slots
     kinds = [k for k in (kinds or ()) if k in MAT_DX] or list(MAT_DX)
     if not press_row_action(g, sleep, "materials"):
         return 0
-    t = window_title(g)
-    if "material" not in t and "production" not in t:
-        log(f"    ! materials: the production window did not open (title '{t[:40]}')")
+    if not window_open(g, ("material", "production")):
+        log(f"    ! materials: the production window did not open (title '{window_title(g)[:40]}')")
         import smart
         smart.recover_screen(g)
         return 0

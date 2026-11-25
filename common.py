@@ -488,8 +488,8 @@ def ensure_game_size(hwnd):
     every 10 minutes, and only when the screen is big enough."""
     try:
         x, y, w, h = client_rect(hwnd)
-        if abs(w - DESIGN_W) <= 8 and abs(h - DESIGN_H) <= 8:
-            return False
+        if abs(w - DESIGN_W) <= 8:            # the game keeps its own 16:9 shape - only the WIDTH matters:
+            return False                      # the game's windows are laid out by width (measured 25-11)
         if time.time() - _SIZE_TRY[0] < 600 or user32.IsIconic(hwnd):
             return False
         _SIZE_TRY[0] = time.time()
@@ -497,16 +497,16 @@ def ensure_game_size(hwnd):
         user32.GetWindowRect(hwnd, ctypes.byref(r))
         fw, fh = (r.right - r.left) - w, (r.bottom - r.top) - h       # frame + title bar
         sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
-        ww, wh = DESIGN_W + fw, DESIGN_H + fh
+        ww, wh = DESIGN_W + fw, int(round(DESIGN_W * h / max(1, w))) + fh
         if ww > sw or wh > sh:
-            log(f"  game size: the window is {w}x{h}, but the screen ({sw}x{sh}) is too small for {DESIGN_W}x{DESIGN_H}")
+            log(f"  game size: the window is {w}x{h}, the screen ({sw}x{sh}) is too small to change it")
             return False
         user32.ShowWindow(hwnd, 9)                                    # SW_RESTORE (not maximized)
         time.sleep(0.8)
         user32.SetWindowPos(hwnd, 0, max(0, (sw - ww) // 2), 0, ww, wh, 0x0004)   # NOZORDER
         time.sleep(2.0)
         x2, y2, w2, h2 = client_rect(hwnd)
-        log(f"  game size: {w}x{h} -> {w2}x{h2} (the size the bot was made for is {DESIGN_W}x{DESIGN_H})")
+        log(f"  game size: {w}x{h} -> {w2}x{h2} (the bot was made for a game {DESIGN_W} wide)")
         return True
     except Exception as e:
         log(f"  ! game size: {e!r}")
