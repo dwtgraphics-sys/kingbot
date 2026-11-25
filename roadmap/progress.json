@@ -5,7 +5,7 @@
  "lock": {
   "run": "session_01SrCVZU7UyYobcUb6Gdn8hn",
   "since": "2026-11-26T00:07:43+04:00",
-  "heartbeat": "2026-11-26T00:08:27+04:00"
+  "heartbeat": "2026-11-26T00:10:03+04:00"
  },
  "items": [
   {
@@ -307,8 +307,10 @@
    "title": "Task Commander Presets",
    "priority": "High",
    "start": "23:33",
-   "status": "in_progress",
-   "seq": 27
+   "status": "done",
+   "seq": 27,
+   "finished": "2026-11-25T20:10:03+00:00",
+   "note": "commander_presets in settings; UI picker panel in Tasks; bot applies in gather/barbarians/rallies (guardians used when TASK-10 lands)"
   },
   {
    "id": "AI-02",
