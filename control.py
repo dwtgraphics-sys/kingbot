@@ -57,6 +57,31 @@ def _raw_get(path):
         log(f"! GitHub read {path} error: {e}")
     return None
 
+_CPU_PREV = [None]
+
+def _sys_stats():
+    """v194: CPU % (since the previous status) and RAM % of this server, for the dashboard's server list."""
+    import ctypes
+    out = {}
+    try:
+        class MEM(ctypes.Structure):
+            _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong)] + \
+                       [(n, ctypes.c_ulonglong) for n in ("t", "a", "tp", "ap", "tv", "av", "ae")]
+        m = MEM(); m.dwLength = ctypes.sizeof(MEM)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+            out["ram"] = int(m.dwMemoryLoad)
+        FT = ctypes.c_ulonglong
+        idle, kern, user = FT(), FT(), FT()
+        if ctypes.windll.kernel32.GetSystemTimes(ctypes.byref(idle), ctypes.byref(kern), ctypes.byref(user)):
+            cur = (idle.value, kern.value + user.value)
+            prev = _CPU_PREV[0]
+            _CPU_PREV[0] = cur
+            if prev and cur[1] > prev[1]:
+                out["cpu"] = max(0, min(100, round(100 * (1 - (cur[0] - prev[0]) / (cur[1] - prev[1])))))
+    except Exception:
+        pass
+    return out
+
 def _write_live(data=None, info=None):
     """What the dashboard wants + what the bot does now, for stream_bot.py (local file, no API calls)."""
     try:
@@ -346,6 +371,7 @@ class Control:
         if CITY:
             info.setdefault("city", dict(CITY))
         info.setdefault("server_id", server_config.server_id())
+        info.setdefault("sys", _sys_stats())
         self.last = dict(info, version=local_version(), updated=_now())
         _write_live(None, info)
         st = load_json(STREAM_FILE, None) if os.path.isfile(STREAM_FILE) else None

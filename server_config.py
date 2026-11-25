@@ -21,7 +21,7 @@ LOCAL_ENV = os.path.join(BASE, ".env")
 CACHE = os.path.join(BASE, "servers_index_cache.json")
 OWNER, REPO = "dwtgraphics-sys", "kingbot-syn"
 DEFAULT_ID = "vps-01-main"
-REFRESH = 600            # seconds between reads of servers/index.json
+REFRESH = 120            # seconds between reads of servers/index.json (raw CDN, no API limit)
 
 # used when GitHub cannot be reached and nothing is cached yet
 BUILTIN = {
