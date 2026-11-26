@@ -984,6 +984,17 @@ def _do_action(g, req):
             up = ctl.upload_screen("bot: screenshot (" + do + ")")
             log(f"  {do}{' ' + str(req.get('target')) if do == 'safe_tap' else ''}: "
                 + ("done" if ok else "refused") + (", picture uploaded" if up else ", picture upload failed"))
+        elif do == "vision_scan":                                # v254: learn every picture visible on this screen
+            import common, glob
+            names = sorted({os.path.splitext(os.path.basename(f))[0] for d in (common.TEMPL_DIR, common.BUILTIN_DIR)
+                            for f in glob.glob(os.path.join(d, "*.png"))})
+            img = g.screenshot()
+            before = len(common._scale_table().get(f"{g.w}x{g.h}", {}))
+            for n in names:
+                common._WIDE_TRIED.pop((f"{g.w}x{g.h}", n), None)
+                g.find_image(n, 0.82, img=img)
+            after = len(common._scale_table().get(f"{g.w}x{g.h}", {}))
+            log(f"  vision_scan: {len(names)} pictures checked, {max(0, after - before)} learned on this screen")
         elif do == "test_alert":                                 # TASK-18: dashboard "Send test alert"
             ok = alerts.fire("test", "رسالة تجريبية من لوحة التحكم — التنبيهات تعمل", screenshot=True, wait=True)
             log("  test alert " + ("sent" if ok else "not sent"))

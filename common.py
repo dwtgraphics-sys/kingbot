@@ -711,6 +711,13 @@ class Game:
         meta[name] = {"width": self.w}
         save_json(os.path.join(TEMPL_DIR, "meta.json"), meta)
 
+    def _match_at(self, img, tpl0, sc):
+        tpl = tpl0 if abs(sc - 1) < 0.02 else cv2.resize(tpl0, None, fx=sc, fy=sc, interpolation=cv2.INTER_AREA if sc < 1 else cv2.INTER_LINEAR)
+        if tpl.shape[0] < 8 or tpl.shape[1] < 8 or tpl.shape[0] > img.shape[0] or tpl.shape[1] > img.shape[1]:
+            return None
+        res = cv2.matchTemplate(img, tpl, cv2.TM_CCOEFF_NORMED)
+        return (float(res.max()), res, tpl.shape[:2])
+
     def find_image(self, name, threshold=0.80, find_all=False, img=None):
         """Return list of (rx, ry) centres where the template matches.
         Looks in templates/ (your recordings) then builtin_templates/ (smart activities).
@@ -724,20 +731,43 @@ class Game:
         meta = load_json(os.path.join(folder, "meta.json"), {})
         base = self.w / meta.get(name, {}).get("width", self.w)
         img = self.screenshot() if img is None else img
+        # v254: scales learned for this window size (pictures recorded on the old 4:3 window are ~0.75 smaller now)
+        key = f"{self.w}x{self.h}"
+        learned = _scale_table().get(key, {})
+        scales = []
+        if name in learned:
+            scales.append(learned[name])
+        scales += [base * f for f in (1.0, 0.92, 1.08, 0.85, 1.17)]
+        med = _median_ratio(learned)
+        if med and name not in learned:
+            scales += [base * med, base * med * 0.95, base * med * 1.05]
         best = None
-        for f in (1.0, 0.92, 1.08, 0.85, 1.17):
-            sc = base * f
-            tpl = tpl0 if abs(sc - 1) < 0.02 else cv2.resize(tpl0, None, fx=sc, fy=sc, interpolation=cv2.INTER_AREA if sc < 1 else cv2.INTER_LINEAR)
-            if tpl.shape[0] < 8 or tpl.shape[0] > img.shape[0] or tpl.shape[1] > img.shape[1]:
+        seen = set()
+        for sc in scales:
+            if round(sc, 3) in seen:
                 continue
-            res = cv2.matchTemplate(img, tpl, cv2.TM_CCOEFF_NORMED)
-            mx = float(res.max())
-            if best is None or mx > best[0]:
-                best = (mx, res, tpl.shape[:2])
-            if mx >= 0.9:
+            seen.add(round(sc, 3))
+            r = self._match_at(img, tpl0, sc)
+            if r and (best is None or r[0] > best[0]):
+                best = r + (sc,)
+            if r and r[0] >= 0.9:
                 break
+        if (best is None or best[0] < threshold) and name not in learned \
+                and time.time() - _WIDE_TRIED.get((key, name), 0) > 600:
+            _WIDE_TRIED[(key, name)] = time.time()           # wide search at most every 10 min per picture
+            for i in range(16):
+                sc = base * (0.55 + 0.05 * i)
+                if round(sc, 3) in seen:
+                    continue
+                r = self._match_at(img, tpl0, sc)
+                if r and (best is None or r[0] > best[0]):
+                    best = r + (sc,)
+            if best and best[0] >= max(threshold, 0.82):
+                _learn_scale(key, name, best[3], base)
+                log(f"  vision: '{name}' learned at scale {best[3]:.2f} for {key} (score {best[0]:.2f})")
         if best is None or best[0] < threshold:
             return []
+        best = best[:3]
         _, res, (th, tw) = best
         hits = []
         if not find_all:
@@ -749,6 +779,35 @@ class Game:
                 if all(abs(x - hx) > tw // 2 or abs(y - hy) > th // 2 for hx, hy in hits):
                     hits.append((x, y))
         return [((x + tw / 2) / self.w, (y + th / 2) / self.h) for x, y in hits]
+
+
+_WIDE_TRIED = {}
+_SCALES = {"data": None, "t": 0.0}
+SCALE_FILE = os.path.join(BASE, "vision_scales.json")
+
+
+def _scale_table():
+    if _SCALES["data"] is None or time.time() - _SCALES["t"] > 300:
+        _SCALES["data"] = load_json(SCALE_FILE, {}) or {}
+        _SCALES["t"] = time.time()
+    return _SCALES["data"]
+
+
+def _median_ratio(learned):
+    r = sorted(v.get("ratio") for v in learned.get("_ratios", {}).values() if isinstance(v, dict) and v.get("ratio")) \
+        if isinstance(learned.get("_ratios"), dict) else []
+    return r[len(r) // 2] if len(r) >= 3 else None
+
+
+def _learn_scale(key, name, scale, base):
+    t = _scale_table()
+    d = t.setdefault(key, {})
+    d[name] = round(scale, 4)
+    d.setdefault("_ratios", {})[name] = {"ratio": round(scale / base, 4) if base else 1.0}
+    try:
+        save_json(SCALE_FILE, t)
+    except Exception:
+        pass
 
 
 def load_json(path, default):

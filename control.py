@@ -479,6 +479,8 @@ class Control:
             status.update(kb_guard.snapshot(info.get("state"), d.get("freeze_until"), d.get("running", True)))
             if DROPPED:
                 status["dropped_options"] = dict(DROPPED)
+            from common import _scale_table             # v254: pictures re-learned for the current window size
+            status["vision"] = {k: len([n for n in v if not n.startswith("_")]) for k, v in _scale_table().items()}
         except Exception:
             pass
         _gh_put_bytes(server_config.path("status"), json.dumps(_seal_json(status, PUBLIC_STATUS), ensure_ascii=False, indent=2).encode("utf-8"), "bot: status")
