@@ -889,6 +889,36 @@
    "status": "done",
    "seq": 81,
    "note": "verified: header (bell 9+, AR/EN), drawer (guide, support, referrals, account, free tools accordion, community links, sign out) and all 6 tools built (events + crystal finished 26-11)"
+  },
+  {
+   "id": "ADM-01",
+   "sheet": "Admin & Servers",
+   "title": "Admin Multi-Server Control Dashboard",
+   "priority": "High",
+   "start": "immediate",
+   "status": "done",
+   "seq": 82,
+   "note": "26-11: done on the owner's request (see the Execution Result column)"
+  },
+  {
+   "id": "ADM-02",
+   "sheet": "Admin & Servers",
+   "title": "Bot File Copy & Updatable Multi-Server Deployment",
+   "priority": "High",
+   "start": "immediate",
+   "status": "done",
+   "seq": 83,
+   "note": "26-11: done on the owner's request (see the Execution Result column)"
+  },
+  {
+   "id": "ADM-03",
+   "sheet": "Admin & Servers",
+   "title": "Logout of Game Action & Button",
+   "priority": "High",
+   "start": "immediate",
+   "status": "done",
+   "seq": 84,
+   "note": "26-11: done on the owner's request (see the Execution Result column)"
   }
  ]
 }
