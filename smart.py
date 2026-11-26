@@ -4557,6 +4557,19 @@ def _char_cards(img):
     return cards
 
 
+def _close_settings(g):
+    """v259: the Settings window X - at (0.880, 0.135) on the 946x532 window (0.226 was the old 4:3 place and
+    left the Settings/Characters page open)."""
+    try:
+        hits = [p for p in (g.find_image("btn_x", 0.75, find_all=True) or []) if p[0] > 0.8 and p[1] < 0.3]
+        if hits:
+            g.click_rel(*hits[0])
+            return
+    except Exception:
+        pass
+    g.click_rel(0.880, 0.135)
+
+
 SIGNED_OUT_FILE = os.path.join(BASE, "signed_out.json")
 
 
@@ -4607,7 +4620,7 @@ def sign_out(g, sleep, reason="dashboard"):
         hit = find(("sign out", "log out", "logout", "signout", "switch account"), img)
     if not hit:
         log("  ! sign_out: no Sign out / Switch account button on the Account page - nothing done")
-        g.click_rel(0.880, 0.226); sleep(1)
+        _close_settings(g); sleep(1)
         recover_screen(g)
         return "failed: button not found (pictures claude_out/signout_1_account.png, signout_1b_account.png)"
     log(f"  sign_out: pressing '{hit[2]}'")
@@ -4642,7 +4655,7 @@ def read_characters(g, sleep):
     try:
         return _read_characters(g, sleep)
     finally:
-        g.click_rel(0.880, 0.226); sleep(1)                  # never leave the characters page open
+        _close_settings(g); sleep(1)                  # never leave the characters page open
 
 
 def _read_characters(g, sleep):
@@ -4655,7 +4668,7 @@ def _read_characters(g, sleep):
     if cards:
         _persist_save()
     log(f"  read_characters: {len(cards)} character(s): " + ", ".join(f"{c['name']} ({c['kingdom']}){' *' if c['current'] else ''}" for c in cards))
-    g.click_rel(0.880, 0.226); sleep(2)                      # settings X
+    _close_settings(g); sleep(2)                      # settings X
     recover_screen(g)
     return True
 
@@ -4705,18 +4718,18 @@ def switch_character(g, sleep, name="", kingdom=""):
     if not want:
         log(f"  ! switch_character: '{name}' not found on the characters page (read: " + ", ".join(x["name"] for x in cards) + ")")
         _barb_shot(g, "chars_notfound.png")
-        g.click_rel(0.880, 0.226); sleep(2); recover_screen(g)
+        _close_settings(g); sleep(2); recover_screen(g)
         return "notfound"
     c = want[0]
     if c["current"]:
         log(f"  switch_character: {c['name']} is already the active character")
-        g.click_rel(0.880, 0.226); sleep(2); recover_screen(g)
+        _close_settings(g); sleep(2); recover_screen(g)
         return "already"
     g.click_rel(c["x"], c["y"]); sleep(3)
     _barb_shot(g, "chars_confirm.png")
     if not _click_yes(g, sleep):
         log("  ! switch_character: the YES button was not found - nothing switched")
-        g.click_rel(0.880, 0.226); sleep(2); recover_screen(g)
+        _close_settings(g); sleep(2); recover_screen(g)
         return "noyes"
     log(f"  switch_character: switching to {c['name']} ({c['kingdom']}) - the game reloads")
     sleep(40)
