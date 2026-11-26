@@ -20,6 +20,7 @@ START_VER = [0]
 RUN_NOW = [False]        # v150: the dashboard's "run now" button starts a round even while paused
 TASK_NOW = [0.0, ""]     # v154: (started at, task name) - a task that never ends is aborted
 TASK_LIMIT = 900         # v154: one activity may not run longer than 15 minutes
+TASK_LIMITS = {"queue_manager": 1800}    # v244: the queue manager does several jobs (train, build, donate x20 ...) in one task
 
 RESTART_CODE = 3  # 3_start_bot.bat restarts the bot when it exits with this code
 
@@ -527,8 +528,9 @@ def watchdog(limit=600):
             if n % 4 == 0:
                 game_hung_check()
             t0, tname = TASK_NOW[0], TASK_NOW[1]
-            if t0 and time.time() - t0 > TASK_LIMIT:
-                log(f"! task '{tname}' has been running for over {TASK_LIMIT // 60} minutes "
+            lim = TASK_LIMITS.get(str(tname or "").split(" ")[0], TASK_LIMIT)
+            if t0 and time.time() - t0 > lim:
+                log(f"! task '{tname}' has been running for over {lim // 60} minutes "
                     f"- aborting it and restarting the bot")
                 _status_then_exit(state="restarting", task=f"{tname} took too long")
             quiet = time.time() - LAST_ACTIVITY[0]
