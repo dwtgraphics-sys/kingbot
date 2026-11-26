@@ -1560,6 +1560,7 @@ def _today():
     return datetime.datetime.utcnow().strftime("%Y-%m-%d")
 
 
+NETDROP = [0, ""]             # TASK-20: time + text of a disconnect / maintenance dialog
 RELOGIN = [0]                 # GUIDE-13: time the "logged in on another device" dialog was seen
 CAPTCHA_SCAN = [0.0, 0.0]     # TASK-09: last template check, last OCR check
 
@@ -1598,6 +1599,10 @@ def captcha_visible(g, force=False):
         log(f"  relogin: 'another device' on screen {txt[:100]!r}")
         RELOGIN[0] = now                                     # GUIDE-13: handled by bot.relogin_wait
         return False
+    if _re.search(r"network|connection|reconnect|disconnect|maintenance|unable to connect|server is busy|time.?out", txt, _re.I):
+        log(f"  network: disconnect / maintenance dialog {txt[:100]!r}")
+        NETDROP[0], NETDROP[1] = now, txt[:160]             # TASK-20: handled by bot.netdrop_wait (backoff)
+        return False
     hits = _re.findall(r"verif\w*|captcha|human|robot|puzzle|slide to|security check", txt, _re.I)
     if len(set(x.lower()[:6] for x in hits)) >= 2 or _re.search(r"verification|captcha", txt, _re.I):
         log(f"  captcha: text on screen {txt[:120]!r}")
@@ -1615,6 +1620,13 @@ def notify(kind, text, d=None):
     if own:
         _stats_save(d)
     log(f"  NOTIFY [{kind}] {text}")
+    try:                                                    # TASK-18: critical events go out as smart alerts (with a picture)
+        import alerts
+        ev = {"attack": "on_attack", "captcha": "on_captcha"}.get(kind)
+        if ev and alerts.fire(ev, text):
+            return
+    except Exception:
+        pass
     try:
         import telegram_link
         telegram_link.notify(("🚨 " if kind == "attack" else "✉️ " if kind == "mail" else "📊 " if kind == "day" else "🔔 ") + text)

@@ -774,8 +774,9 @@
    "title": "Smart Webhook Alerts",
    "priority": "High",
    "start": "02:23",
-   "status": "pending",
-   "seq": 70
+   "status": "done",
+   "seq": 70,
+   "note": "v232: alerts.py (Telegram photo + optional Discord webhook from local_config), toggles in dashboard + Send Test Alert, shield-drop watch"
   },
   {
    "id": "GUIDE-22",
@@ -868,8 +869,9 @@
    "title": "Network Drop Auto-Resume",
    "priority": "High",
    "start": "02:55",
-   "status": "pending",
-   "seq": 80
+   "status": "done",
+   "seq": 80,
+   "note": "v232: disconnect/maintenance dialog detected by OCR -> backoff 30s/2m/5m/10m (x2 for maintenance), one Retry press, then game restart; alert on_server_offline"
   },
   {
    "id": "TOOLS-08",

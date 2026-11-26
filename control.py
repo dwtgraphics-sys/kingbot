@@ -56,7 +56,8 @@ ALLOWED_KEYS = {
     "march_control", "commander_presets", "smart_schedule", "events_hunter", "merchant_tavern",
     "relogin_cooldown_min", "conduct_min", "schedule_profiles",
     "automation_rules", "sched_ranges",         # TASK-15, GUIDE-18
-    "telegram_reset"                            # GUIDE-20
+    "telegram_reset",                           # GUIDE-20
+    "alerts"                                    # TASK-18
 }
 
 RESOURCES = {}

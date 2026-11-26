@@ -3,5 +3,6 @@
   "KB_PASSPHRASE": "",
   "STREAM_ID": "",
   "STREAM_PASSWORD": "",
-  "_note": "انسخ هذا الملف باسم local_config.json على السيرفر (لا يُرفع إلى GitHub). SERVER_ID: vps-01-main / vps-02-pilot / vps-03-farms. KB_PASSPHRASE: عبارة التشفير (10 أحرف على الأقل) - نفسها تُدخل في اللوحة. STREAM_ID/STREAM_PASSWORD: رابط VDO.Ninja الجديد (اتركها فارغة للقديم)."
+  "DISCORD_WEBHOOK": "",
+  "_note": "انسخ هذا الملف باسم local_config.json على السيرفر (لا يُرفع إلى GitHub). SERVER_ID: vps-01-main / vps-02-pilot / vps-03-farms. KB_PASSPHRASE: عبارة التشفير (10 أحرف على الأقل) - نفسها تُدخل في اللوحة. STREAM_ID/STREAM_PASSWORD: رابط VDO.Ninja الجديد (اتركها فارغة للقديم). DISCORD_WEBHOOK: رابط Webhook من قناة ديسكورد لتنبيهات البوت (اختياري، يبقى على السيرفر فقط)."
 }

@@ -6,7 +6,7 @@ Settings come from the Kingbot dashboard (through Google Drive) when available,
 otherwise from tasks.json.
 Stop the bot completely: hold F12, or move the mouse into any screen corner.
 """
-import os, sys, time, random, datetime
+import os, re, sys, time, random, datetime
 from common import *
 from updater import check_and_update, local_version
 from control import Control, in_schedule
@@ -14,6 +14,7 @@ import smart
 import claude_channel
 import queue_manager
 import automation
+import alerts
 smart.SMART["queue_manager"] = queue_manager.run
 START_VER = [0]
 RUN_NOW = [False]        # v150: the dashboard's "run now" button starts a round even while paused
@@ -242,6 +243,7 @@ def army_back():
 
 
 ctl = Control()
+alerts.SETTINGS[0] = lambda: (ctl.data or {}).get("alerts") or {}      # TASK-18
 
 
 def check_stop():
@@ -280,6 +282,10 @@ def captcha_watch(force=False):
     try:
         seen = smart.captcha_visible(g, force=force)
     except Exception:
+        return
+    alerts.shield_watch()                                    # TASK-18: shield ended -> one alert
+    if not seen and smart.NETDROP[0]:
+        netdrop_wait(g)                                      # TASK-20: network drop / maintenance
         return
     if not seen and smart.RELOGIN[0]:
         relogin_wait(g)                                      # GUIDE-13: logged in from another device
@@ -331,6 +337,84 @@ def captcha_watch(force=False):
             TASK_NOW[0] = time.time()
         CAPTCHA[0] = None
         control.CITY.pop("captcha", None)
+        CAPTCHA_BUSY[0] = False
+
+
+NET_BACKOFF = (30, 120, 300, 600)                            # TASK-20: 30 s -> 2 min -> 5 min -> 10 min
+NET_STATE = {"level": 0, "last": 0.0}
+
+
+def _net_dialog_button(g):
+    """Retry / Reconnect / Confirm / OK on the disconnect dialog -> (x, y) relative or None."""
+    try:
+        img = g.screenshot()
+        h, w = img.shape[:2]
+        y0 = int(0.45 * h)
+        for x1, y1, x2, y2, t in smart._ocr_boxes(img[y0:int(0.85 * h), int(0.2 * w):int(0.8 * w)], "net_btn.png", 1.6):
+            if re.search(r"^(retry|reconnect|confirm|ok|try again|re-?login)$", t.strip(), re.I):
+                return ((int(0.2 * w) + (x1 + x2) / 2) / w, (y0 + (y1 + y2) / 2) / h)
+    except Exception:
+        pass
+    return None
+
+
+def netdrop_wait(g):
+    """TASK-20: the game shows a disconnect / reconnecting / maintenance dialog. No rapid tapping: wait with an
+    exponential backoff (30 s, 2 min, 5 min, 10 min), then press Retry/Confirm once. Drops close together raise
+    the level; after the last level the game client is restarted. 30 quiet minutes reset the level."""
+    CAPTCHA_BUSY[0] = True
+    task_saved = list(TASK_NOW)
+    TASK_NOW[0] = 0
+    try:
+        now = time.time()
+        if now - NET_STATE["last"] > 30 * 60:
+            NET_STATE["level"] = 0
+        lvl = NET_STATE["level"]
+        NET_STATE["last"] = now
+        maint = "maintenance" in (smart.NETDROP[1] or "").lower()
+        wait = NET_BACKOFF[min(lvl, len(NET_BACKOFF) - 1)] * (2 if maint else 1)
+        log(f"! Network drop{' (maintenance)' if maint else ''} - waiting {wait} s before retrying (level {lvl + 1}/{len(NET_BACKOFF)})")
+        if lvl == 0:
+            try:
+                smart.notify("info", "انقطع اتصال اللعبة" + (" (صيانة)" if maint else "") + " — البوت ينتظر ثم يعيد المحاولة تلقائياً")
+            except Exception:
+                pass
+        CAPTCHA[0] = "network"                               # no clicks while waiting
+        end = time.time() + wait
+        while time.time() < end:
+            check_stop()
+            LAST_ACTIVITY[0] = time.time()
+            ctl.poll()
+            ctl.write_status(state="waiting", task=f"network drop - retry in {max(0, int(end - time.time()))} s")
+            _touch_pid()
+            time.sleep(min(15, max(1, end - time.time())))
+        CAPTCHA[0] = None
+        if lvl >= len(NET_BACKOFF) - 1:
+            log("  network: still down after every backoff step - restarting the game client")
+            alerts.fire("on_server_offline", "اللعبة بقيت بلا اتصال بعد كل محاولات الانتظار — البوت يعيد تشغيل اللعبة")
+            import subprocess, game_launcher
+            for exe in ("MASS.exe", "UnityCrashHandler64.exe"):
+                subprocess.run(["taskkill", "/f", "/im", exe], capture_output=True, timeout=30)
+            time.sleep(6)
+            try:
+                if os.path.exists(game_launcher.LAST_TRY_FILE):
+                    os.remove(game_launcher.LAST_TRY_FILE)
+            except Exception:
+                pass
+            game_launcher.ensure_game_running(sleep)
+            NET_STATE["level"] = 0
+            return
+        p = _net_dialog_button(g)
+        if p:
+            g.click_rel(*p)
+            log("  network: pressed the dialog's retry/confirm button once")
+        time.sleep(8)
+        NET_STATE["level"] = lvl + 1
+    finally:
+        smart.NETDROP[0] = 0
+        CAPTCHA[0] = None
+        if task_saved[0]:
+            TASK_NOW[0] = time.time()
         CAPTCHA_BUSY[0] = False
 
 
@@ -808,6 +892,9 @@ def _do_action(g, req):
             up = ctl.upload_screen("bot: screenshot (" + do + ")")
             log(f"  {do}{' ' + str(req.get('target')) if do == 'safe_tap' else ''}: "
                 + ("done" if ok else "refused") + (", picture uploaded" if up else ", picture upload failed"))
+        elif do == "test_alert":                                 # TASK-18: dashboard "Send test alert"
+            ok = alerts.fire("test", "رسالة تجريبية من لوحة التحكم — التنبيهات تعمل", screenshot=True, wait=True)
+            log("  test alert " + ("sent" if ok else "not sent"))
         elif do == "restart_game":                               # MOD-03: assistant quick server control
             ctl.write_status(state="working", task="restarting the game (from the dashboard)")
             log("  restarting the game client (dashboard request)")
