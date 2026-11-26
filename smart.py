@@ -5186,6 +5186,34 @@ def read_marches(g, sleep):
     recover_screen(g); sleep(1)
     if _queue_cards(g):
         _barb_close(g, sleep)
+    try:                                                     # v230: the in-game Troops list (all marches + timers)
+        import troops
+        lst = troops.read_troops(g, sleep)
+    except Exception as e:
+        lst = None
+        log(f"  ! troops list failed: {e!r}")
+        recover_screen(g)
+    if lst is not None:
+        n_act, mx = troops.COUNTER
+        for a in lst:
+            if not a.get("commanders"):
+                task = ("gathering_" + a["kind"]) if a.get("kind") in ("food", "wood", "stone", "gold") else \
+                       ("rallies" if a.get("mission") == "rally" else "barbarians" if a.get("mission") == "barbarians" else "")
+                c1, c2 = _preset(task) if task else ("", "")
+                if c1:
+                    a["commanders"] = [c for c in (c1, c2) if c]
+                    a["commanders_from"] = "preset"
+        at = _t.strftime("%Y-%m-%d %H:%M")
+        control.CITY["marches"] = lst
+        control.CITY["marches_at"] = at
+        import datetime as _dt
+        control.CITY["marches_read_utc"] = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        if mx:
+            control.CITY["marches_max"] = mx
+        control.CITY["deployed_marches_summary"] = {"active": n_act if n_act is not None else len(lst),
+                                                     "total": mx or control.CITY.get("marches_max") or 5, "last_read": at}
+        _persist_save()
+        return True
     if not goto_map(g, sleep, "read_marches"):
         return True
     img = g.screenshot(); h, w = img.shape[:2]
@@ -5318,7 +5346,7 @@ def read_marches(g, sleep):
 SMART["read_marches"] = read_marches
 
 # ---------------- v129: keep profile / characters / marches across restarts ----------------
-PERSIST_KEYS = ("profile", "characters", "characters_at", "marches", "marches_at", "commanders", "commanders_at", "ap", "shield")
+PERSIST_KEYS = ("profile", "characters", "characters_at", "marches", "marches_at", "marches_read_utc", "deployed_marches_summary", "commanders", "commanders_at", "ap", "shield")
 
 
 def _persist_save():
