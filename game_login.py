@@ -200,10 +200,18 @@ class LoginWin:
         time.sleep(0.8)
 
 
-def _ocr(img):
+def _ocr(img, strong=False):
+    """v270: strong=True reads light-grey placeholder text too (contrast stretch, bigger scale)."""
     import smart
     name = "login_ocr.png"
     try:
+        if strong:
+            import cv2
+            g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            g = cv2.normalize(g, None, 0, 255, cv2.NORM_MINMAX)
+            g = cv2.convertScaleAbs(g, alpha=1.8, beta=-160)          # light grey -> dark, white stays white
+            img = cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
+            return smart._ocr_boxes_uncached(img, name, 2.4)
         return smart._ocr_boxes_uncached(img, name, 1.6)
     finally:
         try:                                               # the picture can show the email / code: never keep it
@@ -238,16 +246,24 @@ def _type(text, clear_first=True):
     time.sleep(0.3)
 
 
+def _safe_texts(boxes):
+    return [b[4][:30] for b in boxes if "@" not in b[4]][:25]          # never the email
+
+
 def _look(win, words, exact=False, scrolls=(0, -3, 3, 3)):
-    """Find text, scrolling the window if it is below / above the visible part."""
+    """Find text, scrolling the window if it is below / above the visible part. Each view is read normally and,
+    if that misses, once more with strong contrast (placeholders are light grey)."""
     boxes = []
     for s in scrolls:
         if s:
             win.scroll(s)
-        boxes = _ocr(win.shot())
-        b = _find(boxes, words, exact)
-        if b:
-            return b, boxes
+        img = win.shot()
+        for strong in (False, True):
+            boxes = _ocr(img, strong)
+            b = _find(boxes, words, exact)
+            if b:
+                return b, boxes
+    log(f"  game login: '{words[0]}' not found; last texts: {_safe_texts(boxes)}")
     return None, boxes
 
 
