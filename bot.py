@@ -954,7 +954,7 @@ def login_wait():
             last = time.time()
             ctl.write_status(state="paused", task="بانتظار تسجيل الدخول في اللعبة من لوحة التحكم")
             try:                                             # v266: a fix for the login itself can arrive meanwhile
-                if check_and_update(log):
+                if check_and_update(log) or local_version() != START_VER[0]:
                     sys.exit(RESTART_CODE)
             except SystemExit:
                 raise
@@ -1129,7 +1129,7 @@ def _do_action(g, req):
         elif do in ("sign_out", "logout_game"):                   # v258 / ADM-03: dashboard button
             return logout_game(g, req.get("id"))
         elif do == "rollback":                                   # ADM-02: back to the previous version
-            import updater
+            import updater, control
             v = updater.rollback(req.get("version"), log)
             if not v:
                 return "failed: no older backup on this server"
@@ -1142,7 +1142,7 @@ def _do_action(g, req):
             updater.unpin()
             log("  updates released - the next check installs the newest version")
         elif do == "update_now":                                 # ADM-02: check GitHub now
-            import updater
+            import updater, control                              # v267: 'control' is local in this function
             if updater.check_and_update(log):
                 control.CITY["action_done"] = str(req.get("id", ""))
                 kb_guard.command("action", req.get("id"), "update_now", "done", "new version installed - restarting")
