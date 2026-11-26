@@ -2192,6 +2192,16 @@ def alliance_tech(g, sleep, max_donations=20):
         press_key("o"); sleep(3)
         g.click_rel(0.532, 0.645); sleep(3)                  # Technology
         rec = g.find_image("officer_rec", 0.8)
+    if not rec:                                          # v234: the ribbon by its text (templates were made at 4:3)
+        try:
+            img0 = g.screenshot(); h0, w0 = img0.shape[:2]
+            for x1, y1, x2, y2, t in _ocr_boxes(img0, "at_rec.png", 1.6):
+                if "recommend" in t.lower():
+                    rec = [((x1 + x2) / 2 / w0, (y2 / h0) + 0.02)]
+                    log("    alliance_tech: officer's recommendation found by text")
+                    break
+        except Exception:
+            pass
     if rec:
         g.click_rel(rec[0][0], rec[0][1] + 0.03); sleep(3)   # recommended skill card
     else:
@@ -2201,6 +2211,15 @@ def alliance_tech(g, sleep, max_donations=20):
         img = g.screenshot()
         b = g.find_image("btn_donate_res", 0.85, img=img)
         b = [p for p in b if p[0] > 0.6]
+        if not b:                                         # v234: blue DONATE by its text; the orange one (gems) is skipped
+            h, w = img.shape[:2]
+            for x1, y1, x2, y2, t in _ocr_boxes(img[int(0.45 * h):, int(0.45 * w):], "at_btn.png", 1.6):
+                if "donate" in t.lower():
+                    cx, cy = (int(0.45 * w) + (x1 + x2) / 2) / w, (int(0.45 * h) + (y1 + y2) / 2) / h
+                    px = img[min(h - 1, int(cy * h) + 6), int(cx * w)]
+                    if int(px[0]) > int(px[2]) + 60:          # blue button (resources)
+                        b = [(cx, cy)]
+                        break
         if not b:
             break
         h, w = img.shape[:2]
@@ -4128,7 +4147,8 @@ def build_upgrade(g, sleep, mode="smart", speedups=False, use_bag=False):
             x1, y1, x2, y2, _t = hits[-1]
             b = [((int(0.5 * w) + (x1 + x2) / 2) / w, (int(0.5 * h) + (y1 + y2) / 2) / h)]
     if not b:
-        log(f"  - build_upgrade: '{title}' cannot be upgraded now (requirements?)"); recover_screen(g); return True
+        log(f"  - build_upgrade: '{title}' cannot be upgraded now (requirements?)")
+        _save_failure(g, "build_window", note=f"no blue UPGRADE button in '{title}'"); recover_screen(g); return True
     g.click_rel(*b[0]); sleep(3)
     if close_gem_dialogs(g):
         log(f"  - build_upgrade: not enough resources for '{title}' (gem offer refused)"
