@@ -1021,6 +1021,12 @@ def find_element(g, name, img=None, threshold=None, allow_fallback=True):
         try:
             picture = img if img is not None else g.screenshot()
             hits = g.find_image(tpl, thr, img=picture)
+            reg = element.get("region")                  # v234: [x0, y0, x1, y1] relative - drop look-alikes elsewhere
+            if hits and reg:
+                bad = [p for p in hits if not (reg[0] <= p[0] <= reg[2] and reg[1] <= p[1] <= reg[3])]
+                hits = [p for p in hits if reg[0] <= p[0] <= reg[2] and reg[1] <= p[1] <= reg[3]]
+                if bad and not hits:
+                    log(f"  ui: {name} look-alike ignored at {bad[0][0]:.3f},{bad[0][1]:.3f} (outside its area)")
             if hits:
                 hits = sorted(hits, key=lambda p: (p[1], p[0]))
                 log(f"  ui: {name} found by picture at {hits[0][0]:.3f},{hits[0][1]:.3f}")
