@@ -5217,13 +5217,15 @@ def read_marches(g, sleep):
                     a["commanders_from"] = "preset"
         at = _t.strftime("%Y-%m-%d %H:%M")
         control.CITY["marches"] = lst
+        control.CITY["deployed_marches"] = lst                # the name the roadmap schema uses (same list)
         control.CITY["marches_at"] = at
         import datetime as _dt
         control.CITY["marches_read_utc"] = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         if mx:
             control.CITY["marches_max"] = mx
         control.CITY["deployed_marches_summary"] = {"active": n_act if n_act is not None else len(lst),
-                                                     "total": mx or control.CITY.get("marches_max") or 5, "last_read": at}
+                                                     "total": mx or control.CITY.get("marches_max") or 5, "last_read": at,
+                                                     "last_read_utc": control.CITY["marches_read_utc"]}
         _persist_save()
         return True
     if not goto_map(g, sleep, "read_marches"):
@@ -5345,8 +5347,10 @@ def read_marches(g, sleep):
                 a["commanders_from"] = "preset"
         out.append(a)
         recover_screen(g); sleep(1)
-    control.CITY["marches"] = out
+    control.CITY["marches"] = control.CITY["deployed_marches"] = out
     control.CITY["marches_at"] = _t.strftime("%Y-%m-%d %H:%M")
+    control.CITY["deployed_marches_summary"] = {"active": len(out), "total": mx or control.CITY.get("marches_max") or 5,
+                                                 "last_read": control.CITY["marches_at"], "source": "map"}
     if mx:
         control.CITY["marches_max"] = mx
     _persist_save()
@@ -5358,7 +5362,7 @@ def read_marches(g, sleep):
 SMART["read_marches"] = read_marches
 
 # ---------------- v129: keep profile / characters / marches across restarts ----------------
-PERSIST_KEYS = ("profile", "characters", "characters_at", "marches", "marches_at", "marches_read_utc", "deployed_marches_summary", "commanders", "commanders_at", "ap", "shield")
+PERSIST_KEYS = ("profile", "characters", "characters_at", "marches", "deployed_marches", "marches_at", "marches_read_utc", "deployed_marches_summary", "commanders", "commanders_at", "ap", "shield")
 
 
 def _persist_save():
