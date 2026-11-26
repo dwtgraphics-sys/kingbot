@@ -434,9 +434,21 @@ def tap_row(g, sleep, section, words=None, match=None, prefer_idle=False):
     img = g.screenshot()
     h = img.shape[0]
     cur = None
+    opened = False
     for page in range(6):
         lines = ocr_panel(img)
+        start = cur
         rows, cur, headers = parse_lines(lines, cur)
+        if not opened and not any(r["section"] == section for r in rows):   # v236: the section is folded - open it
+            for i, (sec, y) in enumerate(headers):
+                nxt = headers[i + 1][1] if i + 1 < len(headers) else None
+                if sec == section and ((nxt is None and y < 0.82 * h) or (nxt is not None and (nxt - y) < 0.075 * h)):
+                    opened = True
+                    g.click_rel(0.08, y / h); sleep(1.3)
+                    log(f"    queue_manager: opened the folded section '{section}' to tap its row")
+                    img = g.screenshot()
+                    rows, cur, headers = parse_lines(ocr_panel(img), start)
+                    break
         for r in rows:
             if r["section"] != section:
                 continue
