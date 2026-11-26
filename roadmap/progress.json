@@ -826,8 +826,9 @@
    "title": "Comprehensive Assistant Modal Overhaul (Combines MOD-01 through MOD-05)",
    "priority": "Critical",
    "start": "02:55",
-   "status": "pending",
-   "seq": 75
+   "status": "done",
+   "seq": 75,
+   "note": "verified: 3 groups (data sync / monitoring & stream / server controls), sending -> waiting -> updated states, last-5 commands strip"
   },
   {
    "id": "EARN-05",
@@ -835,8 +836,9 @@
    "title": "Complete Mkasbi Dashboard Overhaul (Combines EARN-01 through EARN-04)",
    "priority": "Critical",
    "start": "02:55",
-   "status": "pending",
-   "seq": 76
+   "status": "done",
+   "seq": 76,
+   "note": "verified EARN-01..04; 26-11: net-after-supply bar now follows the chosen range, copy-summary button added"
   },
   {
    "id": "UX-06",
@@ -844,8 +846,9 @@
    "title": "Complete Live Status & Mobile App UX Overhaul (Combines UX-01 through UX-05)",
    "priority": "Critical",
    "start": "02:55",
-   "status": "pending",
-   "seq": 77
+   "status": "done",
+   "seq": 77,
+   "note": "verified UX-01..05 in place; added the 14-day range on My gains (26-11). Floating assistant button left out on purpose: owner rule - the assistant opens from the menu"
   },
   {
    "id": "AI-04",
@@ -853,8 +856,9 @@
    "title": "Complete AI Assistant & Support Hub Build (Combines AI-01 through AI-03)",
    "priority": "High",
    "start": "02:55",
-   "status": "pending",
-   "seq": 78
+   "status": "done",
+   "seq": 78,
+   "note": "verified: header + greeting, quick chips, Discord/WhatsApp/Support pills from kingbot-syn config, input bar, accuracy disclaimer"
   },
   {
    "id": "GUIDE-24",
@@ -862,8 +866,9 @@
    "title": "'Questions (FAQ Accordion)' (13 Core FAQs) & 'Still Stuck? Open Support' Card",
    "priority": "High",
    "start": "02:55",
-   "status": "pending",
-   "seq": 79
+   "status": "done",
+   "seq": 79,
+   "note": "26-11: 13-question FAQ accordion (+ toggle) and Still stuck? card with Open Support at the bottom of the Guide"
   },
   {
    "id": "TASK-20",
@@ -881,8 +886,9 @@
    "title": "Complete Header, Main Menu & 6 Free Tools Build (Combines TOOLS-00 through TOOLS-07)",
    "priority": "High",
    "start": "02:55",
-   "status": "pending",
-   "seq": 81
+   "status": "done",
+   "seq": 81,
+   "note": "verified: header (bell 9+, AR/EN), drawer (guide, support, referrals, account, free tools accordion, community links, sign out) and all 6 tools built (events + crystal finished 26-11)"
   }
  ]
 }
