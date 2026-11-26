@@ -943,6 +943,7 @@ def login_wait():
     while game_login.find_login_window(15):
         check_stop()
         try:
+            session_watch()                                  # v269: keep the screen alive (Remote Desktop closed)
             ctl.poll()
             ctl.screenshot_if_asked()
             action_if_asked()
@@ -954,7 +955,7 @@ def login_wait():
             last = time.time()
             ctl.write_status(state="paused", task="بانتظار تسجيل الدخول في اللعبة من لوحة التحكم")
             try:                                             # v266: a fix for the login itself can arrive meanwhile
-                if check_and_update(log) or local_version() != START_VER[0]:
+                if local_version() != START_VER[0] or (int(time.time() // 60) % 5 == 0 and check_and_update(log)):
                     sys.exit(RESTART_CODE)
             except SystemExit:
                 raise
@@ -1016,6 +1017,10 @@ def action_if_asked():
     if do in ("game_login_email", "game_login_code"):        # v262 LOGIN-01: no game window needed, never log the data
         log(f"Dashboard action: {do}")
         kb_guard.command("action", req["id"], do, "running", "")
+        try:                                                 # v269: a disconnected Remote Desktop leaves no screen to read
+            session_watch(0)
+        except Exception:
+            pass
         res = game_login.handle(req)
         kb_guard.command("action", req["id"], do, "done" if res == "done" else "failed",
                          "" if res == "done" else res)
