@@ -81,6 +81,18 @@ def fraction(t, word):
         m = re.search(r"(\d[\d,.]*)\s*/\s*(\d[\d,.]*)", norm(t))
     if not m and word in ("producible", "chances"):  # small counters: "5,'5" / "20120" are "5/5" / "20/20"
         m = re.search(word + r"\D{0,4}(\d{1,2})\s*[,'’|]{1,3}\s*(\d{1,2})\b", norm(t))
+    if not m and word == "chances":             # v240: the slash read as nothing or "1": "1820" / "18120" = 18/20
+        m2 = re.search(r"chances\D{0,4}(\d{3,5})\b", norm(t))
+        if m2 and m2.group(1).endswith("20"):
+            a = m2.group(1)[:-2]
+            if len(a) > 1 and a.endswith("1") and int(a[:-1]) <= 20 and int(a) > 20:
+                a = a[:-1]
+            if a and int(a) <= 20:
+                return int(a), 20
+    if not m and word == "producible":          # "4,'S" = 4/5 (S read for 5)
+        m2 = re.search(r"producible\D{0,4}(\d)\s*[,'’|/]{1,3}\s*[s5]\b", norm(t))
+        if m2:
+            return int(m2.group(1)), 5
     if not m:
         return None
     a, b = (int(re.sub(r"\D", "", x) or 0) for x in m.groups())
