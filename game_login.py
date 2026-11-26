@@ -222,7 +222,9 @@ def send_email(email):
     STATE["email_hint"] = mask_email(email)
     set_stage("sending_code", "جاري كتابة البريد وطلب الكود")
     log(f"  game login: typing the email ({STATE['email_hint']}) and asking for a code")
-    tab, _ = _look(win, ("verification code login",), scrolls=(0, 5))
+    log(f"  game login: window {win.w}x{win.h} at {win.x},{win.y}")
+    tab, bx = _look(win, ("verification code login",), scrolls=(0, 5))
+    log(f"  game login: {len(bx)} texts read, tab {'found' if tab else 'not found'}")
     if tab:
         win.click_px(*_center(tab)); time.sleep(1.5)
     box, _ = _look(win, ("enter your email", "email address"))
@@ -231,10 +233,12 @@ def send_email(email):
         return "failed: email box not found"
     win.click_px(*_center(box)); time.sleep(0.5)
     _type(email)
+    log("  game login: email typed")
     get, boxes = _look(win, ("get code", "send code", "get verification"), scrolls=(0, -3, -3))
     if not get:
         set_stage("need_email", "لم أجد زر Get Code")
         return "failed: Get Code not found"
+    log("  game login: pressing Get Code")
     win.click_px(*_center(get)); time.sleep(4)
     boxes = _ocr(win.shot())
     err = _errors(boxes)
