@@ -17,11 +17,11 @@
    "template": "queue_btn",
    "threshold": 0.55,
    "fallback": [
-    0.0219,
-    0.1332
+    0.0215,
+    0.1775
    ],
    "screen": "city",
-   "note": "three-line button under the age label; opens Queue Overview",
+   "note": "three-line button under the age label; opens Queue Overview (v257: fallback measured on the 946x532 window; 0.133 hit the governor avatar)",
    "region": [
     0.0,
     0.08,
