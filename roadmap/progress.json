@@ -919,6 +919,160 @@
    "status": "done",
    "seq": 84,
    "note": "26-11: done on the owner's request (see the Execution Result column)"
+  },
+  {
+   "id": "WEB-01",
+   "sheet": "Website & Auth",
+   "title": "Public showcase website before login",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "85",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "WEB-02",
+   "sheet": "Website & Auth",
+   "title": "Customer / sign-up / staff auth portal",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "86",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "WEB-03",
+   "sheet": "Website & Auth",
+   "title": "Plan choice + payment verification gate",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "87",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "WEB-04",
+   "sheet": "Website & Auth",
+   "title": "Website + auth + payment gate end to end",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "88",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "WEB-05",
+   "sheet": "Website & Auth",
+   "title": "Remove unencrypted kingbot-syn warning",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "89",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "TOOLS-05G",
+   "sheet": "Menu & Free Tools",
+   "title": "Commander picker duplicates / monograms / red !",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "90",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "TOOLS-05H",
+   "sheet": "Menu & Free Tools",
+   "title": "Zero monograms + audit",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "91",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "TOOLS-05F",
+   "sheet": "Menu & Free Tools",
+   "title": "Moctezuma rarity note",
+   "priority": "",
+   "start": "immediate",
+   "status": "blocked",
+   "seq": "92",
+   "finished": "",
+   "note": "Needs owner confirmation of Moctezuma's rarity in the game before the note is removed."
+  },
+  {
+   "id": "PLAN-01",
+   "sheet": "Subscription Plans",
+   "title": "Plans schema & entitlements",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "93",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "PLAN-02",
+   "sheet": "Subscription Plans",
+   "title": "Solo routing",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "94",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "PLAN-03",
+   "sheet": "Subscription Plans",
+   "title": "Leader commands",
+   "priority": "",
+   "start": "immediate",
+   "status": "pending",
+   "seq": "95",
+   "finished": "",
+   "note": "Entitlement + UI done; the 8 leader automations need the owner's decision (GUIDE-15) and in-game recordings with an R4/R5 account."
+  },
+  {
+   "id": "PLAN-04",
+   "sheet": "Subscription Plans",
+   "title": "Bundle + Group",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "96",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "UX-03B",
+   "sheet": "Full App UX",
+   "title": "Troops popup + live march cards",
+   "priority": "",
+   "start": "immediate",
+   "status": "done",
+   "seq": "97",
+   "finished": "2026-11-26",
+   "note": "26-11: done (see roadmap v36 Execution Result)"
+  },
+  {
+   "id": "UX-07",
+   "sheet": "Full App UX",
+   "title": "Language audit",
+   "priority": "",
+   "start": "immediate",
+   "status": "pending",
+   "seq": "98",
+   "finished": "",
+   "note": "Core pages translated; Guide + free tools (~800 lines) remain."
   }
  ]
 }
