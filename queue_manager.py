@@ -333,8 +333,10 @@ def scan(g, sleep, publish=True):
         for i, (sec, y) in enumerate(headers):
             nxt = headers[i + 1][1] if i + 1 < len(headers) else None
             has_rows = any(r["section"] == sec for r in page_rows)
+            fold = header_folded(img, y)
             if sec in ("train", "heal", "build", "research", "donate", "materials", "scout") \
-                    and sec not in expanded and not has_rows and nxt is not None and (nxt - y) < 0.075 * h:
+                    and sec not in expanded and not has_rows and fold is not False \
+                    and (fold is True or (nxt is not None and (nxt - y) < 0.075 * h)):
                 folded = (sec, y)
                 break
         if folded:
@@ -423,6 +425,29 @@ def summary(qm):
     return ", ".join(parts) or "nothing readable"
 
 
+def header_folded(img, y):
+    """v237: a section header's chevron: '^' = open, 'v' = folded (measured on the live panel 26-11).
+    Returns True (folded), False (open) or None (not readable)."""
+    import cv2
+    import numpy as np
+    h, w = img.shape[:2]
+    k = w / 946.0
+    y = int(y)
+    c = img[max(0, y - int(8 * k)):y + int(8 * k), int(0.146 * w):int(0.171 * w)]
+    if c.size == 0:
+        return None
+    gr = cv2.cvtColor(c, cv2.COLOR_BGR2GRAY).astype(int)
+    ys, xs = np.nonzero(gr < gr.mean() - 25)
+    if len(ys) < 8:
+        return None
+    top = xs[ys <= ys.min() + 2]
+    bot = xs[ys >= ys.max() - 2]
+    t, b = top.max() - top.min(), bot.max() - bot.min()
+    if abs(t - b) < 3:
+        return None
+    return bool(t > b)
+
+
 def tap_row(g, sleep, section, words=None, match=None, prefer_idle=False):
     """Open the panel and tap the first row of `section` whose name contains one of `words`
     (scrolling when needed). The game then jumps to that building. True when tapped."""
@@ -442,7 +467,9 @@ def tap_row(g, sleep, section, words=None, match=None, prefer_idle=False):
         if not opened and not any(r["section"] == section for r in rows):   # v236: the section is folded - open it
             for i, (sec, y) in enumerate(headers):
                 nxt = headers[i + 1][1] if i + 1 < len(headers) else None
-                if sec == section and ((nxt is None and y < 0.82 * h) or (nxt is not None and (nxt - y) < 0.075 * h)):
+                fold = header_folded(img, y)
+                if sec == section and fold is not False and \
+                        (fold is True or (nxt is not None and (nxt - y) < 0.075 * h)):
                     opened = True
                     g.click_rel(0.08, y / h); sleep(1.3)
                     log(f"    queue_manager: opened the folded section '{section}' to tap its row")
