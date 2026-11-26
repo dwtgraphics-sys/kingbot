@@ -4595,11 +4595,21 @@ def sign_out(g, sleep, reason="dashboard"):
         return None
 
     hit = find(("sign out", "log out", "logout", "signout", "switch account"), img)
+    if not hit:                                           # v259: the Account/Characters page has an "Account" button first
+        acc = None
+        for x1, y1, x2, y2, t in _ocr_boxes(img, "signout_acc.png", 1.6):
+            if t.strip().lower() == "account" and (x1 + x2) / 2 > 0.24 * w and y1 < 0.45 * h:
+                acc = ((x1 + x2) / 2 / w, (y1 + y2) / 2 / h)
+                break
+        g.click_rel(*(acc or (0.358, 0.288))); sleep(3)   # measured 26-11 on the 946x532 window
+        img = g.screenshot()
+        _barb_shot(g, "signout_1b_account.png")
+        hit = find(("sign out", "log out", "logout", "signout", "switch account"), img)
     if not hit:
         log("  ! sign_out: no Sign out / Switch account button on the Account page - nothing done")
         g.click_rel(0.880, 0.226); sleep(1)
         recover_screen(g)
-        return "failed: button not found (picture claude_out/signout_1_account.png)"
+        return "failed: button not found (pictures claude_out/signout_1_account.png, signout_1b_account.png)"
     log(f"  sign_out: pressing '{hit[2]}'")
     g.click_rel(hit[0], hit[1]); sleep(3)
     img2 = g.screenshot()
