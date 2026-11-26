@@ -596,6 +596,16 @@ def _scout_camp_by_row(g, sleep):
         return None
     sleep(1.5)
     img = g.screenshot()
+    try:                                                    # v242: only when the game really shows the Scout Camp
+        import smart
+        hh, ww = img.shape[:2]
+        txt = " ".join(smart._ocr_lines(img[int(0.15 * hh):int(0.5 * hh), int(0.25 * ww):int(0.75 * ww)], "qm_scout_title.png", 1.8)).lower()
+    except Exception:
+        txt = ""
+    if "scout" not in txt:
+        log(f"    scout: the queue row did not show the Scout Camp ({txt[:50]!r})")
+        smart._save_failure(g, "scout_row", note="the row did not open the Scout Camp")
+        return None
     btns = hex_buttons(g, img)
     if len(btns) >= 2:
         return btns[-1]

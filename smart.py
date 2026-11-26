@@ -2192,6 +2192,21 @@ def alliance_tech(g, sleep, max_donations=20):
         press_key("o"); sleep(3)
         g.click_rel(0.532, 0.645); sleep(3)                  # Technology
         rec = g.find_image("officer_rec", 0.8)
+    if not rec:                                          # v242: the red "Officer's Recommendation" ribbon by colour
+        try:
+            import cv2
+            img0 = g.screenshot(); h0, w0 = img0.shape[:2]
+            hsv = cv2.cvtColor(img0, cv2.COLOR_BGR2HSV)
+            m = cv2.inRange(hsv, (0, 150, 140), (8, 255, 255)) | cv2.inRange(hsv, (172, 150, 140), (180, 255, 255))
+            m[:int(0.2 * h0)] = 0; m[int(0.85 * h0):] = 0; m[:, :int(0.22 * w0)] = 0; m[:, int(0.78 * w0):] = 0
+            n_, _l, st_, _c = cv2.connectedComponentsWithStats(m)
+            rib = [st_[i] for i in range(1, n_) if st_[i][2] > 0.05 * w0 and st_[i][2] > 4 * st_[i][3]]
+            if rib:
+                x_, y_, bw_, bh_, _a = max(rib, key=lambda r: r[2])
+                rec = [((x_ + bw_ / 2) / w0, (y_ + bh_) / h0 + 0.02)]
+                log("    alliance_tech: officer's recommendation found by its red ribbon")
+        except Exception:
+            pass
     if not rec:                                          # v234: the ribbon by its text (templates were made at 4:3)
         try:
             img0 = g.screenshot(); h0, w0 = img0.shape[:2]
