@@ -3,7 +3,8 @@
 Kingbot live stream helper (runs next to bot.py, started by it).
 
 It follows the dashboard switches the main bot already reads from GitHub:
-  running = true, not frozen, stream.enabled != false   -> OBS + the Chrome sender run
+  running = true, not frozen, stream.enabled != false, and (on_demand off or someone watching:
+  stream.watch_until in the future) -> OBS + the Chrome sender run
   paused / frozen / stream switched off / bot dead     -> both are stopped
 It makes NO GitHub calls of its own: the main bot writes live_state.json (what the dashboard wants,
 the current task) and copies stream_status.json (written here) into outbox/status.json -> "stream".
@@ -180,6 +181,14 @@ def wanted(live):
         return False, "switched off in the dashboard"
     if not live.get("running", True):
         return False, "the bot is paused"
+    st = live.get("stream") or {}
+    if st.get("on_demand") is not False:                 # v247: stream only while someone watches the dashboard
+        try:
+            wu = float(st.get("watch_until") or 0)
+        except Exception:
+            wu = 0
+        if wu < time.time():
+            return False, "no one is watching"
     fz = live.get("freeze_until")
     if fz:
         try:
