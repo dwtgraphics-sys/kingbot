@@ -754,8 +754,9 @@
    "title": "Recurring Event Calendar (UTC Schedule & Resource Tips)",
    "priority": "Medium",
    "start": "02:15",
-   "status": "pending",
-   "seq": 68
+   "status": "done",
+   "seq": 68,
+   "note": "kingbot-ui c971935: v-tool-events - 9 recurring events, category filter, tips, next start/countdown from the owner's own last start date + cycle (no universal schedule exists), localStorage"
   },
   {
    "id": "GUIDE-21",
@@ -794,8 +795,9 @@
    "title": "Seasonal Crystal Tech Cost & Time Calculator",
    "priority": "High",
    "start": "02:35",
-   "status": "pending",
-   "seq": 72
+   "status": "done",
+   "seq": 72,
+   "note": "kingbot-ui c971935: v-tool-crystal - level range, per-level crystal/time copied from the game (costs change per KvK version, so none built in), discount %, speed %, season points, saved plans with total"
   },
   {
    "id": "TASK-19",
