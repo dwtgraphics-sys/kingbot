@@ -3678,6 +3678,8 @@ QUEUE_ROWS_KEY = {"stable": "cavalry", "barracks": "infantry", "archery": "arche
 
 
 SCREEN_TEMPLATES = (
+    ("map", "hud_space_map", 0.80),       # v248: the Space button shows a castle on the map ...
+    ("city", "hud_space_city", 0.80),     # ... and a map pin in the city (the queue button is on BOTH screens)
     ("city", "queue_btn", 0.55),          # v188: the city HUD carries the queue button
     ("start", "click_to_start", 0.80),
     ("training_window", "btn_train", 0.80),
