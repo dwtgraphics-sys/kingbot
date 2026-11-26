@@ -739,9 +739,14 @@ def press_row_action(g, sleep, section, match=None, words=None):
     """Queue Overview row -> the building -> its glowing action button. True when a window opened."""
     if not tap_row(g, sleep, section, words=words, match=match):
         return False
-    sleep(1.0)
-    img = g.screenshot()
-    spot = glowing_button(g, img) or rel(g, 35, BTN_DY, img)
+    spot = None
+    for _w in range(4):                      # v246: wait for the slow camera; the glowing button appears when it stops
+        sleep(1.5)
+        img = g.screenshot()
+        spot = glowing_button(g, img)
+        if spot:
+            break
+    spot = spot or rel(g, 35, BTN_DY, img)
     g.click_rel(*spot)
     sleep(2.5)
     return True
