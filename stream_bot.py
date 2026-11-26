@@ -14,7 +14,8 @@ Video path: OBS (Window Capture of the game, virtual camera) -> minimized Chrome
 """
 import os, sys, json, time, subprocess, datetime
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+import kb_paths
+BASE = kb_paths.base_dir(__file__)   # SEC-04: writable runtime folder (exe dir when packaged)
 LIVE_FILE = os.path.join(BASE, "live_state.json")        # written by control.py (main bot)
 OUT_FILE = os.path.join(BASE, "stream_status.json")      # read by control.py -> status.json "stream"
 PID_FILE = os.path.join(BASE, "stream_bot.pid")
@@ -23,12 +24,40 @@ LOG_FILE = os.path.join(BASE, "log.txt")
 OBS_EXE = r"C:\Users\Administrator\obs-studio\bin\64bit\obs64.exe"
 CHROME_EXE = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 CHROME_PROFILE = os.path.join(BASE, "stream_chrome")
+def _stream_password():
+    """SEC-03: the stream password lives only in local_config.json on this server (never in the public repo).
+    The old built-in password was public, so a server without its own gets a new random one, saved once.
+    The dashboard keeps working: it opens the link the bot publishes in status.json -> stream.view_url."""
+    import secrets
+    try:
+        import server_config as _sc
+        pw = _sc.get("STREAM_PASSWORD")
+    except Exception:
+        _sc, pw = None, None
+    if pw:
+        return pw
+    pw = secrets.token_urlsafe(12)
+    try:
+        import kb_safeio, kb_secure
+        cfg = kb_safeio.safe_load_json(_sc.LOCAL_JSON, {}) if _sc else {}
+        if not isinstance(cfg, dict):
+            cfg = {}
+        cfg["STREAM_PASSWORD"] = pw
+        if _sc and kb_safeio.atomic_write_json(_sc.LOCAL_JSON, cfg):
+            kb_secure.harden_file(_sc.LOCAL_JSON)
+            _sc._local["data"] = None                     # re-read on the next get()
+        kb_secure.add_secret(pw)
+    except Exception:
+        pass
+    return pw
+
+
 try:                                                    # v196: from local_config.json when set (not on GitHub)
     import server_config as _sc
     STREAM_ID = _sc.get("STREAM_ID") or "kbb294c813b7"
-    STREAM_PW = _sc.get("STREAM_PASSWORD") or "ct1q-ZeP"
 except Exception:
-    STREAM_ID, STREAM_PW = "kbb294c813b7", "ct1q-ZeP"
+    STREAM_ID = "kbb294c813b7"
+STREAM_PW = _stream_password()
 VIEW_URL = f"https://vdo.ninja/?view={STREAM_ID}&password={STREAM_PW}&label=Kingbot"
 PUSH_URL = (f"https://vdo.ninja/?push={STREAM_ID}&webcam&videodevice=OBS&audiodevice=0&autostart"
             f"&password={STREAM_PW}&quality=1&label=Kingbot")
@@ -58,10 +87,9 @@ def load(path, default):
 
 
 def save(path, data):
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, path)
+    """SEC-02: unique temp + fsync + replace (the main bot reads this file at the same time)."""
+    import kb_safeio
+    kb_safeio.atomic_write_json(path, data, indent=1, make_backup=False, check=False)
 
 
 def pid_alive(pid):

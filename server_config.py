@@ -15,7 +15,8 @@ The main server is marked "legacy": it keeps control/control.json and outbox/ un
 """
 import os, json, time, base64, urllib.request
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+import kb_paths
+BASE = kb_paths.base_dir(__file__)   # SEC-04: writable runtime folder (exe dir when packaged)
 LOCAL_JSON = os.path.join(BASE, "local_config.json")
 LOCAL_ENV = os.path.join(BASE, ".env")
 CACHE = os.path.join(BASE, "servers_index_cache.json")
@@ -128,8 +129,9 @@ def index():
         return _index["data"]
     try:
         d = _fetch_index()
-        try:
-            json.dump(d, open(CACHE, "w", encoding="utf-8"), ensure_ascii=False)
+        try:                                             # SEC-02: atomic (a cut-off cache broke the fallback)
+            import kb_safeio
+            kb_safeio.atomic_write_json(CACHE, d, indent=None, make_backup=False, check=False)
         except Exception:
             pass
     except Exception as e:
@@ -139,8 +141,11 @@ def index():
         d = _index["data"]
         if d is None:
             try:
-                d = json.load(open(CACHE, encoding="utf-8"))
+                import kb_safeio
+                d = kb_safeio.safe_load_json(CACHE, None, required=("servers",), restore=False)
             except Exception:
+                d = None
+            if not isinstance(d, dict) or not isinstance(d.get("servers"), list):
                 d = {"servers": list(BUILTIN.values())}
     _index.update(data=d, at=time.time())
     return d

@@ -35,7 +35,8 @@ pyautogui.PAUSE = 0.05
 CAPTCHA = [None]               # TASK-09: id of the open verification (captcha) window; clicks are blocked
 CLICK_JITTER_PX = [0]          # TASK-19: always 0 - the owner wants exact clicks, never random offsets
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+import kb_paths
+BASE = kb_paths.base_dir(__file__)   # SEC-04: writable runtime folder (exe dir when packaged)
 ROUTINES_FILE = os.path.join(BASE, "routines.json")
 TASKS_FILE = os.path.join(BASE, "tasks.json")
 TEMPL_DIR = os.path.join(BASE, "templates")
@@ -61,9 +62,27 @@ for c in range(0x41, 0x5B):
 LOG_HOOKS = []   # functions called with each log message (e.g. Telegram notifications)
 LAST_ACTIVITY = [time.time()]   # updated on every log line and wait; read by the watchdog
 
+import kb_safeio, kb_health, kb_secure       # SEC-01/02/03 (plain Python, no side effects at import)
+kb_health.set_clock(lambda: LAST_ACTIVITY[0])
+
+
+def _clean_msg(msg):
+    """SEC-03: secrets never reach log.txt, Telegram or the dashboard. SEC-01: '! ...' lines are errors."""
+    try:
+        msg = kb_secure.redact(str(msg))
+    except Exception:
+        msg = str(msg)
+    if msg.lstrip().startswith("!"):
+        try:
+            kb_health.record_error(msg.lstrip(" !"))
+        except Exception:
+            pass
+    return msg
+
 
 def log_raw(msg):
     """v170: write a line without touching the progress clock (used by the watchdog itself)."""
+    msg = _clean_msg(msg)
     line = f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] {msg}"
     print(line, flush=True)
     for hook in LOG_HOOKS:
@@ -78,8 +97,12 @@ def log_raw(msg):
         pass
 
 
+kb_safeio.LOG[0] = log_raw
+
+
 def log(msg):
     LAST_ACTIVITY[0] = time.time()
+    msg = _clean_msg(msg)
     line = f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] {msg}"
     print(line, flush=True)
     for hook in LOG_HOOKS:
@@ -752,9 +775,9 @@ class Game:
 
 
 def load_json(path, default):
+    """SEC-02: missing -> default (as before); damaged/empty -> newest valid backup is restored (logged)."""
     try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
+        return kb_safeio.safe_load_json(path, default)
     except Exception:
         return default
 
@@ -766,22 +789,11 @@ def save_json(path, data):
     open(...,"w") then raised PermissionError and killed the character rotation. Writing to a
     temporary file and replacing it means a reader never sees half a file, and a retry rides
     over the short lock.
+    SEC-02: unique temp name per thread, fsync before the replace (survives a power cut), a schema
+    check for known files, and a rolling backup in backups/ that load_json restores from.
     """
-    text = json.dumps(data, ensure_ascii=False, indent=2)
-    tmp = path + ".tmp"
-    last = None
-    for attempt in range(5):
-        try:
-            with open(tmp, "w", encoding="utf-8") as f:
-                f.write(text)
-            os.replace(tmp, path)
-            return True
-        except OSError as e:                     # PermissionError / sharing violation
-            last = e
-            time.sleep(0.4 * (attempt + 1))
-            try:
-                os.remove(tmp)
-            except Exception:
-                pass
-    log(f"  ! could not save {os.path.basename(path)}: {last!r}")
-    return False
+    try:
+        return kb_safeio.atomic_write_json(path, data)
+    except Exception as e:
+        log(f"  ! could not save {os.path.basename(path)}: {e!r}")
+        return False

@@ -5,10 +5,14 @@ installed only when version.json there is higher AND the repository's checks (Gi
 Fallback: the shared Google Drive folder "RisBot_updates".
 Looks for files named Kingbot_vN.zip (or older RisBot_vN.zip) and installs the highest N if it is newer.
 Your recordings (routines.json, templates/), tasks.json and log.txt are never overwritten.
+SEC-02/03/04: every file is installed atomically, a path in the zip that would leave the Kingbot folder is
+refused, and runtime files (settings, state, logs, secrets, backups) are never replaced by an update.
 """
-import io, os, re, json, zipfile, urllib.request, urllib.error
+import io, os, re, json, fnmatch, zipfile, urllib.request, urllib.error
+import kb_safeio, kb_secure
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+import kb_paths
+BASE = kb_paths.base_dir(__file__)   # SEC-04: writable runtime folder (exe dir when packaged)
 FOLDER_ID = "1CS-oG5Zi7iXeHtYO2RbKHkUgctOMJbNe"
 LIST_URL = f"https://drive.google.com/embeddedfolderview?id={FOLDER_ID}"
 DL_URL = "https://drive.google.com/uc?export=download&id={}"
@@ -21,7 +25,38 @@ UA = {"User-Agent": "Mozilla/5.0 Kingbot"}
 GH_OWNER, GH_REPO, GH_BRANCH = "dwtgraphics-sys", "kingbot", "main"
 TOKEN_FILE = os.path.join(BASE, "github_token.txt")
 # repository files that must never land on the bot (docs, CI, the dashboard deployer is fine to update)
-GH_SKIP_PREFIX = (".github/", ".git", "README", "templates/")
+GH_SKIP_PREFIX = (".github/", ".git", "README", "templates/", "tests/")
+# SEC-04: runtime data that belongs to this server - an update may add these files, never replace them
+RUNTIME_PATTERNS = ("*_state*.json", "*.pid", "heartbeat.txt", "log.txt", "*.log", "failures.jsonl",
+                    "github_token.txt", "telegram*.txt", "*.token", "local_config.json", ".env",
+                    "persist_city.json", "stats_days.json", "profiles_by_char.json", "building_pos.json",
+                    "gems_day*.json", "mat_scan_cd.json", "live_state.json", "stream_status.json",
+                    "servers_index_cache.json", "claude_cmd.json", "claude_done.json",
+                    "backups/*", "templates/*", "claude_out/*", "stream_chrome/*", "backup_v*/*", "dist/*")
+
+
+def is_runtime(rel):
+    r = rel.replace("\\", "/")
+    return any(fnmatch.fnmatch(r, p) or fnmatch.fnmatch(os.path.basename(r), p) for p in RUNTIME_PATTERNS)
+
+
+def _install_file(rel, data, log):
+    """Write one update file inside BASE, atomically. False (and logged) for an unsafe path."""
+    try:
+        dest = kb_secure.safe_join(BASE, rel)
+    except kb_secure.UnsafePath as e:
+        log(f"! update file refused ({e}) - skipped")
+        return False
+    if rel in NEVER_OVERWRITE or (is_runtime(rel) and os.path.exists(dest)):
+        return False
+    if not kb_safeio.atomic_write_bytes(dest, data):
+        raise OSError(f"could not write {rel}")
+    return True
+
+
+def _write_version(ver):
+    if not kb_safeio.atomic_write_json(VERSION_FILE, {"version": int(ver)}, indent=None, make_backup=False):
+        raise OSError("could not write version.json")
 
 
 def _get(url):
@@ -80,11 +115,11 @@ def _merge_tasks(new_tasks_bytes):
     except Exception:
         return
     if not os.path.exists(path):
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(new, f, ensure_ascii=False, indent=2)
+        kb_safeio.atomic_write_json(path, new)
         return
-    with open(path, encoding="utf-8") as f:
-        cur = json.load(f)
+    cur = kb_safeio.safe_load_json(path, None)
+    if not isinstance(cur, dict):
+        return                                   # damaged and no backup: leave it, never replace user tasks
     have = {t.get("routine") for t in cur.get("tasks", [])}
     added = False
     for t in new.get("tasks", []):
@@ -93,8 +128,7 @@ def _merge_tasks(new_tasks_bytes):
             cur.setdefault("tasks", []).append(t)
             added = True
     if added:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(cur, f, ensure_ascii=False, indent=2)
+        kb_safeio.atomic_write_json(path, cur)
 
 
 def _gh_token():
@@ -156,6 +190,11 @@ def _install_github(ver, sha, log=print):
         rel = info.filename.split("/", 1)[1] if "/" in info.filename else info.filename
         if not rel or rel.startswith(GH_SKIP_PREFIX):
             continue
+        try:
+            kb_secure.safe_join(BASE, rel)
+        except kb_secure.UnsafePath as e:
+            log(f"GitHub v{ver}: unsafe path in the download ({e}) - NOT installed")
+            return False
         files[rel] = z.read(info)
     # never install code that does not even compile
     for rel, b in files.items():
@@ -180,14 +219,8 @@ def _install_github(ver, sha, log=print):
         if rel == "tasks.json":
             _merge_tasks(b)
             continue
-        if rel in NEVER_OVERWRITE:
-            continue
-        dest = os.path.join(BASE, rel)
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        with open(dest, "wb") as f:
-            f.write(b)
-    with open(VERSION_FILE, "w", encoding="utf-8") as f:
-        json.dump({"version": ver}, f)
+        _install_file(rel, b, log)
+    _write_version(ver)                                      # last: an interrupted install is retried
     log(f"Updated to v{ver} from GitHub ({sha[:7]}); previous files kept in backup_v{old}. Restarting ...")
     return True
 
@@ -242,14 +275,8 @@ def check_and_update(log=print):
             if rel == "tasks.json":
                 _merge_tasks(z.read(info))
                 continue
-            if rel in NEVER_OVERWRITE:
-                continue
-            dest = os.path.join(BASE, rel)
-            os.makedirs(os.path.dirname(dest), exist_ok=True)
-            with open(dest, "wb") as f:
-                f.write(z.read(info))
-        with open(VERSION_FILE, "w", encoding="utf-8") as f:
-            json.dump({"version": ver}, f)
+            _install_file(rel, z.read(info), log)
+        _write_version(ver)
         log(f"Updated to v{ver}. Restarting ...")
         return True
     except Exception as e:

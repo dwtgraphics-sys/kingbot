@@ -141,7 +141,7 @@ SMART = {"collect_city": collect_city, "alliance_help": alliance_help}
 
 # ---------------- gather: send armies to resource points on the map ----------------
 GATHER_KINDS = ["food", "wood", "stone", "gold"]
-GATHER_NEXT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gather_next.txt")
+GATHER_NEXT = os.path.join(BASE, "gather_next.txt")  # SEC-04: BASE follows the packaged exe folder
 
 
 def _next_kind(kinds=None):
@@ -483,7 +483,7 @@ def _gem_day(gems_now=None, sent_level=None):
     if sent_level:
         d["sends"] += 1
         d["est"] += GEM_PER_LEVEL.get(int(sent_level), 10 * int(sent_level))
-    json.dump(d, open(path, "w"))
+    save_json(path, d)                                       # SEC-02: atomic
     control.CITY["gem_sends"] = d["sends"]
     control.CITY["gems_est"] = d["est"]
     if d.get("start") is not None and d.get("last") is not None:
@@ -1602,7 +1602,7 @@ def _stats_save(d):
     for k in sorted(days)[:-30]:
         days.pop(k, None)
     d["notes"] = d.get("notes", [])[-60:]
-    json.dump(d, open(os.path.join(BASE, "stats_days.json"), "w", encoding="utf-8"), ensure_ascii=False)
+    save_json(os.path.join(BASE, "stats_days.json"), d)       # SEC-02: atomic + rolling backup
     control.CITY["history"] = [dict(day=k, **days[k]) for k in sorted(days)]
     try:                                                     # UX-04: per-character history (last 30 days, 12 characters)
         bc = d.get("by_char") or {}
@@ -3120,7 +3120,7 @@ def _bpos(kind=None, xy=None, fail=None):
     if fail is not None:
         ent[kind + "_fail2"] = fail       # v151: new key, old "_fail" cooldowns are ignored
     try:
-        json.dump(d, open(p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        save_json(p, d)                                      # SEC-02: atomic
     except Exception as e:
         log(f"    ! building_pos save failed: {e!r}")
 
@@ -5484,7 +5484,7 @@ def _persist_save():
     from common import BASE
     try:
         d = {k: control.CITY[k] for k in PERSIST_KEYS if k in control.CITY}
-        json.dump(d, open(os.path.join(BASE, "persist_city.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        save_json(os.path.join(BASE, "persist_city.json"), d)  # SEC-02: atomic + rolling backup
     except Exception as e:
         log(f"  ! persist save: {e!r}")
 

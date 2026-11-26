@@ -89,7 +89,8 @@ def check(sleep):
                 out.append(f"smart {a['smart']} done (see log.txt)")
             elif "shot" in a:
                 img = g.screenshot()
-                p = os.path.join(OUT, a["shot"] + ".png")
+                import kb_secure                         # SEC-03: the name cannot leave claude_out/
+                p = os.path.join(OUT, kb_secure.safe_name(a["shot"]) + ".png")
                 cv2.imwrite(p, img)
                 out.append(f"shot {a['shot']} {img.shape[1]}x{img.shape[0]}")
     except Exception as e:

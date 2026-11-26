@@ -14,6 +14,8 @@ jobs:
           python-version: "3.11"
       - name: Every Python file compiles
         run: python -m compileall -q -f .
+      - name: Security hardening tests (SEC-01..04)
+        run: python -m unittest discover -s tests -v
       - name: JSON files are valid and version.json has a number
         shell: python
         run: |

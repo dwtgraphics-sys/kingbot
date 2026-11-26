@@ -15,6 +15,7 @@ import claude_channel
 import queue_manager
 import automation
 import alerts
+import kb_health, kb_secure, kb_safeio     # SEC-01 / SEC-03 / SEC-02
 smart.SMART["queue_manager"] = queue_manager.run
 START_VER = [0]
 RUN_NOW = [False]        # v150: the dashboard's "run now" button starts a round even while paused
@@ -473,14 +474,51 @@ def sleep(sec):
         time.sleep(0.1)
 
 
-def _status_then_exit(**status):
-    """v193: tell the dashboard, then exit - but never wait more than 15 s for GitHub.
-    (14:02 on 25-11: write_status hung on the network, os._exit was never reached and the bot stayed dead.)"""
+def _publish_async(timeout=15, **status):
+    """Send a status from a helper thread; never wait more than `timeout` s for GitHub."""
     import threading
     t = threading.Thread(target=lambda: ctl.write_status(**status), daemon=True)
     t.start()
-    t.join(15)
+    t.join(timeout)
+
+
+def _status_then_exit(**status):
+    """v193: tell the dashboard, then exit - but never wait more than 15 s for GitHub.
+    (14:02 on 25-11: write_status hung on the network, os._exit was never reached and the bot stayed dead.)
+    SEC-01: the restart is recorded so recovery_delay() can cap restart loops."""
+    try:
+        kb_health.record_recovery("restart", status.get("task") or status.get("state") or "")
+        kb_health.set_state("recovering", status.get("task") or "")
+    except Exception:
+        pass
+    _publish_async(**status)
     os._exit(RESTART_CODE)
+
+
+RECOVERY_WAIT = {"restart": 0.0, "game": 0.0}     # SEC-01: a recovery postponed by the cap waits until this time
+
+
+def _recovery_gate(kind, what):
+    """SEC-01: True = do the recovery now. False = postponed (back-off / daily cap), announced once."""
+    now = time.time()
+    if RECOVERY_WAIT[kind] and now < RECOVERY_WAIT[kind]:
+        return False
+    wait, why = kb_health.recovery_delay(kind)
+    if wait <= 0:
+        RECOVERY_WAIT[kind] = 0.0
+        return True
+    RECOVERY_WAIT[kind] = now + wait
+    capped = why.startswith("daily cap")
+    kb_health.set_state("recovery_capped" if capped else "backoff", f"{what}: {why}")
+    log(f"! {what} postponed {wait // 60 + 1} min ({why}) - no restart loop; trying again after that")
+    try:
+        if capped and kb_health.notify_once(kind, "cap"):
+            smart.notify("warn", "Kingbot: وصل حد إعادة التشغيل التلقائي اليوم — يحاول مرة كل 30 دقيقة فقط. "
+                                 "راجع السيرفر إن تكرر ذلك.")
+    except Exception:
+        pass
+    _publish_async(state="stalled", task=f"{what} - {why}")
+    return False
 
 
 def watchdog(limit=600):
@@ -492,6 +530,7 @@ def watchdog(limit=600):
     """
     import threading
     warned = [0.0]
+    stalled_pub = [0.0]                       # SEC-01: last "stalled" status sent by this thread
 
     hung_since = [0.0]
 
@@ -504,8 +543,9 @@ def watchdog(limit=600):
                 if not hung_since[0]:
                     hung_since[0] = time.time()
                     log_raw("  ! the game window is not responding - waiting up to 3 minutes")
-                elif time.time() - hung_since[0] > 180:
+                elif time.time() - hung_since[0] > 180 and _recovery_gate("game", "game restart"):
                     log("! the game has been frozen for 3 minutes - closing it (it is started again)")
+                    kb_health.record_recovery("game", "window not responding for 3 minutes")
                     import subprocess
                     subprocess.run(["taskkill", "/IM", "MASS.exe", "/F"], capture_output=True, timeout=20,
                                    creationflags=0x08000000)
@@ -521,25 +561,38 @@ def watchdog(limit=600):
             time.sleep(15)
             n += 1
             try:                                  # v193: heartbeat for the external watchdog (watchdog.ps1)
-                with open(HEARTBEAT_FILE, "w") as f:
-                    f.write(f"{os.getpid()} {time.time():.0f}")
+                kb_safeio.atomic_write_text(HEARTBEAT_FILE, f"{os.getpid()} {time.time():.0f}", retries=2)
             except Exception:
                 pass
             if n % 4 == 0:
                 game_hung_check()
             t0, tname = TASK_NOW[0], TASK_NOW[1]
             lim = TASK_LIMITS.get(str(tname or "").split(" ")[0], TASK_LIMIT)
-            if t0 and time.time() - t0 > lim:
+            if t0 and time.time() - t0 > lim and _recovery_gate("restart", f"task '{tname}' too long"):
                 log(f"! task '{tname}' has been running for over {lim // 60} minutes "
                     f"- aborting it and restarting the bot")
                 _status_then_exit(state="restarting", task=f"{tname} took too long")
             quiet = time.time() - LAST_ACTIVITY[0]
+            # SEC-01: transient (a slow window, OCR, network) vs a real hang. Below 150 s nothing happens;
+            # 150 s .. limit = "stalled": warned and published from this thread (the main loop cannot);
+            # over the limit = hang -> restart, unless the back-off / daily cap says wait.
+            if quiet > 150:
+                step = kb_health._beat.get("step") or ""
+                kind = "network" if step.startswith("net:") else ("task" if tname else "loop")
+                if kb_health._state["process_state"] not in ("backoff", "recovery_capped"):
+                    kb_health.set_state("stalled", f"{kind}: {tname or step or 'main loop'}")
+                if time.time() - stalled_pub[0] > 120:
+                    stalled_pub[0] = time.time()
+                    _publish_async(state="stalled", task=f"no progress {quiet / 60:.0f} min ({kind}: {tname or step or 'main loop'})")
+            elif kb_health._state["process_state"] in ("stalled", "backoff", "recovery_capped"):
+                kb_health.set_state("running", "recovered without a restart")
+                log_raw("  the main loop is moving again - no restart needed")
             if quiet > 150 and time.time() - warned[0] > 300:
                 warned[0] = time.time()
                 log_raw(f"  ! no progress for {quiet / 60:.1f} minutes"
                         + (f" in task '{tname}'" if tname else "")
                         + f" - will restart after {limit // 60} minutes")
-            if quiet > limit:
+            if quiet > limit and _recovery_gate("restart", "stuck bot restart"):
                 log(f"! Kingbot was stuck for over {limit // 60} minutes"
                     + (f" in task '{tname}'" if tname else "") + ". Restarting ...")
                 _status_then_exit(state="restarting")
@@ -795,14 +848,14 @@ def action_if_asked():
         return
     if getattr(ctl, "action_done", None) is None:
         try:
-            ctl.action_done = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "action_done.txt")).read().strip()
+            ctl.action_done = open(os.path.join(BASE, "action_done.txt")).read().strip()
         except Exception:
             ctl.action_done = ""
     if str(req.get("id")) == str(ctl.action_done):
         return
     ctl.action_done = req["id"]
     try:
-        open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "action_done.txt"), "w").write(str(req["id"]))
+        kb_safeio.atomic_write_text(os.path.join(BASE, "action_done.txt"), str(req["id"]), retries=2)
     except Exception:
         pass
     g = get_game()
@@ -1466,6 +1519,7 @@ def one_round(settings):
             except Exception:
                 pass
             TASK_NOW[0], TASK_NOW[1] = time.time(), name
+            kb_health.beat(task=f"{name} {n + 1}/{times}", step=name)      # SEC-01
             ctl.write_status(state="working", task=f"{name} {n + 1}/{times}")
             try:
                 if name in routines:
@@ -1567,9 +1621,8 @@ PID_MAX_AGE = 180        # v168: a pid file older than this is stale, even if th
 
 
 def _touch_pid():
-    try:
-        with open(PID_FILE, "w") as f:
-            f.write(str(os.getpid()))
+    try:                    # SEC-02: atomic, so _single_instance() of a second start never reads an empty file
+        kb_safeio.atomic_write_text(PID_FILE, str(os.getpid()), retries=3)
     except Exception:
         pass
 
@@ -1683,6 +1736,28 @@ def smart_schedule_add(settings, seconds):
 def main():
     _single_instance()
     log(f"Kingbot v{local_version()} starting.")
+    kb_health.set_state("starting")
+    try:                                                       # SEC-04: dependencies, folders, file integrity
+        import kb_integrity
+        kb_integrity.startup_check(log)
+    except SystemExit:
+        raise
+    except Exception as e:
+        log(f"! startup check failed to run: {e!r}")
+    try:                                                       # SEC-03: secret files readable by this user only
+        kb_secure.harden_secret_files(log)
+        if not kb_secure.encryption_on():
+            log("Security: status and screenshots are sent to GitHub WITHOUT encryption (public repository). "
+                "Add KB_PASSPHRASE to local_config.json and the same phrase in the dashboard (🔐).")
+    except Exception as e:
+        log(f"! permission hardening skipped: {e!r}")
+    try:
+        c = kb_health.counts()
+        if c.get("restart"):
+            log(f"  automatic restarts today: {c['restart']} of {kb_health.cap('restart')} "
+                f"(game restarts {c.get('game', 0)} of {kb_health.cap('game')})")
+    except Exception:
+        pass
     try:
         smart.stat("restarts")                                 # TASK-16: restarts per day
     except Exception:
@@ -1706,6 +1781,7 @@ def main():
             "Close Kingbot and start 3_start_bot.bat with right-click > Run as administrator.")
     ctl.poll()
     watchdog()
+    kb_health.set_state("running")
     import telegram_link
     telegram_link.start(ctl, status_text)
     while True:

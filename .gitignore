@@ -34,3 +34,13 @@ local_config.json
 heartbeat.txt
 servers_index_cache.json
 live_state.json
+# SEC-02/03/04 (v251): rolling backups, temp/lock files, runtime state, build output
+backups/
+*.tmp
+*.lock
+perm_state.json
+recovery_state.json
+dist/
+build/
+*.spec.bak
+integrity.json

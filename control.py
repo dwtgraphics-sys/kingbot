@@ -12,9 +12,11 @@ from common import LOG_FILE, ROUTINES_FILE, load_json, log
 
 import server_config
 import kb_crypto
+import kb_health, kb_secure, kb_safeio
 
 # v196: encryption. On when C:\RisBot\local_config.json has "KB_PASSPHRASE" (never uploaded to GitHub).
-PUBLIC_STATUS = ("updated", "version", "state", "task", "server_id", "sys", "shot_request_done")
+# SEC-01: "health_pub" (no error text, no task names) stays readable so the server list can show health.
+PUBLIC_STATUS = ("updated", "version", "state", "task", "server_id", "sys", "shot_request_done", "health_pub")
 _ENC_WARN = {"at": 0.0}
 
 def enc_key():
@@ -75,7 +77,8 @@ def _get_token():
     return os.environ.get("KINGBOT_GH_TOKEN", "").strip()
 
 _BAD_TOKEN = {"at": 0.0, "logged": 0.0}
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+import kb_paths
+BASE_DIR = kb_paths.base_dir(__file__)   # SEC-04: writable runtime folder (exe dir when packaged)
 LIVE_FILE = os.path.join(BASE_DIR, "live_state.json")         # read by stream_bot.py
 STREAM_FILE = os.path.join(BASE_DIR, "stream_status.json")    # written by stream_bot.py
 
@@ -96,46 +99,36 @@ def _raw_get(path):
         log(f"! GitHub read {path} error: {e}")
     return None
 
-_CPU_PREV = [None]
-
-def _sys_stats():
-    """v194: CPU % (since the previous status) and RAM % of this server, for the dashboard's server list."""
-    import ctypes
+def _sys_stats(metrics=None):
+    """v194: CPU % (since the previous status) and RAM % of this server, for the dashboard's server list.
+    SEC-01: one sampler (kb_health) feeds both this short form and the full health block."""
+    m = metrics if metrics is not None else kb_health.sys_metrics()
     out = {}
-    try:
-        class MEM(ctypes.Structure):
-            _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong)] + \
-                       [(n, ctypes.c_ulonglong) for n in ("t", "a", "tp", "ap", "tv", "av", "ae")]
-        m = MEM(); m.dwLength = ctypes.sizeof(MEM)
-        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
-            out["ram"] = int(m.dwMemoryLoad)
-        FT = ctypes.c_ulonglong
-        idle, kern, user = FT(), FT(), FT()
-        if ctypes.windll.kernel32.GetSystemTimes(ctypes.byref(idle), ctypes.byref(kern), ctypes.byref(user)):
-            cur = (idle.value, kern.value + user.value)
-            prev = _CPU_PREV[0]
-            _CPU_PREV[0] = cur
-            if prev and cur[1] > prev[1]:
-                out["cpu"] = max(0, min(100, round(100 * (1 - (cur[0] - prev[0]) / (cur[1] - prev[1])))))
-    except Exception:
-        pass
+    if m.get("cpu_percent") is not None:
+        out["cpu"] = m["cpu_percent"]
+    if m.get("memory_percent") is not None:
+        out["ram"] = m["memory_percent"]
+    if m.get("disk_free_gb") is not None:
+        out["disk_free_gb"] = m["disk_free_gb"]
     return out
 
 def _write_live(data=None, info=None):
-    """What the dashboard wants + what the bot does now, for stream_bot.py (local file, no API calls)."""
-    try:
-        cur = load_json(LIVE_FILE, {}) if os.path.isfile(LIVE_FILE) else {}
+    """What the dashboard wants + what the bot does now, for stream_bot.py (local file, no API calls).
+    SEC-02: locked read-modify-write (main loop, watchdog and Telegram threads all call this)."""
+    import time as _t
+
+    def upd(cur):
+        if not isinstance(cur, dict):
+            cur = {}
         if data is not None:
             cur.update(running=bool(data.get("running", True)), freeze_until=data.get("freeze_until"),
                        stream=data.get("stream") if isinstance(data.get("stream"), dict) else {})
         if info:
             cur.update({k: info.get(k) for k in ("state", "task") if k in info})
-        import time as _t
         cur["ts"] = _t.time()
-        tmp = LIVE_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(cur, f, ensure_ascii=False)
-        os.replace(tmp, LIVE_FILE)
+        return cur
+    try:
+        kb_safeio.update_json(LIVE_FILE, upd, {}, indent=None, make_backup=False, check=False)
     except Exception:
         pass
 
@@ -181,15 +174,24 @@ def _gh_request(path, method="GET", payload=None):
         return None
 
 def _gh_put_bytes(path, raw_bytes, message):
-    existing = _gh_request(path, "GET")
-    sha = existing.get("sha") if isinstance(existing, dict) else None
-    body = {
-        "message": message,
-        "content": base64.b64encode(raw_bytes).decode("ascii")
-    }
-    if sha:
-        body["sha"] = sha
-    return _gh_request(path, "PUT", body) is not None
+    """SEC-02: the dashboard and the bot write the same files; when the other side wrote first GitHub
+    answers 409 (stale sha). Read the new sha and try once more instead of losing the write."""
+    import time as _t
+    for attempt in range(2):
+        existing = _gh_request(path, "GET")
+        sha = existing.get("sha") if isinstance(existing, dict) else None
+        body = {
+            "message": message,
+            "content": base64.b64encode(raw_bytes).decode("ascii")
+        }
+        if sha:
+            body["sha"] = sha
+        if _gh_request(path, "PUT", body) is not None:
+            return True
+        if not _get_token() or _t.time() - _BAD_TOKEN["at"] < 600:
+            return False                                 # no usable token: a retry cannot help
+        _t.sleep(1.5)
+    return False
 
 def _smart_names():
     try:
@@ -423,7 +425,13 @@ class Control:
         if CITY:
             info.setdefault("city", dict(CITY))
         info.setdefault("server_id", server_config.server_id())
-        info.setdefault("sys", _sys_stats())
+        metrics = kb_health.sys_metrics()                          # SEC-01: sampled once per status
+        info.setdefault("sys", _sys_stats(metrics))
+        if info.get("state"):
+            kb_health.set_state(info["state"], info.get("task") or "")
+        health = kb_health.snapshot(metrics)
+        info.setdefault("health", health)
+        info.setdefault("health_pub", kb_health.public(health))
         self.last = dict(info, version=local_version(), updated=_now())
         _write_live(None, info)
         st = load_json(STREAM_FILE, None) if os.path.isfile(STREAM_FILE) else None
@@ -442,7 +450,9 @@ class Control:
             "recorded": sorted(set(load_json(ROUTINES_FILE, {}).keys()) | set(_smart_names())),
             "settings_file": "control.json",
             "shot_request_done": self.shot_done,
-            "log": [l.rstrip("\n") for l in tail],
+            "log": [kb_secure.redact(l.rstrip("\n")) for l in tail],    # SEC-03: also lines written before v251
         }
         status.update(info)
+        kb_health.beat(step="net: status upload")
         _gh_put_bytes(server_config.path("status"), json.dumps(_seal_json(status, PUBLIC_STATUS), ensure_ascii=False, indent=2).encode("utf-8"), "bot: status")
+        kb_health.beat(step=info.get("task") or info.get("state") or "")
