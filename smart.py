@@ -1665,6 +1665,12 @@ def captcha_visible(g, force=False):
     if not force and now - CAPTCHA_SCAN[0] < 10:
         return False
     CAPTCHA_SCAN[0] = now
+    try:                                                     # v263: the game's Log In window says "verification code"
+        import game_login                                    # - it is a login (LOGIN-01), not a captcha
+        if game_login.find_login_window():
+            return False
+    except Exception:
+        pass
     try:
         img = g.screenshot()
     except Exception:

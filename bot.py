@@ -349,6 +349,9 @@ def captcha_watch(force=False):
                 last = time.time()
                 ctl.write_status(state="captcha_required", task="verification window - waiting for the owner")
                 _touch_pid()
+            if game_login.find_login_window():               # v263: it was the game's Log In window, not a captcha
+                log("  captcha: it is the game's Log In window - switching to the login wait")
+                break
             if str((ctl.data or {}).get("captcha_resume") or "") == cid:
                 if smart.captcha_visible(g, force=True):
                     if not control.CITY["captcha"].get("still"):
