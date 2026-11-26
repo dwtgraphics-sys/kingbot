@@ -34,3 +34,5 @@ local_config.json
 heartbeat.txt
 servers_index_cache.json
 live_state.json
+vision_scales.json
+migrate/
