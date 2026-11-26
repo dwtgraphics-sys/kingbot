@@ -3878,12 +3878,19 @@ def ensure_screen(g, sleep, target, tries=3):
     screen = what_screen(g)
     if screen == target:
         return screen
-    if target == "city" and screen == "map":
-        log("  screen: map -> city (SPACE)")
-        press_key("space"); sleep(5)
-        screen = what_screen(g)
-        if screen == "city":
-            return screen
+    if (target, screen) in (("city", "map"), ("map", "city")):   # v240: SPACE switches city <-> map both ways
+        for attempt in range(2):
+            log(f"  screen: {screen} -> {target} (SPACE)")
+            try:
+                g.focus()
+            except Exception:
+                pass
+            press_key("space"); sleep(5)
+            screen = what_screen(g)
+            if screen == target:
+                return screen
+            if screen not in ("city", "map"):
+                break
     for _ in range(tries):
         log(f"  screen: {screen} -> wanted {target}, recovering")
         try:
