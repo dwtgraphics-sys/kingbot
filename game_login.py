@@ -107,13 +107,67 @@ def find_login_window(max_age=20):
     return _CACHE["hwnd"]
 
 
+def _candidates():
+    """Every visible window that could hold the Log In form: windows of limpcbrowserex.exe and non-Unity windows
+    titled 'Rise of Kingdoms' (v265: the biggest limpcbrowserex window was a 946x532 host, not the form)."""
+    out = []
+    Enum = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+
+    def cb(hwnd, _):
+        if not user32.IsWindowVisible(hwnd) or user32.IsIconic(hwnd):
+            return True
+        r = wintypes.RECT()
+        user32.GetWindowRect(hwnd, ctypes.byref(r))
+        if r.right - r.left < 250 or r.bottom - r.top < 200:
+            return True
+        n = user32.GetWindowTextLengthW(hwnd)
+        buf = ctypes.create_unicode_buffer(n + 1)
+        user32.GetWindowTextW(hwnd, buf, n + 1)
+        cls = common.window_class(hwnd)
+        if _exe_of(hwnd) == LOGIN_PROC or ("rise of kingdoms" in buf.value.lower() and cls != "UnityWndClass"):
+            out.append(hwnd)
+        return True
+
+    user32.EnumWindows(Enum(cb), 0)
+    return out
+
+
+LOGIN_WORDS = ("log in", "verification code", "enter your email", "get code", "guest login")
+
+
 class LoginWin:
+    """The area the Log In form is drawn in. Each candidate window is read by OCR and the one that shows the
+    form wins; if none does, the whole screen is used (clicks are then in screen pixels)."""
     def __init__(self, hwnd):
         self.hwnd = hwnd
-        self.refresh()
+        self.full = False
+        best = None
+        for h in [hwnd] + [c for c in _candidates() if c != hwnd]:
+            self.hwnd = h
+            self.refresh()
+            try:
+                txt = " ".join(b[4].lower() for b in _ocr(self.shot()))
+            except Exception:
+                txt = ""
+            hits = sum(w in txt for w in LOGIN_WORDS)
+            log(f"  game login: window {self.w}x{self.h} at {self.x},{self.y} - {hits} login words")
+            if hits and (best is None or hits > best[0]):
+                best = (hits, h)
+        if best:
+            self.hwnd = best[1]
+            self.refresh()
+        else:
+            self.full = True
+            self.hwnd = hwnd
+            self.refresh()
+            log(f"  game login: the form was not found in a window - reading the whole screen {self.w}x{self.h}")
 
     def refresh(self):
-        self.x, self.y, self.w, self.h = client_rect(self.hwnd)
+        if getattr(self, "full", False):
+            self.x, self.y = user32.GetSystemMetrics(76), user32.GetSystemMetrics(77)
+            self.w, self.h = user32.GetSystemMetrics(78), user32.GetSystemMetrics(79)
+        else:
+            self.x, self.y, self.w, self.h = client_rect(self.hwnd)
 
     def to_screen(self, rx, ry):
         sx = int(round(self.x + rx * self.w))
@@ -121,7 +175,8 @@ class LoginWin:
         return min(self.x + self.w - 1, max(self.x, sx)), min(self.y + self.h - 1, max(self.y, sy))
 
     def front(self):
-        activate(self.hwnd)
+        if not self.full:
+            activate(self.hwnd)
         time.sleep(0.4)
         self.refresh()
 
@@ -222,7 +277,6 @@ def send_email(email):
     STATE["email_hint"] = mask_email(email)
     set_stage("sending_code", "جاري كتابة البريد وطلب الكود")
     log(f"  game login: typing the email ({STATE['email_hint']}) and asking for a code")
-    log(f"  game login: window {win.w}x{win.h} at {win.x},{win.y}")
     tab, bx = _look(win, ("verification code login",), scrolls=(0, 5))
     log(f"  game login: {len(bx)} texts read, tab {'found' if tab else 'not found'}")
     if tab:
@@ -296,7 +350,7 @@ def send_code(code, agree=False):
         img = win.shot()
         boxes = _ocr(img)
         agr = _find(boxes, ("have read and agreed", "user agreement")) or agr
-        px, py = agr[0] - 0.034 * win.w, _center(agr)[1]           # the circle sits left of the sentence
+        px, py = agr[0] - 1.4 * (agr[3] - agr[1]), _center(agr)[1]           # the circle sits left of the sentence
         if not _circle_ticked(img, px, py):
             win.click_px(px, py); time.sleep(0.8)
             if not _circle_ticked(win.shot(), px, py):
