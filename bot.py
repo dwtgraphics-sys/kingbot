@@ -743,6 +743,30 @@ def action_if_asked():
         pass
 
 
+# TASK-17: the dashboard may only press these. There is no free (X, Y) tap: a free tap could hit
+# gems / INSTANT / purchase buttons or the Settings page, which the owner's rules forbid.
+SAFE_TAPS = ("back", "close_popups", "gem_no", "city_map")
+
+
+def safe_tap(g, target):
+    from common import close_gem_dialogs, recover_screen, press_key
+    if target not in SAFE_TAPS:
+        log(f"  ! safe_tap: '{target}' is not on the safe list - nothing pressed")
+        return False
+    g.focus()
+    if target == "gem_no":
+        close_gem_dialogs(g)                 # presses NO only
+    elif target == "back":
+        press_key("esc")                     # refused by press_key when nothing is open (ESC = quit dialog)
+    elif target == "close_popups":
+        recover_screen(g)                    # NO on gem windows, BACK arrow, ESC - back to the plain view
+    elif target == "city_map":
+        press_key("space")                   # refused by press_key when a panel is open
+    sleep(1)
+    close_gem_dialogs(g)
+    return True
+
+
 def _do_action(g, req):
     """v142: one dashboard / assistant action."""
     do = req.get("do")
@@ -778,6 +802,12 @@ def _do_action(g, req):
             params = inspect.signature(queue_manager.run).parameters
             ctl.write_status(state="working", task="queue manager")
             queue_manager.run(g, sleep, **{k: v for k, v in t.items() if k in params and k not in ("g", "sleep")})
+        elif do in ("capture_screen", "safe_tap"):               # TASK-17: live screenshot + safe button list only
+            ok = safe_tap(g, req.get("target")) if do == "safe_tap" else True
+            sleep(2)
+            up = ctl.upload_screen("bot: screenshot (" + do + ")")
+            log(f"  {do}{' ' + str(req.get('target')) if do == 'safe_tap' else ''}: "
+                + ("done" if ok else "refused") + (", picture uploaded" if up else ", picture upload failed"))
         elif do == "restart_game":                               # MOD-03: assistant quick server control
             ctl.write_status(state="working", task="restarting the game (from the dashboard)")
             log("  restarting the game client (dashboard request)")
