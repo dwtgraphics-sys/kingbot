@@ -33,7 +33,7 @@ from PIL import ImageGrab
 pyautogui.FAILSAFE = True      # move mouse to a screen corner = emergency stop
 pyautogui.PAUSE = 0.05
 CAPTCHA = [None]               # TASK-09: id of the open verification (captcha) window; clicks are blocked
-CLICK_JITTER_PX = [0]          # TASK-08: set by bot.py from smart_schedule (0 = exact clicks)
+CLICK_JITTER_PX = [0]          # TASK-19: always 0 - the owner wants exact clicks, never random offsets
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROUTINES_FILE = os.path.join(BASE, "routines.json")
@@ -544,7 +544,10 @@ class Game:
 
     # relative (0..1) <-> screen pixels
     def to_screen(self, rx, ry):
-        return int(self.x + rx * self.w), int(self.y + ry * self.h)
+        # TASK-19: round to the nearest pixel (int() always dropped up to 1 px) and stay inside the game area
+        sx = int(round(self.x + rx * self.w))
+        sy = int(round(self.y + ry * self.h))
+        return min(self.x + self.w - 1, max(self.x, sx)), min(self.y + self.h - 1, max(self.y, sy))
 
     def to_rel(self, sx, sy):
         return (sx - self.x) / self.w, (sy - self.y) / self.h
@@ -560,10 +563,12 @@ class Game:
             time.sleep(0.1)
         if CAPTCHA[0]:                                        # TASK-09: a verification window is up - never click
             return False
-        if CLICK_JITTER_PX[0] > 0 and self.w and self.h:      # TASK-08: human-like +/- px click jitter
-            j = CLICK_JITTER_PX[0]
-            rx = min(0.999, max(0.001, rx + random.uniform(-j, j) / self.w))
-            ry = min(0.999, max(0.001, ry + random.uniform(-j, j) / self.h))
+        try:                                                  # TASK-19: exact clicks - read the game area again so a
+            x, y, w, h = client_rect(self.hwnd)               # moved / resized window never shifts the click
+            if w > 100 and h > 100:
+                self.x, self.y, self.w, self.h = x, y, w, h
+        except Exception:
+            pass
         mode = click_mode()
         if mode == "interception":
             r = self._click_interception(rx, ry)
@@ -585,11 +590,14 @@ class Game:
         if ic is None:
             return self._click_absolute(rx, ry)
         sx, sy = self.to_screen(rx, ry)
-        ic.move_to(sx, sy)
-        time.sleep(0.12)
         pt = wintypes.POINT()
-        user32.GetCursorPos(ctypes.byref(pt))
-        if abs(pt.x - sx) > 4 or abs(pt.y - sy) > 4:
+        for _ in range(2):                                    # TASK-19: move again once if it ended off target
+            ic.move_to(sx, sy)
+            time.sleep(0.12)
+            user32.GetCursorPos(ctypes.byref(pt))
+            if abs(pt.x - sx) <= 2 and abs(pt.y - sy) <= 2:
+                break
+        if abs(pt.x - sx) > 2 or abs(pt.y - sy) > 2:
             log(f"  ! interception move ended at {pt.x},{pt.y} instead of {sx},{sy}; click skipped")
             return False
         ic.mouse_down("left")
@@ -603,15 +611,15 @@ class Game:
         sx, sy = self.to_screen(rx, ry)
         vx, vy = user32.GetSystemMetrics(76), user32.GetSystemMetrics(77)
         vw, vh = max(user32.GetSystemMetrics(78), 2), max(user32.GetSystemMetrics(79), 2)
-        ax = int((sx - vx) * 65535 / (vw - 1))
-        ay = int((sy - vy) * 65535 / (vh - 1))
+        ax = int(round((sx - vx) * 65535 / (vw - 1)))           # TASK-19: rounded, not truncated
+        ay = int(round((sy - vy) * 65535 / (vh - 1)))
         base = 0x8000 | 0x4000          # ABSOLUTE | VIRTUALDESK
         pt = wintypes.POINT()
         for attempt in range(tries):
             _mouse(base | 0x0001, ax, ay)   # move
             time.sleep(0.15 + 0.15 * attempt)
             user32.GetCursorPos(ctypes.byref(pt))
-            if abs(pt.x - sx) <= 4 and abs(pt.y - sy) <= 4:
+            if abs(pt.x - sx) <= 2 and abs(pt.y - sy) <= 2:
                 _mouse(base | 0x0001 | 0x0002, ax, ay)   # down at the same point
                 time.sleep(0.09)
                 _mouse(base | 0x0001 | 0x0004, ax, ay)   # up
@@ -632,7 +640,8 @@ class Game:
 
     def _click_message(self, rx, ry):
         """Send the click straight to the game window (does not need the mouse pointer)."""
-        cx, cy = int(rx * self.w), int(ry * self.h)
+        cx = min(self.w - 1, max(0, int(round(rx * self.w))))   # TASK-19: rounded, inside the window
+        cy = min(self.h - 1, max(0, int(round(ry * self.h))))
         target = self.hwnd
         # the game may draw inside a child window: find it and convert the point
         pt = wintypes.POINT(cx, cy)
@@ -656,7 +665,7 @@ class Game:
         time.sleep(0.12)
         pt = wintypes.POINT()
         user32.GetCursorPos(ctypes.byref(pt))
-        if abs(pt.x - sx) > 3 or abs(pt.y - sy) > 3:
+        if abs(pt.x - sx) > 2 or abs(pt.y - sy) > 2:
             log(f"  ! mouse landed at {pt.x},{pt.y} instead of {sx},{sy}; click skipped")
             if (pt.x, pt.y) == (0, 0) and (sx, sy) != (0, 0):
                 raise RuntimeError("screen grab failed: the input desktop is gone (the remote session is disconnected)")

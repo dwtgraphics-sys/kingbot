@@ -782,11 +782,10 @@
    "sheet": "Guide & Rules",
    "title": "'Support' Ticket System Rules: Attachments, Lifecycle, Quotas & Chat Widget Scope",
    "priority": "High",
-   "start": "02:29",
-   "status": "blocked",
-   "seq": 71,
-   "note": "No support-ticket system exists yet (no New ticket / Get help / tickets storage); documenting the rules would describe features that do not work. Needs owner decision: build tickets in kingbot-syn (who answers, Discord/Telegram sync?) or keep support via Discord/Telegram links.",
-   "finished": "2026-11-25T22:20:21+00:00"
+   "start": "02:59",
+   "status": "pending",
+   "seq": 82,
+   "note": "Owner (26-11): do LAST, after every bot-system item. Still needs: a support-ticket system (none exists yet)."
   },
   {
    "id": "TOOLS-07",
@@ -803,21 +802,20 @@
    "title": "Viewport & Device Profile Randomizer",
    "priority": "Medium",
    "start": "02:39",
-   "status": "blocked",
+   "status": "done",
    "seq": 73,
-   "note": "Needs owner decision: Kingbot drives the Windows PC client on a VPS, not emulators, so there are no virtual device profiles/IDs to randomize; clicks are already relative (click_rel) with +/-5 px jitter and wait jitter (TASK-08). Changing device identifiers would touch game accounts - confirm whether anything more is wanted.",
-   "finished": "2026-11-25T22:20:21+00:00"
+   "note": "Owner: make clicks precise, not random. bot v229: pixel jitter removed for good (CLICK_JITTER_PX always 0), points rounded instead of truncated and kept inside the game area, game rect re-read before every click, landing tolerance 4->2 px (interception moves again once), WM click points rounded; dashboard texts updated",
+   "finished": "2026-11-26T01:05:37+00:00"
   },
   {
    "id": "GUIDE-23",
    "sheet": "Guide & Rules",
    "title": "'Discord' Integration (/slots, /support, /ask, Invites, Contests, /suggest) & 'Your Review'",
    "priority": "Medium",
-   "start": "02:42",
-   "status": "blocked",
-   "seq": 74,
-   "note": "No Kingbot Discord bot (/link, /slots, /support, /ask, /suggest...) and no 'Your review' feature exist yet; documenting them would mislead. Needs owner decision: build the Discord bot (hosting + token) and the review/free-days reward first.",
-   "finished": "2026-11-25T22:20:21+00:00"
+   "start": "02:59",
+   "status": "pending",
+   "seq": 83,
+   "note": "Owner (26-11): do LAST, after every bot-system item. Still needs: a Kingbot Discord bot (/link, /slots ...) and the review/free-days feature (none exist yet)."
   },
   {
    "id": "MOD-06",

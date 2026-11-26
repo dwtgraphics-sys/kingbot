@@ -1545,7 +1545,7 @@ def smart_schedule_gate(settings):
     """TASK-08: (state, seconds to rest) - state 'active' (go on), 'break' or 'done' (daily cap reached)."""
     cfg = _ss_cfg(settings)
     WAIT_JITTER[0] = cfg["jitter"] if cfg["enabled"] else 0.0
-    CLICK_JITTER_PX[0] = 5 if cfg["enabled"] else 0
+    CLICK_JITTER_PX[0] = 0                                  # TASK-19: exact clicks (owner's choice), no pixel jitter
     if not cfg["enabled"]:
         control.CITY.pop("smart_schedule", None)
         return "active", 0
