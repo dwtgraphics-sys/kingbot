@@ -179,7 +179,23 @@ def _click_tpl(g, name, sleep, threshold=0.78, wait=2.0, tries=3):
             sleep(wait)
             return True
         sleep(1.5)
+    try:                                                  # v249: recorded at another window size - any scale
+        hit = find_icon(g, name, min_scale=0.5, max_scale=1.6, steps=12, threshold=max(0.72, threshold - 0.05))
+        if hit:
+            log(f"    {name}: found at scale {hit[3]:.2f} (score {hit[2]:.2f})")
+            _click_landing(g, hit[0], hit[1], sleep, waits=2)
+            sleep(wait)
+            return True
+    except Exception as e:
+        log(f"    {name}: any-scale search failed: {e!r}")
+    import time as _t
+    if _t.time() - _TPL_FAIL.get(name, 0) > 3600:          # one picture per button per hour
+        _TPL_FAIL[name] = _t.time()
+        _save_failure(g, "tpl_" + name, note="picture not found at any scale")
     return False
+
+
+_TPL_FAIL = {}
 
 
 def _queue_full(g):
@@ -974,6 +990,12 @@ def find_icon(g, name, min_scale=0.4, max_scale=2.2, steps=12, threshold=0.70, i
     except Exception:
         return None
     path = os.path.join(BASE, "builtin_templates", name + ".png")
+    try:                                                  # v249: the owner's own recordings first (templates/)
+        from common import TEMPL_DIR
+        if os.path.isfile(os.path.join(TEMPL_DIR, name + ".png")):
+            path = os.path.join(TEMPL_DIR, name + ".png")
+    except Exception:
+        pass
     tpl0 = cv2.imread(path)
     if tpl0 is None:
         log(f"  ! icon template missing: {name}")
