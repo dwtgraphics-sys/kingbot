@@ -58,11 +58,11 @@ def state(name):
 def command(kind, cid, do=None, status="received", detail=""):
     """Record what happened to one dashboard command. kind: action / probe / shot / run_now / settings."""
     if not cid:
-        return
+        return False
     key = (kind, str(cid))
     with _LOCK:
         if _ACKED.get(key) == status and status not in ("running",):
-            return
+            return False
         _ACKED[key] = status
         item = next((c for c in COMMANDS if c["kind"] == kind and c["id"] == str(cid)), None)
         if item is None:
@@ -75,6 +75,7 @@ def command(kind, cid, do=None, status="received", detail=""):
         if len(_ACKED) > 200:
             for k in list(_ACKED)[:100]:
                 _ACKED.pop(k, None)
+    return True
 
 
 def _future(v):

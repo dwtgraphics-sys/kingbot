@@ -266,7 +266,7 @@ def check_stop():
         raise Stop()
 
 
-QUICK = [0.0, False]
+QUICK = [0.0, False, 0.0]   # last poll, busy, last status written from inside a task (v252)
 
 
 def quick_requests():
@@ -278,16 +278,20 @@ def quick_requests():
         ctl.poll()
         ctl.screenshot_if_asked()
         d = ctl.data or {}                                   # v252: tell the dashboard its command was seen
+        new = False
         ar = d.get("action_request")
         if isinstance(ar, dict) and ar.get("id") and str(ar["id"]) != str(getattr(ctl, "action_done", "") or ""):
-            kb_guard.command("action", ar["id"], ar.get("do"), "queued",
-                             f"after the current activity ({TASK_NOW[1] or 'round'})")
+            new |= kb_guard.command("action", ar["id"], ar.get("do"), "queued",
+                                    f"after the current activity ({TASK_NOW[1] or 'round'})")
         pr = d.get("probe_request")
         if pr and pr != getattr(ctl, "probe_done", None):
-            kb_guard.command("probe", pr, "probe", "queued", "after the current activity")
+            new |= kb_guard.command("probe", pr, "probe", "queued", "after the current activity")
         rn = d.get("run_now")
         if rn and rn != getattr(ctl, "run_now_done", None) and TASK_NOW[0]:
-            kb_guard.command("run_now", rn, "run_now", "queued", "a round is running - the next one starts right after it")
+            new |= kb_guard.command("run_now", rn, "run_now", "queued", "a round is running - the next one starts right after it")
+        if new or (TASK_NOW[0] and time.time() - QUICK[2] > 120):   # the ack (and a fresh status) reach GitHub now
+            QUICK[2] = time.time()
+            ctl.write_status(state="working", task=f"{TASK_NOW[1] or 'round'}")
     except Exception:
         pass
     finally:
