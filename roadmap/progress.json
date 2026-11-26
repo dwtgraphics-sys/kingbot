@@ -2,11 +2,7 @@
  "version": 18,
  "timezone": "Asia/Muscat",
  "window": "22:00-03:00",
- "lock": {
-  "run": "session_01SrCVZTfXWfnTiM5He2JQzG",
-  "since": "2026-11-26T20:07:22+00:00",
-  "heartbeat": "2026-11-26T20:07:31+00:00"
- },
+ "lock": null,
  "items": [
   {
    "id": "MOD-01",
@@ -1040,10 +1036,10 @@
    "title": "Leader commands",
    "priority": "",
    "start": "immediate",
-   "status": "pending",
+   "status": "blocked",
    "seq": "95",
-   "finished": "",
-   "note": "Entitlement + UI done; the 8 leader automations need the owner's decision (GUIDE-15) and in-game recordings with an R4/R5 account."
+   "finished": "2026-11-26T20:11:29+00:00",
+   "note": "Entitlement + UI done. The 8 leader automations need the owner's decision in GUIDE-15 (which character is R4/R5/King; act or read-only?) plus in-game recordings with an R4/R5 account."
   },
   {
    "id": "PLAN-04",
@@ -1073,10 +1069,10 @@
    "title": "Language audit",
    "priority": "",
    "start": "immediate",
-   "status": "in_progress",
+   "status": "done",
    "seq": "98",
-   "finished": "",
-   "note": "Core pages translated; Guide + free tools (~800 lines) remain."
+   "finished": "2026-11-26T20:11:29+00:00",
+   "note": "Core pages + guide + 6 free tools: 981 more lines in English (kingbot-ui bffdff2); in English no Arabic left on these pages."
   }
  ]
 }
