@@ -200,6 +200,32 @@ def _click_tpl(g, name, sleep, threshold=0.78, wait=2.0, tries=3):
 _TPL_FAIL = {}
 
 
+def _open_search_and_pick(g, sleep, icon):
+    """v251: F opens the map search; when the game swallowed the key, tap the magnifier next to the coordinates."""
+    if _click_tpl(g, icon, sleep, 0.75, tries=2):
+        return True
+    spot = None
+    try:
+        hit = find_icon(g, "map_search_icon", min_scale=0.5, max_scale=1.6, steps=10, threshold=0.72)
+        spot = hit[:2] if hit and hit[1] < 0.1 else None
+    except Exception:
+        spot = None
+    if not spot:                                          # the magnifier sits right after "#kingdom X:… Y:…"
+        try:
+            img = g.screenshot(); h, w = img.shape[:2]
+            for x1, y1, x2, y2, t in _ocr_boxes(img[:int(0.06 * h), :int(0.35 * w)], "map_coords.png", 2.0):
+                if "y:" in t.lower() or "y :" in t.lower():
+                    spot = ((x2 + 0.012 * w) / w, ((y1 + y2) / 2) / h)
+                    break
+        except Exception:
+            spot = None
+    if not spot:
+        return False
+    log("    search: F did nothing - tapping the magnifier")
+    g.click_rel(*spot); sleep(3)
+    return _click_tpl(g, icon, sleep, 0.75, tries=2)
+
+
 def _relearn_tpl(g, name, hit):
     """v250: save the button as it looks at today's window size, so the next search is exact and fast.
     The owner's original recording is kept in templates/_old_size/."""
@@ -366,7 +392,7 @@ def gather(g, sleep, max_armies=5, kinds=None, reserve=0, balanced_mode=False, t
         kind = plan.pop(0) if plan else _next_kind(kinds)
         t_search = time.time()
         press_key("f"); sleep(3)
-        if not _click_tpl(g, "icon_" + kind, sleep, 0.75):
+        if not _open_search_and_pick(g, sleep, "icon_" + kind):
             log("  ! gather: search panel did not open")
             press_key("esc"); sleep(1)
             break
