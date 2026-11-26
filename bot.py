@@ -953,6 +953,13 @@ def login_wait():
         if time.time() - last > 60:
             last = time.time()
             ctl.write_status(state="paused", task="بانتظار تسجيل الدخول في اللعبة من لوحة التحكم")
+            try:                                             # v266: a fix for the login itself can arrive meanwhile
+                if check_and_update(log):
+                    sys.exit(RESTART_CODE)
+            except SystemExit:
+                raise
+            except Exception:
+                pass
         time.sleep(5)
     if game_login.STATE.get("stage") not in ("", "logged_in"):
         game_login.set_stage("logged_in", "نافذة الدخول أُغلقت")
