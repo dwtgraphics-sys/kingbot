@@ -590,6 +590,8 @@ def idle(sec, **status):
         ctl.screenshot_if_asked()
         probe_if_asked()
         action_if_asked()
+        if smart.signed_out():                               # v258: signed out - stop answering the game
+            return
         claude_channel.check(sleep)
         captcha_watch()                                      # TASK-09
         shield_watch()
@@ -839,6 +841,65 @@ def session_disconnected():
         return False
 
 
+SIGNOUT_STATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "signout_sched.json")
+
+
+def signout_due():
+    """v258: dashboard 'sign_out_schedule' {enabled, time_local 'HH:MM', tz_min, time_utc, days [0..6] (Mon=0 in the
+    owner's own week, empty = every day)}.
+    Due once per day, from that time until 60 minutes after it."""
+    cfg = (ctl.data or {}).get("sign_out_schedule") or {}
+    if not cfg.get("enabled") or not cfg.get("time_utc"):
+        return False
+    try:                                                     # the owner's own clock when tz_min is sent
+        local = cfg.get("time_local") and cfg.get("tz_min") is not None
+        tz = int(cfg["tz_min"]) if local else 0
+        hh, mm = (int(x) for x in str(cfg["time_local"] if local else cfg["time_utc"]).split(":")[:2])
+    except Exception:
+        return False
+    now = datetime.datetime.utcnow() + datetime.timedelta(minutes=tz)     # days / time are the owner's
+    days = cfg.get("days") or []
+    if days and now.weekday() not in days:
+        return False
+    at = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    if not (at <= now < at + datetime.timedelta(minutes=60)):
+        return False
+    st = load_json(SIGNOUT_STATE, {})
+    if st.get("day") == now.strftime("%Y-%m-%d"):
+        return False
+    save_json(SIGNOUT_STATE, {"day": now.strftime("%Y-%m-%d")})
+    log(f"Scheduled sign-out ({cfg.get('time_local') or cfg.get('time_utc')}).")
+    return True
+
+
+def signed_out_wait():
+    """The account is signed out: click nothing. Answer the dashboard and look at the screen every 2 minutes -
+    when the city or the map shows again, someone logged in and the bot works again."""
+    log("The game account is signed out - the bot waits (no clicks) until someone logs in again.")
+    last_look = 0
+    while smart.signed_out():
+        check_stop()
+        try:
+            ctl.poll()
+            ctl.screenshot_if_asked()
+            action_if_asked()
+        except (Stop, SystemExit):
+            raise
+        except Exception:
+            pass
+        if time.time() - last_look > 120:
+            last_look = time.time()
+            try:
+                g = get_game()
+                if g and smart.what_screen(g) in ("city", "map"):
+                    smart.clear_signed_out("the game is logged in again")
+                    break
+            except Exception:
+                pass
+            ctl.write_status(state="paused", task="signed out of the game - waiting for a new login")
+        time.sleep(15)
+
+
 def _after_console():
     """Screen size + game focus once the session is on the console again."""
     for w, h in ((1280, 800), (1280, 1024), (1280, 720), (1366, 768)):
@@ -984,6 +1045,10 @@ def _do_action(g, req):
             up = ctl.upload_screen("bot: screenshot (" + do + ")")
             log(f"  {do}{' ' + str(req.get('target')) if do == 'safe_tap' else ''}: "
                 + ("done" if ok else "refused") + (", picture uploaded" if up else ", picture upload failed"))
+        elif do == "sign_out":                                   # v258: dashboard button
+            return smart.sign_out(g, sleep, "dashboard")
+        elif do == "signed_in":                                  # the owner logged in again
+            smart.clear_signed_out("dashboard")
         elif do == "vision_scan":                                # v254: learn every picture visible on this screen
             import common, glob
             names = sorted({os.path.splitext(os.path.basename(f))[0] for d in (common.TEMPL_DIR, common.BUILTIN_DIR)
@@ -1549,6 +1614,9 @@ def one_round(settings):
             raise
         except Exception as e:
             log(f"! dashboard request between activities failed: {e!r}")
+        if smart.signed_out():                               # v258: signed out from the dashboard - end the round
+            log("Signed out of the game - the rest of this round is skipped.")
+            return
         try:
             recover_screen(g)
         except Exception:
@@ -1925,6 +1993,14 @@ def main():
                 source += f", character {load_json(ROT_FILE, {}).get('name')}"
             if SCHED_PROF[0]:
                 source += f", scheduled profile '{SCHED_PROF[0]}'"
+            if signout_due():                                 # v258: the owner's scheduled sign-out
+                g_ = get_game()
+                if g_:
+                    res = smart.sign_out(g_, sleep, "schedule")
+                    kb_guard.command("action", "sched-" + time.strftime("%Y%m%d"), "sign_out", "done" if res == "done" else "failed", res)
+            if smart.signed_out():
+                signed_out_wait()
+                continue
             log(f"Round started (settings from {source}).")
             RUN_NOW[0] = False
             try:

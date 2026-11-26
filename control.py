@@ -57,7 +57,8 @@ ALLOWED_KEYS = {
     "relogin_cooldown_min", "conduct_min", "schedule_profiles",
     "automation_rules", "sched_ranges",         # TASK-15, GUIDE-18
     "telegram_reset",                           # GUIDE-20
-    "alerts"                                    # TASK-18
+    "alerts",                                   # TASK-18
+    "sign_out_schedule"                         # v258
 }
 
 RESOURCES = {}

@@ -4557,6 +4557,76 @@ def _char_cards(img):
     return cards
 
 
+SIGNED_OUT_FILE = os.path.join(BASE, "signed_out.json")
+
+
+def signed_out():
+    """True while the bot signed the game account out and nobody logged in again (the bot does nothing then)."""
+    return os.path.isfile(SIGNED_OUT_FILE)
+
+
+def clear_signed_out(why=""):
+    try:
+        if os.path.isfile(SIGNED_OUT_FILE):
+            os.remove(SIGNED_OUT_FILE)
+            log("  sign-out: cleared" + (f" ({why})" if why else "") + " - the bot works again")
+    except Exception:
+        pass
+
+
+def sign_out(g, sleep, reason="dashboard"):
+    """v258: sign the game account out (Settings > Account > Sign out / Switch account).
+    Read by text only; anything that says Delete / Unbind / Remove is never pressed. Every step is saved as a
+    picture in claude_out/signout_*.png. Afterwards the bot stays idle (signed_out.json) until someone logs in
+    again - it never logs back in by itself."""
+    import json as _j, time as _t
+    img = _open_characters(g, sleep)                        # governor -> Settings -> Account
+    _barb_shot(g, "signout_1_account.png")
+    h, w = img.shape[:2]
+    BAD = ("delete", "unbind", "remove", "erase")
+
+    def find(words, im):
+        for x1, y1, x2, y2, t in _ocr_boxes(im, "signout_ocr.png", 1.6):
+            tl = t.lower().strip()
+            if any(b in tl for b in BAD):
+                continue
+            if any(wd in tl for wd in words):
+                return ((x1 + x2) / 2 / w, (y1 + y2) / 2 / h, t)
+        return None
+
+    hit = find(("sign out", "log out", "logout", "signout", "switch account"), img)
+    if not hit:
+        log("  ! sign_out: no Sign out / Switch account button on the Account page - nothing done")
+        g.click_rel(0.880, 0.226); sleep(1)
+        recover_screen(g)
+        return "failed: button not found (picture claude_out/signout_1_account.png)"
+    log(f"  sign_out: pressing '{hit[2]}'")
+    g.click_rel(hit[0], hit[1]); sleep(3)
+    img2 = g.screenshot()
+    _barb_shot(g, "signout_2_after.png")
+    words = " ".join(t.lower() for *_xy, t in _ocr_boxes(img2, "signout_ocr2.png", 1.6))
+    if any(b in words for b in BAD):
+        log("  ! sign_out: the window talks about deleting/unbinding - cancelled, nothing confirmed")
+        recover_screen(g)
+        return "failed: unexpected window (delete/unbind) - cancelled"
+    ok = find(("confirm", "ok", "yes", "sign out", "log out", "switch"), img2)
+    if ok and ok[1] > 0.35:
+        log(f"  sign_out: confirming '{ok[2]}'")
+        g.click_rel(ok[0], ok[1]); sleep(5)
+    _barb_shot(g, "signout_3_done.png")
+    with open(SIGNED_OUT_FILE, "w", encoding="utf-8") as f:
+        _j.dump({"at": _t.strftime("%Y-%m-%d %H:%M"), "reason": reason}, f)
+    log("  sign_out: the account is signed out - the bot waits until someone logs in again")
+    try:
+        notify("info", "تم تسجيل الخروج من حساب اللعبة — البوت متوقف حتى تسجّل الدخول من جديد")
+    except Exception:
+        pass
+    return "done"
+
+
+SMART["sign_out"] = sign_out
+
+
 def read_characters(g, sleep):
     """Settings > Account/Characters: read every character and send the list to the dashboard."""
     try:
