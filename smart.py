@@ -183,6 +183,8 @@ def _click_tpl(g, name, sleep, threshold=0.78, wait=2.0, tries=3):
         hit = find_icon(g, name, min_scale=0.5, max_scale=1.6, steps=12, threshold=max(0.72, threshold - 0.05))
         if hit:
             log(f"    {name}: found at scale {hit[3]:.2f} (score {hit[2]:.2f})")
+            if hit[2] >= 0.80:
+                _relearn_tpl(g, name, hit)
             _click_landing(g, hit[0], hit[1], sleep, waits=2)
             sleep(wait)
             return True
@@ -196,6 +198,41 @@ def _click_tpl(g, name, sleep, threshold=0.78, wait=2.0, tries=3):
 
 
 _TPL_FAIL = {}
+
+
+def _relearn_tpl(g, name, hit):
+    """v250: save the button as it looks at today's window size, so the next search is exact and fast.
+    The owner's original recording is kept in templates/_old_size/."""
+    try:
+        import cv2, shutil
+        from common import TEMPL_DIR
+        src = os.path.join(TEMPL_DIR, name + ".png")
+        if not os.path.isfile(src):
+            src = os.path.join(BASE, "builtin_templates", name + ".png")
+        t0 = cv2.imread(src)
+        if t0 is None:
+            return
+        img = g.screenshot(); h, w = img.shape[:2]
+        th, tw = int(round(t0.shape[0] * hit[3])), int(round(t0.shape[1] * hit[3]))
+        x0, y0 = int(hit[0] * w - tw / 2), int(hit[1] * h - th / 2)
+        if x0 < 0 or y0 < 0 or x0 + tw > w or y0 + th > h:
+            return
+        old_dir = os.path.join(TEMPL_DIR, "_old_size")
+        os.makedirs(old_dir, exist_ok=True)
+        own = os.path.join(TEMPL_DIR, name + ".png")
+        if os.path.isfile(own) and not os.path.isfile(os.path.join(old_dir, name + ".png")):
+            shutil.copy2(own, os.path.join(old_dir, name + ".png"))
+        cv2.imwrite(own, img[y0:y0 + th, x0:x0 + tw])
+        from common import load_json, save_json
+        mp = os.path.join(TEMPL_DIR, "meta.json")
+        meta = load_json(mp, {})
+        if name in meta and not os.path.isfile(os.path.join(old_dir, "meta_" + name + ".json")):
+            save_json(os.path.join(old_dir, "meta_" + name + ".json"), meta[name])
+        meta[name] = {"width": g.w}                       # find_image scales by this width
+        save_json(mp, meta)
+        log(f"    {name}: re-learned at this window size (original kept in templates/_old_size)")
+    except Exception as e:
+        log(f"    {name}: re-learn failed: {e!r}")
 
 
 def _queue_full(g):
@@ -264,9 +301,9 @@ def _march_cap_reached(g, label):
 def _search_deadline():
     """TASK-06: seconds one map search / march-list read may take before it is abandoned (default 15)."""
     try:
-        return max(5, min(120, int(MARCH_CONTROL.get("search_timeout_seconds") or 15)))
+        return max(5, min(120, int(MARCH_CONTROL.get("search_timeout_seconds") or 30)))
     except Exception:
-        return 15
+        return 30
 
 
 COMMANDER_PRESETS = {}  # TASK-07: dashboard commander_presets {task: {primary, secondary}} (set by bot.py every round)
