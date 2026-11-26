@@ -36,3 +36,4 @@ servers_index_cache.json
 live_state.json
 vision_scales.json
 migrate/
+dist/

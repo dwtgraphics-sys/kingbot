@@ -872,6 +872,28 @@ def signout_due():
     return True
 
 
+def _save_action_done(cid):
+    """Before an exit: remember the action so the restarted bot does not run it again."""
+    try:
+        open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "action_done.txt"), "w").write(str(cid))
+    except Exception:
+        pass
+
+
+def logout_game(g, cid=None):
+    """ADM-03: stop field work first (the current activity has already ended - actions run between
+    activities; no new march is sent), then Settings > Account > Sign out with its confirmation."""
+    kb_guard.routine("logout_game")
+    kb_guard.command("action", cid, "logout_game", "running", "جاري تسجيل الخروج من اللعبة")
+    ctl.write_status(state="working", task="جاري تسجيل الخروج من اللعبة")
+    res = smart.sign_out(g, sleep, "dashboard")
+    kb_guard.routine(None)
+    if res == "done":
+        kb_guard.command("action", cid, "logout_game", "done", "تم تسجيل الخروج من اللعبة")
+        ctl.write_status(state="paused", task="تم تسجيل الخروج من اللعبة")
+    return res
+
+
 def signed_out_wait():
     """The account is signed out: click nothing. Answer the dashboard and look at the screen every 2 minutes -
     when the city or the map shows again, someone logged in and the bot works again."""
@@ -1045,8 +1067,28 @@ def _do_action(g, req):
             up = ctl.upload_screen("bot: screenshot (" + do + ")")
             log(f"  {do}{' ' + str(req.get('target')) if do == 'safe_tap' else ''}: "
                 + ("done" if ok else "refused") + (", picture uploaded" if up else ", picture upload failed"))
-        elif do == "sign_out":                                   # v258: dashboard button
-            return smart.sign_out(g, sleep, "dashboard")
+        elif do in ("sign_out", "logout_game"):                   # v258 / ADM-03: dashboard button
+            return logout_game(g, req.get("id"))
+        elif do == "rollback":                                   # ADM-02: back to the previous version
+            import updater
+            v = updater.rollback(req.get("version"), log)
+            if not v:
+                return "failed: no older backup on this server"
+            control.CITY["action_done"] = str(req.get("id", ""))
+            kb_guard.command("action", req.get("id"), "rollback", "done", f"back to v{v} - updates held")
+            _save_action_done(req.get("id"))
+            _status_then_exit(state="restarting", task=f"rolled back to v{v}")
+        elif do == "release_updates":                            # ADM-02: undo the rollback hold
+            import updater
+            updater.unpin()
+            log("  updates released - the next check installs the newest version")
+        elif do == "update_now":                                 # ADM-02: check GitHub now
+            import updater
+            if updater.check_and_update(log):
+                control.CITY["action_done"] = str(req.get("id", ""))
+                kb_guard.command("action", req.get("id"), "update_now", "done", "new version installed - restarting")
+                _save_action_done(req.get("id"))
+                _status_then_exit(state="restarting", task="installing an update")
         elif do == "signed_in":                                  # the owner logged in again
             smart.clear_signed_out("dashboard")
         elif do == "vision_scan":                                # v254: learn every picture visible on this screen
@@ -1084,6 +1126,7 @@ def _do_action(g, req):
             try:
                 control.CITY["action_done"] = str(req.get("id", ""))
                 kb_guard.command("action", req.get("id"), "restart_bot", "done", "the bot restarts now")
+                _save_action_done(req.get("id"))                # do not restart again after the restart
                 ctl.write_status(state="working", task="restarting the bot (from the dashboard)")
             except Exception:
                 pass

@@ -120,6 +120,13 @@ def _sys_stats():
                 out["cpu"] = max(0, min(100, round(100 * (1 - (cur[0] - prev[0]) / (cur[1] - prev[1])))))
     except Exception:
         pass
+    try:                                        # ADM-01: disk use of the bot's drive
+        import shutil
+        du = shutil.disk_usage(os.path.dirname(os.path.abspath(__file__)))
+        out["disk"] = round(100 * du.used / du.total)
+        out["disk_free_gb"] = round(du.free / 2 ** 30, 1)
+    except Exception:
+        pass
     return out
 
 def _write_live(data=None, info=None):
@@ -480,6 +487,8 @@ class Control:
             status.update(kb_guard.snapshot(info.get("state"), d.get("freeze_until"), d.get("running", True)))
             if DROPPED:
                 status["dropped_options"] = dict(DROPPED)
+            import updater                              # ADM-02: version, backups, rollback hold, last updates
+            status["update"] = updater.update_info()
             from common import _scale_table             # v254: pictures re-learned for the current window size
             status["vision"] = {k: len([n for n in v if not n.startswith("_")]) for k, v in _scale_table().items()}
         except Exception:
