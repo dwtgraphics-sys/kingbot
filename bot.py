@@ -1733,6 +1733,22 @@ def one_round(settings):
             nxt = datetime.datetime.fromtimestamp(state[name])
             log(f"  - {name}: not due yet (next at {nxt:%H:%M})")
             continue
+        try:                                                 # PLAN-01..04: the slot's subscription tier
+            import plans
+            ok, why = plans.allowed(name, ctl.data or {})
+        except Exception:
+            ok, why = True, ""
+        if not ok:
+            log(f"  - plan: {why}")
+            try:
+                import control
+                control.CITY.setdefault("plan_skipped", {})[name] = why
+            except Exception:
+                pass
+            continue
+        if name.startswith("leader_") and name not in routines and name not in smart.SMART:
+            log(f"  - {name}: أمر القائد قيد التطوير (قريباً) - تم تخطيه")
+            continue
         if name not in routines and name not in smart.SMART:
             _unknown_routine(name)
             continue

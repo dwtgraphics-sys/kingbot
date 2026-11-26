@@ -58,7 +58,8 @@ ALLOWED_KEYS = {
     "automation_rules", "sched_ranges",         # TASK-15, GUIDE-18
     "telegram_reset",                           # GUIDE-20
     "alerts",                                   # TASK-18
-    "sign_out_schedule"                         # v258
+    "sign_out_schedule",                        # v258
+    "plan"                                      # PLAN-01: solo | leader | solo_leader_bundle | group
 }
 
 RESOURCES = {}
@@ -489,6 +490,11 @@ class Control:
                 status["dropped_options"] = dict(DROPPED)
             import updater                              # ADM-02: version, backups, rollback hold, last updates
             status["update"] = updater.update_info()
+            try:                                        # PLAN-01: tier + activities it skipped
+                import plans
+                status["plan"] = dict(plans.info(d), skipped=dict(CITY.get("plan_skipped") or {}))
+            except Exception:
+                pass
             from common import _scale_table             # v254: pictures re-learned for the current window size
             status["vision"] = {k: len([n for n in v if not n.startswith("_")]) for k, v in _scale_table().items()}
         except Exception:
