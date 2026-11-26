@@ -3792,8 +3792,16 @@ def probe_click_mode(g, sleep, force=False):
     """
     if CLICK_PROBED[0] and not force:
         return click_mode()
-    CLICK_PROBED[0] = True
     start = click_mode()
+    try:                                                  # v256: only probe from the city/map - from another screen
+        recover_screen(g)                                 # (e.g. Campaign after the canyon) every mode "fails"
+        scr = what_screen(g)                              # and the working mode was thrown away
+    except Exception:
+        scr = "unknown"
+    if scr not in ("city", "map"):
+        log(f"  click mode: not tested now (screen '{scr}') - keeping '{start}'")
+        return start
+    CLICK_PROBED[0] = True
     for mode in ("absolute", "message", "cursor"):
         if mode == "interception":
             continue
@@ -3801,6 +3809,8 @@ def probe_click_mode(g, sleep, force=False):
             set_click_mode(mode)
         except Exception:
             continue
+        if what_screen(g) not in ("city", "map", "queue_panel"):
+            recover_screen(g)
         try:
             boxes, img = queue_panel(g, sleep)
         except Exception:
