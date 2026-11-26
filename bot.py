@@ -16,6 +16,7 @@ import queue_manager
 import automation
 import alerts
 import kb_guard
+import game_login
 smart.SMART["queue_manager"] = queue_manager.run
 
 
@@ -592,6 +593,8 @@ def idle(sec, **status):
         action_if_asked()
         if smart.signed_out():                               # v258: signed out - stop answering the game
             return
+        if game_login.find_login_window():                   # v262: the game waits for a login - no clicks
+            return
         claude_channel.check(sleep)
         captcha_watch()                                      # TASK-09
         shield_watch()
@@ -922,6 +925,39 @@ def signed_out_wait():
         time.sleep(15)
 
 
+def login_wait():
+    """v262 LOGIN-01: the game shows its Log In window (new account, never signed in). Click nothing in the game;
+    the dashboard shows a form, the customer sends the email and then the code (actions game_login_email /
+    game_login_code, done by game_login.py). Ends when the Log In window is gone."""
+    log("The game is waiting for a login (Log In window) - the bot waits for the email + code from the dashboard.")
+    if game_login.STATE.get("stage") in ("", "logged_in"):
+        game_login.set_stage("need_email", "اللعبة تنتظر تسجيل الدخول - أدخل البريد من لوحة التحكم")
+        try:
+            smart.notify("info", "الحساب على هذا السيرفر يحتاج تسجيل دخول في اللعبة - افتح لوحة التحكم وأدخل البريد ثم الكود.")
+        except Exception:
+            pass
+    last = 0
+    while game_login.find_login_window(15):
+        check_stop()
+        try:
+            ctl.poll()
+            ctl.screenshot_if_asked()
+            action_if_asked()
+        except (Stop, SystemExit):
+            raise
+        except Exception:
+            pass
+        if time.time() - last > 60:
+            last = time.time()
+            ctl.write_status(state="paused", task="بانتظار تسجيل الدخول في اللعبة من لوحة التحكم")
+        time.sleep(5)
+    if game_login.STATE.get("stage") not in ("", "logged_in"):
+        game_login.set_stage("logged_in", "نافذة الدخول أُغلقت")
+    log("The Log In window is gone - the bot works again.")
+    ctl.write_status(state="working", task="تم تسجيل الدخول - يبدأ العمل")
+    time.sleep(10)
+
+
 def _after_console():
     """Screen size + game focus once the session is on the console again."""
     for w, h in ((1280, 800), (1280, 1024), (1280, 720), (1366, 768)):
@@ -967,6 +1003,19 @@ def action_if_asked():
         pass
     do = req.get("do")
     kb_guard.command("action", req["id"], do, "received")
+    if do in ("game_login_email", "game_login_code"):        # v262 LOGIN-01: no game window needed, never log the data
+        log(f"Dashboard action: {do}")
+        kb_guard.command("action", req["id"], do, "running", "")
+        res = game_login.handle(req)
+        kb_guard.command("action", req["id"], do, "done" if res == "done" else "failed",
+                         "" if res == "done" else res)
+        try:
+            import control
+            control.CITY["action_done"] = str(req["id"])
+            ctl.write_status(state="paused", task="تسجيل الدخول في اللعبة: " + (game_login.STATE.get("detail") or do))
+        except Exception:
+            pass
+        return
     g = get_game()
     if g is None:
         kb_guard.command("action", req["id"], do, "failed", "game window not found")
@@ -2041,6 +2090,9 @@ def main():
                 if g_:
                     res = smart.sign_out(g_, sleep, "schedule")
                     kb_guard.command("action", "sched-" + time.strftime("%Y%m%d"), "sign_out", "done" if res == "done" else "failed", res)
+            if game_login.find_login_window(0):             # v262 LOGIN-01: never signed in - ask the dashboard
+                login_wait()
+                continue
             if smart.signed_out():
                 signed_out_wait()
                 continue
