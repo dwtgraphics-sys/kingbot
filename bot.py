@@ -15,7 +15,21 @@ import claude_channel
 import queue_manager
 import automation
 import alerts
+import kb_guard
 smart.SMART["queue_manager"] = queue_manager.run
+
+
+def conduct_watch(g, sleep, **_opts):
+    """v252: the dashboard's 'Conduct watch' - read the governor profile (Conduct is read there, never from
+    the Settings page) so conduct_hold() can stop field activities below the owner's limit."""
+    smart.read_profile(g, sleep)
+    import control
+    v = (control.CITY.get("profile") or {}).get("conduct")
+    log(f"  conduct_watch: Conduct {v if v is not None else 'not read'}")
+    return True
+
+
+smart.SMART["conduct_watch"] = conduct_watch
 START_VER = [0]
 RUN_NOW = [False]        # v150: the dashboard's "run now" button starts a round even while paused
 TASK_NOW = [0.0, ""]     # v154: (started at, task name) - a task that never ends is aborted
@@ -263,6 +277,17 @@ def quick_requests():
     try:
         ctl.poll()
         ctl.screenshot_if_asked()
+        d = ctl.data or {}                                   # v252: tell the dashboard its command was seen
+        ar = d.get("action_request")
+        if isinstance(ar, dict) and ar.get("id") and str(ar["id"]) != str(getattr(ctl, "action_done", "") or ""):
+            kb_guard.command("action", ar["id"], ar.get("do"), "queued",
+                             f"after the current activity ({TASK_NOW[1] or 'round'})")
+        pr = d.get("probe_request")
+        if pr and pr != getattr(ctl, "probe_done", None):
+            kb_guard.command("probe", pr, "probe", "queued", "after the current activity")
+        rn = d.get("run_now")
+        if rn and rn != getattr(ctl, "run_now_done", None) and TASK_NOW[0]:
+            kb_guard.command("run_now", rn, "run_now", "queued", "a round is running - the next one starts right after it")
     except Exception:
         pass
     finally:
@@ -463,6 +488,10 @@ WAIT_JITTER = [0.0]     # TASK-08: +/- fraction applied to every wait (smart_sch
 
 def sleep(sec):
     captcha_watch()                                          # TASK-09 (checks every 10 s at most)
+    try:
+        session_watch(every=20)                              # v252: a disconnect in the middle of a task
+    except Exception:
+        pass
     if WAIT_JITTER[0] > 0 and sec > 0:
         sec = sec * (1 + random.uniform(-WAIT_JITTER[0], WAIT_JITTER[0]))
     end = time.time() + sec
@@ -525,6 +554,7 @@ def watchdog(limit=600):
                     f.write(f"{os.getpid()} {time.time():.0f}")
             except Exception:
                 pass
+            kb_guard.beat()
             if n % 4 == 0:
                 game_hung_check()
             t0, tname = TASK_NOW[0], TASK_NOW[1]
@@ -567,6 +597,7 @@ def idle(sec, **status):
         if rn and rn != getattr(ctl, "run_now_done", None):
             ctl.run_now_done = rn
             RUN_NOW[0] = True
+            kb_guard.command("run_now", rn, "run_now", "running", "round started")
             log("Dashboard asked for a round right now.")
             raise NewSettings()
         if status.get("state") == "waiting" and in_daily_pause():
@@ -597,15 +628,31 @@ def probe_if_asked():
     if not req or req == getattr(ctl, "probe_done", None) or not ctl.root:
         return
     ctl.probe_done = req
+    kb_guard.command("probe", req, "probe", "received")
     g = get_game()
     if g is None:
         log("! Probe skipped: game window not found.")
+        kb_guard.command("probe", req, "probe", "failed", "game window not found")
         return
-    import shutil
-    def save(name, path):
-        shutil.copyfile(path, os.path.join(ctl.root, "outbox", name + ".jpg"))
+    import control, server_config
+    sent = []
+    def save(name, path):                                    # v252: ctl.root is a GitHub address, not a folder
+        folder = os.path.dirname(server_config.path("screen"))
+        if control._gh_put_bytes(f"{folder}/{name}.jpg", control._seal_bytes(open(path, "rb").read()), "bot: probe " + name):
+            sent.append(name)
     log("Taking probe screenshots for Claude ...")
-    smart.probe_screens(g, sleep, save)
+    kb_guard.command("probe", req, "probe", "running")
+    kb_guard.routine("probe")
+    try:
+        smart.probe_screens(g, sleep, save)
+        kb_guard.command("probe", req, "probe", "done" if sent else "failed", f"{len(sent)} picture(s): " + ", ".join(sent))
+    except (Stop, SystemExit, pyautogui.FailSafeException):
+        raise
+    except Exception as e:
+        kb_guard.command("probe", req, "probe", "failed", repr(e)[:150])
+        kb_guard.error(f"probe: {e!r}")
+    finally:
+        kb_guard.routine(None)
 
 
 
@@ -753,6 +800,20 @@ def keep_screen_alive():
 SESSION_WATCH = [0.0]
 
 
+def keep_screen_alive_ok():
+    """v252: after a 'screen grab failed', only call tscon when the session really is disconnected
+    (a black/locked screen with an active session is not fixed by tscon and used to loop)."""
+    if kb_guard.session_disconnected():
+        return False
+    try:
+        g = get_game()
+        if g:
+            g.screenshot()
+        return True
+    except Exception:
+        return keep_screen_alive()
+
+
 def session_disconnected():
     """True when this Windows session has no input desktop because Remote Desktop is disconnected.
 
@@ -774,17 +835,29 @@ def session_disconnected():
         return False
 
 
-def session_watch():
+def _after_console():
+    """Screen size + game focus once the session is on the console again."""
+    for w, h in ((1280, 800), (1280, 1024), (1280, 720), (1366, 768)):
+        if _set_resolution(w, h):
+            log(f"  keep-screen: screen {w}x{h}")
+            break
+    time.sleep(2)
+    g = get_game()
+    if g:
+        g.focus()
+
+
+def session_watch(every=60):
     """v170: the screen goes off when Remote Desktop disconnects, and then every click is lost
-    (the pointer stays at 0,0). On 2026-11-22 that left the bot unable to open the game for more
-    than an hour while it kept "working". Detect the disconnected session and move it back to the
-    server console (keep_screen_alive) instead of waiting for a screenshot to fail."""
-    if time.time() - SESSION_WATCH[0] < 60:
-        return
+    (the pointer stays at 0,0). v252: kb_guard.session_guard - tscon with a 20 s timeout, the result is
+    checked, and failures back off 1 / 2 / 5 / 10 minutes instead of hanging or looping every minute."""
+    if time.time() - SESSION_WATCH[0] < every:
+        return kb_guard.HEALTH.get("session") != "disconnected"
     SESSION_WATCH[0] = time.time()
-    if session_disconnected():
-        log("The remote desktop session is disconnected - moving it to the server console")
-        keep_screen_alive()
+    if ((ctl.data or {}).get("keep_screen") or {}).get("enabled", True) is False:
+        return True
+    no_sleep()
+    return kb_guard.session_guard(log, after_ok=_after_console)
 
 
 def action_if_asked():
@@ -805,13 +878,16 @@ def action_if_asked():
         open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "action_done.txt"), "w").write(str(req["id"]))
     except Exception:
         pass
+    do = req.get("do")
+    kb_guard.command("action", req["id"], do, "received")
     g = get_game()
     if g is None:
+        kb_guard.command("action", req["id"], do, "failed", "game window not found")
         return
-    do = req.get("do")
     log(f"Dashboard action: {do}")
     steps = req.get("steps") if do == "multi" and isinstance(req.get("steps"), list) else [req]
     import control
+    results = []
     for i, step in enumerate(steps[:12]):
         try:
             control.CITY["action_progress"] = {"id": str(req["id"]), "step": i, "of": len(steps), "do": step.get("do")}
@@ -820,11 +896,21 @@ def action_if_asked():
                 log(f"  assistant step {i + 1}/{len(steps)}: {step.get('do')}")
         except Exception:
             pass
-        _do_action(g, step)
+        kb_guard.command("action", req["id"], do, "running",
+                         f"step {i + 1}/{len(steps)}: {step.get('do')}" if do == "multi" else "")
+        kb_guard.routine("action:" + str(step.get("do")))
+        try:
+            res = _do_action(g, step)
+        finally:
+            kb_guard.routine(None)
+        if res and res != "done":
+            results.append(f"{step.get('do')}: {res}")
+    final = "done" if not results else ("failed" if len(results) == len(steps[:12]) else "partial")
+    kb_guard.command("action", req["id"], do, final, "; ".join(results)[:200])
     try:                                                     # v137: tell the dashboard at once
         control.CITY["action_progress"] = {"id": str(req["id"]), "step": len(steps), "of": len(steps)}
         control.CITY["action_done"] = str(req["id"])
-        ctl.write_status(state="working", task=f"dashboard: {do} done")
+        ctl.write_status(state="working", task=f"dashboard: {do} {final}")
     except Exception:
         pass
 
@@ -917,6 +1003,7 @@ def _do_action(g, req):
             log("Restarting Kingbot (dashboard request) ...")
             try:
                 control.CITY["action_done"] = str(req.get("id", ""))
+                kb_guard.command("action", req.get("id"), "restart_bot", "done", "the bot restarts now")
                 ctl.write_status(state="working", task="restarting the bot (from the dashboard)")
             except Exception:
                 pass
@@ -933,14 +1020,20 @@ def _do_action(g, req):
             if res in ("switched", "already") and (not cur or _same(cur, req.get("name", ""))):
                 mark_active_char(req.get("name", ""), prev=prev)   # v136: rotation continues from this character
                 _refresh_after_switch()
+        else:                                                    # v252: never mark an unknown action as done
+            log(f"  ? dashboard action '{do}' is not built in this bot - nothing done")
+            return "unknown"
     except (Stop, SystemExit, pyautogui.FailSafeException):
         raise
     except Exception as e:
         log(f"! dashboard action {do} failed: {e!r}")
+        kb_guard.error(f"action {do}: {e!r}")
+        return "failed: " + repr(e)[:120]
     try:
         recover_screen(g)
     except Exception:
         pass
+    return "done"
 
 
 def jitter(v, amount=0.004):
@@ -1326,6 +1419,11 @@ def rotation_settings(settings):
 UNKNOWN_ONCE = {}
 
 
+TASK_RESULT = {}          # v252: routine -> {at, ok, result} of its last run (status.json city.task_results)
+UNUSED_LOGGED = {}
+TASK_META_KEYS = {"routine", "times", "enabled", "every", "pause_after", "on", "max_armies"}
+
+
 def _unknown_routine(name):
     """v153: a task switched on in the dashboard that this bot has no activity for. Log it once a
     day instead of every round (events / merchant / conduct_watch are in this state)."""
@@ -1334,6 +1432,11 @@ def _unknown_routine(name):
         return
     UNKNOWN_ONCE[name] = today
     log(f"  ? routine '{name}' is switched on in the dashboard but not built yet - skipped")
+    try:                                                     # v252: the dashboard shows "not built yet"
+        import control as _c
+        _c.CITY.setdefault("task_support", {})[name] = {"missing": True}
+    except Exception:
+        pass
 
 
 FIELD_TASKS = {"gather", "gather_gems", "rally_fort", "join_rally", "attack_barbarians", "hunt_guardians", "scout"}
@@ -1466,6 +1569,7 @@ def one_round(settings):
             except Exception:
                 pass
             TASK_NOW[0], TASK_NOW[1] = time.time(), name
+            kb_guard.routine(name)
             ctl.write_status(state="working", task=f"{name} {n + 1}/{times}")
             try:
                 if name in routines:
@@ -1476,9 +1580,30 @@ def one_round(settings):
                     import inspect
                     params = inspect.signature(fn).parameters
                     opts = {k: v for k, v in t.items() if k in params and k not in ("g", "sleep")}
+                    unused = sorted(k for k in t if k not in params and k not in TASK_META_KEYS)
+                    if unused and UNUSED_LOGGED.get(name) != tuple(unused):    # v252: options the activity ignores
+                        UNUSED_LOGGED[name] = tuple(unused)
+                        log(f"  ({name}: dashboard options not used by this activity: {', '.join(unused[:8])})")
+                        import control as _c
+                        _c.CITY.setdefault("task_support", {})[name] = {"ignored_options": unused[:12]}
                     ok = fn(g, sleep, **opts)
+                TASK_RESULT[name] = {"at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                     "ok": ok is not False, "result": ok if isinstance(ok, str) else None}
+            except (Stop, NewSettings, SystemExit, pyautogui.FailSafeException):
+                raise
+            except Exception as e:
+                kb_guard.error(f"{name}: {e!r}")
+                TASK_RESULT[name] = {"at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "ok": False,
+                                     "result": repr(e)[:120]}
+                raise
             finally:
                 TASK_NOW[0] = 0.0        # v154: the task ended, the task watchdog is disarmed
+                kb_guard.routine(None)
+                try:
+                    import control as _c
+                    _c.CITY["task_results"] = dict(TASK_RESULT)
+                except Exception:
+                    pass
             if name in DAILY_ONCE and ok is not False and ok != "retry":
                 state = load_json(TASK_STATE_FILE, {})
                 state[name + "_day"] = today
@@ -1816,7 +1941,8 @@ def main():
                             os.remove(game_launcher.LAST_TRY_FILE)
                     except Exception:
                         pass
-                    if keep_screen_alive():
+                    SESSION_WATCH[0] = 0.0
+                    if session_watch() and keep_screen_alive_ok():
                         log("  keep-screen: the screen is on again - continuing in 20 seconds")
                         idle(20, state="working")
                     else:
@@ -1824,6 +1950,7 @@ def main():
                         idle(300, state="no_screen")
                 else:
                     import traceback
+                    kb_guard.error(f"round: {e!r}")
                     log(f"! Error in this round: {e!r}")
                     log(traceback.format_exc()[-600:])
                     if "window is black" in str(e):

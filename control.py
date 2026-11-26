@@ -205,7 +205,12 @@ def _opt_ok(v):
         return len(v) <= 60
     if isinstance(v, list):
         return len(v) <= 12 and all(isinstance(x, (bool, int, float)) or (isinstance(x, str) and len(x) <= 30) for x in v)
+    if isinstance(v, dict):                     # v252: small option maps (e.g. upgrade_troops.counts) were dropped silently
+        return len(v) <= 16 and all(isinstance(k, str) and len(k) <= 30 and (isinstance(x, (bool, int, float)) or
+                                    (isinstance(x, str) and len(x) <= 30)) for k, x in v.items())
     return False
+
+DROPPED = {}                                    # routine -> option keys the bot could not accept (shown in status)
 
 def _clean_tasks(lst):
     tasks = []
@@ -216,9 +221,20 @@ def _clean_tasks(lst):
             except Exception:
                 times = 1
             d = {"routine": t["routine"][:40], "times": times, "enabled": bool(t.get("enabled", True))}
-            for k, v in list(t.items())[:30]:
-                if k not in d and isinstance(k, str) and len(k) <= 30 and not k.startswith("_") and _opt_ok(v):
+            bad = []
+            for k, v in list(t.items())[:60]:
+                if k in d or not isinstance(k, str) or k.startswith("_"):
+                    continue
+                if len(k) <= 30 and _opt_ok(v):
                     d[k] = v
+                else:
+                    bad.append(str(k)[:30])
+            if len(t) > 60:
+                bad.append(f"+{len(t) - 60} more")
+            if bad:
+                DROPPED[d["routine"]] = bad[:10]
+            else:
+                DROPPED.pop(d["routine"], None)
             tasks.append(d)
     return tasks
 
@@ -357,6 +373,11 @@ class Control:
             _write_live(self.data)
         if not isinstance(res, dict) or "content" not in res:
             return self.data, False
+        try:
+            import kb_guard
+            kb_guard.synced()
+        except Exception:
+            pass
         if res.get("sha") == self._last_sha and self.data is not None:
             return self.data, False
         try:
@@ -388,13 +409,20 @@ class Control:
             return
         self.shot_done = req
         import tempfile
+        try:
+            import kb_guard
+        except Exception:
+            kb_guard = None
         tmp_jpg = os.path.join(tempfile.gettempdir(), "kingbot_gh_screen.jpg")
         path = take_screenshot(tmp_jpg)
         if path and os.path.isfile(path):
             ok = _gh_put_bytes(server_config.path("screen"), _seal_bytes(open(path, "rb").read()), "bot: screenshot")
             log("Screenshot uploaded to GitHub." if ok else "! GitHub screenshot upload failed.")
         else:
+            ok = False
             log("! Screenshot failed.")
+        if kb_guard:
+            kb_guard.command("shot", req, "screenshot", "done" if ok else "failed", "" if ok else "upload or capture failed")
 
     def upload_screen(self, message="bot: screenshot"):
         """TASK-09: upload the game picture now (the same file the dashboard shows as the latest screenshot)."""
@@ -445,4 +473,12 @@ class Control:
             "log": [l.rstrip("\n") for l in tail],
         }
         status.update(info)
+        try:                                    # v252: health + command acknowledgements for the dashboard
+            import kb_guard
+            d = self.data or {}
+            status.update(kb_guard.snapshot(info.get("state"), d.get("freeze_until"), d.get("running", True)))
+            if DROPPED:
+                status["dropped_options"] = dict(DROPPED)
+        except Exception:
+            pass
         _gh_put_bytes(server_config.path("status"), json.dumps(_seal_json(status, PUBLIC_STATUS), ensure_ascii=False, indent=2).encode("utf-8"), "bot: status")
