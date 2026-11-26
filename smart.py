@@ -4149,8 +4149,13 @@ def build_upgrade(g, sleep, mode="smart", speedups=False, use_bag=False):
     if not queue_goto(g, sleep, "build") and not _queue_card(g, sleep, 0.462):
         log("  ! build_upgrade: the Queue Overview did not open"); recover_screen(g); return True
     import queue_manager as _qm
-    sleep(1.0)
-    spot = _qm.glowing_button(g)                         # v204: the row selects the building; Upgrade glows under it
+    spot = None
+    for _w in range(4):                                  # v245: the game is slow to move the camera - wait for it
+        sleep(2.0)
+        img_ = g.screenshot()
+        spot = _qm.upgrade_button(g, img_) or _qm.glowing_button(g, img_)
+        if spot:
+            break
     if spot:
         g.click_rel(*spot); sleep(3)
     else:

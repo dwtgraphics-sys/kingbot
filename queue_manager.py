@@ -460,6 +460,29 @@ def header_folded(img, y):
     return bool(t > b)
 
 
+def upgrade_button(g, img=None):
+    """v245: the UPGRADE hexagon (green arrow) under a selected building -> (x, y) or None.
+    Measured 26-11: an idle Building Queue row makes the game select the building it suggests (e.g. Goldmine)
+    and shows Info (light-blue hexagon) with the green-arrow Upgrade button just to its right."""
+    import cv2
+    img = g.screenshot() if img is None else img
+    h, w = img.shape[:2]
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    m = cv2.inRange(hsv, (45, 120, 150), (85, 255, 255))
+    m[:, :int(0.2 * w)] = 0
+    m[:int(0.3 * h)] = 0
+    n, _l, st, _c = cv2.connectedComponentsWithStats(m)
+    greens = [((x + bw / 2) / w, (y + bh / 2) / h, a, bw, bh) for x, y, bw, bh, a in (st[i] for i in range(1, n))
+              if a > (0.012 * w) ** 2 and 0.7 < bw / max(1, bh) < 1.4]
+    infos = hex_buttons(g, img)
+    for ix, iy in infos:
+        near = [gr for gr in greens if abs(gr[1] - iy) < 0.05 and 0.02 < gr[0] - ix < 0.16]
+        if near:
+            gx, gy = min(near, key=lambda gr: gr[0] - ix)[:2]
+            return gx, gy
+    return None
+
+
 def tap_row(g, sleep, section, words=None, match=None, prefer_idle=False):
     """Open the panel and tap the first row of `section` whose name contains one of `words`
     (scrolling when needed). The game then jumps to that building. True when tapped."""
@@ -594,14 +617,18 @@ def _scout_camp_by_row(g, sleep):
     """Scout row in the Queue Overview -> the game jumps to the Scout Camp -> the Explore (telescope) button."""
     if not tap_row(g, sleep, "scout", prefer_idle=True):
         return None
-    sleep(1.5)
-    img = g.screenshot()
-    try:                                                    # v242: only when the game really shows the Scout Camp
-        import smart
-        hh, ww = img.shape[:2]
-        txt = " ".join(smart._ocr_lines(img[int(0.15 * hh):int(0.5 * hh), int(0.25 * ww):int(0.75 * ww)], "qm_scout_title.png", 1.8)).lower()
-    except Exception:
-        txt = ""
+    import smart
+    txt = ""
+    for _w in range(3):                                     # v245: the camera can take a few seconds on a slow game
+        sleep(2.5)
+        img = g.screenshot()
+        try:                                                # v242: only when the game really shows the Scout Camp
+            hh, ww = img.shape[:2]
+            txt = " ".join(smart._ocr_lines(img[int(0.1 * hh):int(0.6 * hh), int(0.2 * ww):int(0.8 * ww)], "qm_scout_title.png", 1.8)).lower()
+        except Exception:
+            txt = ""
+        if "scout" in txt:
+            break
     if "scout" not in txt:
         log(f"    scout: the queue row did not show the Scout Camp ({txt[:50]!r})")
         smart._save_failure(g, "scout_row", note="the row did not open the Scout Camp")
