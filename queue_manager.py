@@ -519,24 +519,74 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
     return True
 
 
+def hex_buttons(g, img=None):
+    """v206: the light-blue hexagon buttons under a selected building (left to right) -> [(x, y)] relative.
+    Measured on the owner's screenshot of the Scout Camp (26-11): Info on the left, Explore (telescope) on the right."""
+    import cv2
+    img = g.screenshot() if img is None else img
+    h, w = img.shape[:2]
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    m = cv2.inRange(hsv, (85, 10, 200), (105, 120, 255))
+    m[:int(0.55 * h)] = 0
+    m[:, :int(0.2 * w)] = 0
+    m[:, int(0.8 * w):] = 0
+    n, _l, st, _c = cv2.connectedComponentsWithStats(m)
+    out = []
+    for i in range(1, n):
+        x, y, bw, bh, a = st[i]
+        if a > (0.02 * w) ** 2 and 0.04 * w < bw < 0.15 * w and 0.5 < bh / max(1, bw) * w / h < 4:
+            out.append(((x + bw / 2) / w, (y + bh / 2) / h))
+    return sorted(out)
+
+
+def _scout_camp_by_row(g, sleep):
+    """Scout row in the Queue Overview -> the game jumps to the Scout Camp -> the Explore (telescope) button."""
+    if not tap_row(g, sleep, "scout", prefer_idle=True):
+        return None
+    sleep(1.5)
+    img = g.screenshot()
+    btns = hex_buttons(g, img)
+    if len(btns) >= 2:
+        return btns[-1]
+    spot = glowing_button(g, img)
+    return spot
+
+
 def send_scout(g, sleep, name):
     """Idle scout -> Scout Camp -> its glowing button (Explore) -> the window's Explore/Send button.
     The Queue Overview rows of idle scouts do not move the camera (tested 25-11), so the camp is found by name."""
     import smart
     from common import close_gem_dialogs
+    spot = None
+    try:
+        spot = _scout_camp_by_row(g, sleep)                  # v206: the queue row takes the game to the camp
+    except Exception as e:
+        log(f"    ! scout: queue row: {e!r}")
+    if spot:
+        g.click_rel(*spot); sleep(2.5)
+        log("    scout: Scout Camp reached from the queue row - Explore pressed")
+        return _scout_send_window(g, sleep, name)
+    smart.recover_screen(g)
     pt = smart.find_building(g, sleep, "scout_camp")
     if not pt:
         log("    ! scout: the Scout Camp was not found in this city")
         smart.recover_screen(g)
         return False
     g.click_rel(*pt); sleep(2)
-    spot = glowing_button(g)
+    btns = hex_buttons(g)
+    spot = btns[-1] if len(btns) >= 2 else glowing_button(g)
     if not spot:
         log("    ! scout: no Explore button under the Scout Camp")
         smart._save_failure(g, "scout_camp", note="no glowing button under the camp")
         smart.recover_screen(g)
         return False
     g.click_rel(*spot); sleep(2.5)
+    return _scout_send_window(g, sleep, name)
+
+
+def _scout_send_window(g, sleep, name):
+    import smart
+    from common import close_gem_dialogs
     sent = False
     for _ in range(2):
         img = g.screenshot()
