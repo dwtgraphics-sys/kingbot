@@ -18,6 +18,24 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 Write-Host "== Kingbot: OBS Studio for the live stream ==" -ForegroundColor Cyan
 Get-Process obs64 -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
+# v302: OBS needs the Microsoft Visual C++ 2015-2022 runtime (MSVCP140_1.dll). A fresh Windows Server has none,
+# and OBS then only shows "MSVCP140_1.dll was not found". Install it from Microsoft (silent, no restart).
+if (-not (Test-Path "$env:WINDIR\System32\msvcp140_1.dll")) {
+  Write-Host "Installing the Microsoft Visual C++ runtime (x64) ..."
+  $vc = Join-Path $tmp "vc_redist.x64.exe"
+  Invoke-WebRequest "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile $vc -UseBasicParsing
+  $p = Start-Process $vc -ArgumentList "/install", "/quiet", "/norestart" -PassThru
+  if (-not $p.WaitForExit(600000)) { $p.Kill() }
+  Write-Host ("Visual C++ runtime: " + $(if (Test-Path "$env:WINDIR\System32\msvcp140_1.dll") { "installed" } else { "NOT installed (exit $($p.ExitCode))" }))
+} else { Write-Host "Visual C++ runtime: already installed" }
+
+if ((Test-Path (Join-Path $dest "bin\64bit\obs64.exe")) -and -not ($args -contains "-Force")) {
+  Write-Host "OBS is already in $dest - kept (run with -Force to download it again)."
+  Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Host "Done." -ForegroundColor Green
+  exit 0
+}
+
 Write-Host "Looking up the latest OBS release ..."
 $rel = Invoke-RestMethod "https://api.github.com/repos/obsproject/obs-studio/releases/latest" -Headers @{ "User-Agent" = "kingbot" }
 $asset = $rel.assets | Where-Object { $_.name -match "Windows" -and $_.name -match "\.zip$" -and $_.name -notmatch "PDB|arm64" } | Select-Object -First 1

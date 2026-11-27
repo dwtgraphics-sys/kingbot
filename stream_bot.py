@@ -147,6 +147,9 @@ def start_obs():
     if not os.path.exists(OBS_EXE):
         log("! OBS is not installed at " + OBS_EXE)
         return False
+    if not os.path.exists(os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "System32", "msvcp140_1.dll")):
+        log("! OBS cannot start: the Visual C++ runtime (MSVCP140_1.dll) is missing - run the install_obs action")
+        return False                             # v302: otherwise every start leaves a 'System Error' window
     ensure_vcam()
     subprocess.Popen([OBS_EXE, "--startvirtualcam", "--minimize-to-tray", "--disable-shutdown-check"],
                      cwd=os.path.dirname(OBS_EXE), creationflags=DETACH)
