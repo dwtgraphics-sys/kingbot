@@ -9,6 +9,7 @@
 #   4. registers the OBS virtual camera (the Chrome sender on VDO.Ninja uses it as its webcam)
 # Nothing is changed in the game or the bot. Run it again to update OBS.
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"     # v294: the progress bar made Invoke-WebRequest crawl (20 min timeout)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $dest = "C:\Users\Administrator\obs-studio"
 $tmp = Join-Path $env:TEMP "obs_install"
