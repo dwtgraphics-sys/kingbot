@@ -74,15 +74,12 @@ $scene = @{
 $scene | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $cfg "basic\scenes\Kingbot.json") -Encoding utf8
 
 # --- virtual camera ------------------------------------------------------------------------------
-$vc = Get-ChildItem $dest -Recurse -Filter "virtualcam-install.bat" -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($vc) {
-  Write-Host "Registering the OBS virtual camera ..."
-  Start-Process cmd.exe -ArgumentList "/c `"$($vc.FullName)`"" -Wait -WindowStyle Hidden
-} else {
-  $dll = Get-ChildItem $dest -Recurse -Filter "obs-virtualcam-module64.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($dll) { Start-Process regsvr32.exe -ArgumentList "/s `"$($dll.FullName)`"" -Wait; Write-Host "Virtual camera registered." }
-  else { Write-Host "! virtual camera module not found - start OBS once and press 'Start Virtual Camera'" -ForegroundColor Yellow }
-}
+# regsvr32 directly (virtualcam-install.bat ends with PAUSE and waited forever when run by the bot)
+$dlls = Get-ChildItem $dest -Recurse -Include "obs-virtualcam-module64.dll", "obs-virtualcam-module32.dll" -ErrorAction SilentlyContinue
+if ($dlls) {
+  foreach ($d in $dlls) { $p = Start-Process regsvr32.exe -ArgumentList "/s `"$($d.FullName)`"" -PassThru; if (-not $p.WaitForExit(60000)) { $p.Kill() } }
+  Write-Host "Virtual camera registered."
+} else { Write-Host "! virtual camera module not found - start OBS once and press 'Start Virtual Camera'" -ForegroundColor Yellow }
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 $ok = Test-Path (Join-Path $dest "bin\64bit\obs64.exe")
