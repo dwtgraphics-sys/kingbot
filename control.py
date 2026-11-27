@@ -475,7 +475,7 @@ class Control:
             return
         try:
             with open(LOG_FILE, encoding="utf-8", errors="replace") as f:
-                tail = f.readlines()[-15:]
+                tail = f.readlines()[-60:]     # MON: 60 lines so an hour of monitoring misses nothing between uploads
         except Exception:
             tail = []
         status = {
