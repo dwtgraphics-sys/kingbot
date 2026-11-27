@@ -4933,6 +4933,11 @@ def _match_char(cards, name, kingdom=""):
 
 def switch_character(g, sleep, name="", kingdom=""):
     """Switch to the character with this name (and kingdom) - picked in the dashboard."""
+    try:                                                    # v309: new character - forget the old resource values
+        import control
+        control.RESOURCES.clear()
+    except Exception:
+        pass
     img = _open_characters(g, sleep)
     cards = _char_cards(img)
     want = _match_char(cards, name, kingdom)

@@ -1699,6 +1699,11 @@ def rotation_settings(settings):
             log(f"  ! character switch failed: {e!r}")
         if ok:
             _swap_char_files(prev, slot["name"])
+            try:                                            # v309: the 60% OCR guard must not compare two characters
+                import control
+                control.RESOURCES.clear()
+            except Exception:
+                pass
             mins = _turn_minutes(slot)
             st = {"name": slot["name"], "until": time.time() + mins * 60, "fails": 0, "skip": 0, "since": time.time(),
                   "switch_now_done": st.get("switch_now_done")}
