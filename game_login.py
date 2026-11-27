@@ -432,6 +432,8 @@ def _tick_agreement(win):
     th = agr[3] - agr[1]
     log(f"  game login: agreement sentence starts at x={int(agr[0])} ('{agr[4][:20]}')")
     px, py = agr[0] - 1.4 * th, _center(agr)[1]           # the circle sits left of the sentence
+    if re.match(r"^[OoQ0©@○◯]\s", agr[4]):                    # v284: OCR read the circle itself as 'O' -
+        px = agr[0] + 0.45 * th                               # the line starts AT the circle
     if _circle_ticked(img, px, py, 2.5 * th):
         log("  game login: agreement circle already ticked")
         return True
