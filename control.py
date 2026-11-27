@@ -59,7 +59,8 @@ ALLOWED_KEYS = {
     "telegram_reset",                           # GUIDE-20
     "alerts",                                   # TASK-18
     "sign_out_schedule",                        # v258
-    "plan"                                      # PLAN-01: solo | leader | solo_leader_bundle | group
+    "plan",                                     # PLAN-01: solo | leader | solo_leader_bundle | group
+    "brain_notes"                               # BRAIN-01: admin decisions per incident {key: {status, note, at}}
 }
 
 RESOURCES = {}
@@ -253,6 +254,10 @@ def _hhmm(v):
 
 def _clean(d):
     out = {k: v for k, v in d.items() if k in ALLOWED_KEYS}
+    bn = out.get("brain_notes") if isinstance(out.get("brain_notes"), dict) else {}
+    out["brain_notes"] = {str(k)[:12]: {"status": str(v.get("status") or "")[:10], "note": str(v.get("note") or "")[:300],
+                                         "at": str(v.get("at") or "")[:24]}
+                          for k, v in list(bn.items())[:300] if isinstance(v, dict)}
     out["running"] = bool(out.get("running", True))
     try:
         out["loop_minutes"] = max(5, min(int(out.get("loop_minutes", 60)), 24 * 60))
@@ -490,6 +495,13 @@ class Control:
                 status["dropped_options"] = dict(DROPPED)
             import updater                              # ADM-02: version, backups, rollback hold, last updates
             status["update"] = updater.update_info()
+            try:                                        # BRAIN-01: incident memory - admin decisions in, list out
+                import brain
+                brain.apply_admin(d.get("brain_notes"))
+                status["brain"] = brain.summary()
+                brain.upload()
+            except Exception:
+                pass
             try:                                        # PLAN-01: tier + activities it skipped
                 import plans
                 status["plan"] = dict(plans.info(d), skipped=dict(CITY.get("plan_skipped") or {}))

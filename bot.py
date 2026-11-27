@@ -580,6 +580,13 @@ def watchdog(limit=600):
             if quiet > limit:
                 log(f"! Kingbot was stuck for over {limit // 60} minutes"
                     + (f" in task '{tname}'" if tname else "") + ". Restarting ...")
+                try:                                   # BRAIN-01: a stuck task is an incident (with a picture)
+                    import brain
+                    brain.record("stuck", f"no progress for {limit // 60} minutes", task=tname or "-")
+                    time.sleep(8)                      # let the screenshot upload before the restart
+                    brain.upload(force=True)
+                except Exception:
+                    pass
                 _status_then_exit(state="restarting")
     threading.Thread(target=run, daemon=True).start()
 
@@ -1215,6 +1222,11 @@ def _do_action(g, req):
     except Exception as e:
         log(f"! dashboard action {do} failed: {e!r}")
         kb_guard.error(f"action {do}: {e!r}")
+        try:
+            import brain
+            brain.record("error", repr(e), task="action:" + str(do))
+        except Exception:
+            pass
         return "failed: " + repr(e)[:120]
     try:
         recover_screen(g)
@@ -1770,10 +1782,17 @@ def one_round(settings):
             times = 1
         for n in range(times):
             log(f"> {name} ({n + 1}/{times})")
+            scr0 = None
             try:
-                log(f"  screen: {smart.what_screen(g)}")     # v176: what the task starts on
+                scr0 = smart.what_screen(g)
+                log(f"  screen: {scr0}")     # v176: what the task starts on
             except Exception:
                 pass
+            try:
+                import brain                                  # BRAIN-01: the bot's memory of its failures
+                brain.task_start(name, scr0)
+            except Exception:
+                brain = None
             TASK_NOW[0], TASK_NOW[1] = time.time(), name
             kb_guard.routine(name)
             ctl.write_status(state="working", task=f"{name} {n + 1}/{times}")
@@ -1795,14 +1814,29 @@ def one_round(settings):
                     ok = fn(g, sleep, **opts)
                 TASK_RESULT[name] = {"at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
                                      "ok": ok is not False, "result": ok if isinstance(ok, str) else None}
+                if ok is False and brain:
+                    try:
+                        brain.record("fail", brain.last_warning() or f"{name} returned False", task=name)
+                    except Exception:
+                        pass
             except (Stop, NewSettings, SystemExit, pyautogui.FailSafeException):
                 raise
             except Exception as e:
                 kb_guard.error(f"{name}: {e!r}")
+                if brain:
+                    try:
+                        brain.record("error", repr(e), task=name)
+                    except Exception:
+                        pass
                 TASK_RESULT[name] = {"at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "ok": False,
                                      "result": repr(e)[:120]}
                 raise
             finally:
+                if brain:
+                    try:
+                        brain.task_end()
+                    except Exception:
+                        pass
                 TASK_NOW[0] = 0.0        # v154: the task ended, the task watchdog is disarmed
                 kb_guard.routine(None)
                 try:

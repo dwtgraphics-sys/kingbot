@@ -29,6 +29,7 @@ LABEL = {
     "on_captcha": "🧩 نافذة تحقق (كابتشا)",
     "on_server_offline": "📡 انقطاع اتصال اللعبة",
     "on_subscription_expiring": "⏳ الاشتراك ينتهي قريباً",
+    "bot_incident": "🧠 عطل جديد في البوت (الصورة في لوحة المسؤول)",
     "test": "✅ تنبيه تجريبي",
 }
 SETTINGS = [lambda: {}]          # bot.py sets this to read ctl.data["alerts"]

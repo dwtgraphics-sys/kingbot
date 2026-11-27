@@ -28,7 +28,7 @@ import zipfile
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(BASE, "migrate")
-SHARED = ["templates/**", "vision_scales.json", "click_mode.txt", "tasks.json"]
+SHARED = ["templates/**", "vision_scales.json", "click_mode.txt", "tasks.json", "brain.json"]
 ACCOUNT = ["building_pos.json", "persist_city.json", "profiles_by_char.json", "task_state*.json", "gems_day*.json",
            "rotation_state.json", "stats_days.json", "mat_scan_cd.json", "gather_next.txt"]
 SECRETS = ["github_token.txt", "telegram.txt", "telegram_owner.txt", "local_config.json"]

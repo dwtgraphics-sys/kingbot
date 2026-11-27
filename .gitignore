@@ -37,3 +37,5 @@ live_state.json
 vision_scales.json
 migrate/
 dist/
+brain.json
+brain.json.tmp
