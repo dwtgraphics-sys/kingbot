@@ -149,6 +149,8 @@ class LoginWin:
                 txt = " ".join(b[4].lower() for b in _ocr(self.shot()))
             except Exception:
                 txt = ""
+            if not any(w in txt for w in LOGIN_WORDS):
+                self.pin(False)
             hits = sum(w in txt for w in LOGIN_WORDS)
             log(f"  game login: window {self.w}x{self.h} at {self.x},{self.y} - {hits} login words")
             if hits and (best is None or hits > best[0]):
@@ -174,6 +176,19 @@ class LoginWin:
         sy = int(round(self.y + ry * self.h))
         return min(self.x + self.w - 1, max(self.x, sx)), min(self.y + self.h - 1, max(self.y, sy))
 
+    def pin(self, on):
+        """v274: keep the Log In window always-on-top while the bot fills it (clicks land on what is on top)."""
+        try:
+            if on:
+                if user32.IsIconic(self.hwnd):
+                    user32.ShowWindow(self.hwnd, 9)                      # SW_RESTORE
+                activate(self.hwnd)
+            user32.SetWindowPos(self.hwnd, -1 if on else -2, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)
+            if on:
+                time.sleep(0.3)
+        except Exception:
+            pass
+
     def front(self):
         if not self.full:
             activate(self.hwnd)
@@ -183,14 +198,8 @@ class LoginWin:
     def shot(self):
         import cv2, numpy as np
         from PIL import ImageGrab
-        if not self.full:                                    # v273: bring the form in front first - another window
-            try:                                             # (a browser) on top of it was read instead
-                activate(self.hwnd)
-                user32.SetWindowPos(self.hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)   # HWND_TOPMOST, no move/size
-                time.sleep(0.3)
-                user32.SetWindowPos(self.hwnd, -2, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)   # back to normal, stays in front
-            except Exception:
-                pass
+        if not self.full:                                    # v273/v274: the form must be on top of every other window
+            self.pin(True)                                   # (a browser / the Claude app covered it)
         self.refresh()
         img = ImageGrab.grab(bbox=(self.x, self.y, self.x + self.w, self.y + self.h), all_screens=True)
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
@@ -449,9 +458,24 @@ def send_code(code, agree=False):
     return "failed: still on the login window"
 
 
+def _unpin_all():
+    for h in set(_candidates() + ([find_login_window(0)] if find_login_window(0) else [])):
+        try:
+            user32.SetWindowPos(h, -2, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)   # not topmost, no activate
+        except Exception:
+            pass
+
+
 def handle(req):
     """Dashboard action game_login_email / game_login_code. Never logs the email or the code."""
     do = req.get("do")
+    try:
+        return _handle(req, do)
+    finally:
+        _unpin_all()
+
+
+def _handle(req, do):
     try:
         if do == "game_login_email":
             return send_email(req.get("email"))
