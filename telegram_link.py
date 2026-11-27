@@ -44,6 +44,18 @@ class Telegram:
 
     def _pick_context(self):
         """Find a certificate store that trusts api.telegram.org (Python default, Windows store, certifi)."""
+        try:                                                 # v290: a new server had neither - install them once
+            import truststore, certifi  # noqa: F401
+        except Exception:
+            if not getattr(TelegramLink, "_pip_tried", False):
+                TelegramLink._pip_tried = True
+                try:
+                    import subprocess, sys as _sys
+                    subprocess.run([_sys.executable, "-m", "pip", "install", "-q", "truststore", "certifi"],
+                                   capture_output=True, timeout=300, creationflags=0x08000000)
+                    log("Telegram: installed truststore + certifi (certificate stores)")
+                except Exception as e:
+                    log(f"Telegram: pip install truststore/certifi failed: {e!r}")
         options = [("python default", lambda: ssl.create_default_context())]
         try:
             import truststore
@@ -63,7 +75,7 @@ class Telegram:
                 log(f"Telegram connection OK ({name}).")
                 return ctx
             except Exception as e:
-                errors.append(f"{name}: {str(e)[:90]}")
+                errors.append(f"{name}: {str(e)[:160]}")
         log("! Telegram connection failed: " + " | ".join(errors))
         return None
 
