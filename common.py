@@ -175,6 +175,27 @@ def interception_lib():
 CURRENT_GAME = [None]
 
 
+def _cancel_right_of(img, rx, ry):
+    """v296: 'Exit the game?' = red CONFIRM with a cyan CANCEL to its right on the same row (a reward card has
+    CONFIRM alone). Returns the CANCEL centre (rel) or None. Works without OCR (OCR read nothing on this server)."""
+    try:
+        import numpy as np
+        H, W = img.shape[:2]
+        y = int(ry * H); x0 = int(rx * W) + int(0.08 * W); x1 = min(W, int(rx * W) + int(0.35 * W))
+        band = img[max(0, y - int(0.02 * H)):min(H, y + int(0.02 * H)), x0:x1].astype(int)
+        if band.size == 0:
+            return None
+        b, gg, r = band[..., 0], band[..., 1], band[..., 2]
+        cyan = (b > 170) & (gg > 150) & (r < 130)
+        cols = np.where(cyan.mean(axis=0) > 0.5)[0]
+        if len(cols) < int(0.04 * W):
+            return None
+        cx = x0 + (cols[0] + cols[-1]) / 2
+        return cx / W, ry
+    except Exception:
+        return None
+
+
 def cancel_exit_notice(g, img):
     """v287: the title screen answers ESC with NOTICE 'Exit the game?' (CONFIRM / CANCEL). Read the words and
     press CANCEL. Returns True when that notice was there. CONFIRM is never pressed."""
@@ -195,8 +216,7 @@ def cancel_exit_notice(g, img):
         if c:
             x = c[2] - (c[2] - c[0]) * 0.18
     if not c:
-        log("  ! 'Exit the game?' is open - CANCEL was not read; pressing ESC (closes it)")
-        pyautogui.press("esc"); time.sleep(1.5)
+        log("  ! 'Exit the game?' is open - CANCEL was not read; leaving it (never ESC / CONFIRM here)")
         return True
     log("  ! 'Exit the game?' was open - pressing CANCEL")
     g._click_absolute(x / W, ((c[1] + c[3]) / 2) / H)
@@ -228,6 +248,12 @@ def close_gem_dialogs(g=None):
             return seen
         seen = True
         if not no:
+            cw = g.find_image("btn_confirm_word", 0.85, img=img) or g.find_image("btn_confirm_cmd", 0.8, img=img)
+            cn = _cancel_right_of(img, *cw[0]) if cw else None
+            if cn:                                           # v296: NOTICE + CONFIRM + CANCEL = "Exit the game?"
+                log("  ! 'Exit the game?' was open - pressing CANCEL (not ESC, not CONFIRM)")
+                g._click_absolute(*cn); time.sleep(2)
+                continue
             # v148: the NO template can miss on some dialogs (this happened 608 times), which used to
             # leave a 'spend gems' window open in front of every later click. Close it properly now.
             log("! SAFETY: a 'spend gems' window is open but the NO button was not found - closing it")
@@ -300,8 +326,14 @@ def recover_screen(g=None, tries=4):
             g._click_absolute(0.5, 0.88); time.sleep(3)
             continue
         cf = g.find_image("btn_confirm_cmd", 0.8, img=img)
-        if cf and cancel_exit_notice(g, img):                # v295: that CONFIRM was "Exit the game?" - it closed
-            return True                                      # the game 4 times in an hour; CANCEL = plain view
+        if cf:                                               # v295/v296: that CONFIRM may be "Exit the game?"
+            cn = _cancel_right_of(img, *cf[0])               # (it closed the game) - press its CANCEL instead
+            if cn:
+                log("  ! 'Exit the game?' was open (CONFIRM + CANCEL) - pressing CANCEL")
+                g._click_absolute(*cn); time.sleep(2)
+                return True
+            if cancel_exit_notice(g, img):
+                return True
         if cf:
             log("  ! a reward card was open - pressing CONFIRM")
             g._click_absolute(*cf[0]); time.sleep(2.5)
@@ -354,11 +386,10 @@ def recover_screen(g=None, tries=4):
             # v148: neither X nor BACK matched. The icons checked above prove this is not the plain
             # view, so ESC closes a window here instead of asking to quit.
             if i == 0:
-                log("  ! screen not recognised (no X / BACK found) - trying ESC once")
-                pyautogui.press("esc")
-                time.sleep(2)
-                if cancel_exit_notice(g, g.screenshot()):     # v295: ESC on the plain view asks "Exit the game?"
-                    return True                              # -> CANCEL; the view was already clean
+                # v296: no ESC any more - on this game ESC on the plain view opens "Exit the game?" and a
+                # second ESC / CONFIRM closed the game 5 times in an hour. Wait once and look again instead.
+                log("  ! screen not recognised (no X / BACK found) - waiting 3 s and looking again (no ESC)")
+                time.sleep(3)
                 continue
             log("  ! screen not recognised (no X / BACK found) - leaving it as it is")
             return False
