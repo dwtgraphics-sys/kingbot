@@ -44,7 +44,13 @@ def _expand_button(g, img):
     h, w = img.shape[:2]
     y0, y1, x0 = int(0.03 * h), int(0.45 * h), int(0.78 * w)
     boxes = smart._ocr_boxes(img[y0:y1, x0:], "troops_counter.png", scale=2.0)
-    cnt = next((b for b in boxes if re.fullmatch(r"\s*\d\s*/\s*\d\s*", b[4])), None)
+    cnt = next((b for b in boxes if re.fullmatch(r"\s*\d\s*/\s*\d\s*", b[4])), None) or \
+        next((b for b in boxes if len(b[4]) <= 9 and re.search(r"\b\d\s*/\s*[1-6]\b", b[4])), None)   # v308: '5/5 ...'
+    if cnt is None:                                           # v308: the bright counter reads better inverted
+        import cv2 as _cv
+        inv = 255 - img[y0:y1, x0:]
+        boxes = smart._ocr_boxes(inv, "troops_counter_inv.png", scale=2.5)
+        cnt = next((b for b in boxes if len(b[4]) <= 9 and re.search(r"\d\s*/\s*[1-6]", b[4])), None)
     if cnt is None:
         log("    troops: march counter (X/5) not found")
         return None

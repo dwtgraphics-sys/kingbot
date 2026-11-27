@@ -114,6 +114,35 @@ def sender_running():
     return bool(pids)
 
 
+def close_obs_error_windows():
+    """v308: every OBS start without the C++ runtime left an 'obs64.exe - System Error' box on top of the game;
+    the bot then could not see the search panels. Close such boxes (title starts with 'obs64.exe')."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        u = ctypes.windll.user32
+        found = []
+        Enum = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+
+        def cb(h, _):
+            n = u.GetWindowTextLengthW(h)
+            if n and u.IsWindowVisible(h):
+                b = ctypes.create_unicode_buffer(n + 1)
+                u.GetWindowTextW(h, b, n + 1)
+                t = b.value.lower()
+                if t.startswith("obs64.exe") and ("error" in t or "system" in t):
+                    found.append(h)
+            return True
+
+        u.EnumWindows(Enum(cb), 0)
+        for h in found:
+            u.PostMessageW(h, 0x0010, 0, 0)                 # WM_CLOSE
+        if found:
+            log(f"closed {len(found)} OBS error window(s) that covered the game")
+    except Exception:
+        pass
+
+
 VCAM_CLSID = "{A3FCE0F5-3493-419F-958A-ABA1250EC20B}"     # OBS Virtual Camera (DirectShow)
 
 
@@ -254,6 +283,7 @@ def main():
         live = load(LIVE_FILE, {})
         on, reason = wanted(live)
         now = time.time()
+        close_obs_error_windows()
         try:
             if on and (active is not True or now - last_health > HEALTH):
                 last_health = now

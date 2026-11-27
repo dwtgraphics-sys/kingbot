@@ -205,9 +205,15 @@ def _open_search_and_pick(g, sleep, icon):
     if _click_tpl(g, icon, sleep, 0.75, tries=2):
         return True
     spot = None
+    try:                                                  # v308: the round magnifier button (owner's picture)
+        hit = find_icon(g, "map_search_btn", min_scale=0.3, max_scale=1.6, steps=14, threshold=0.70)
+        spot = hit[:2] if hit else None
+    except Exception:
+        spot = None
     try:
-        hit = find_icon(g, "map_search_icon", min_scale=0.5, max_scale=1.6, steps=10, threshold=0.72)
-        spot = hit[:2] if hit and hit[1] < 0.1 else None
+        if not spot:
+            hit = find_icon(g, "map_search_icon", min_scale=0.5, max_scale=1.6, steps=10, threshold=0.72)
+            spot = hit[:2] if hit and hit[1] < 0.1 else None
     except Exception:
         spot = None
     if not spot:                                          # the magnifier sits right after "#kingdom X:… Y:…"
@@ -2387,6 +2393,18 @@ def _barb_search(g, sleep, lo, hi):
         g.click_rel(0.245, 0.649); sleep(1.5)                # Barbarians tab (not Fort)
         if g.find_image("barb_tab_on", 0.85):
             break
+        try:                                                 # v308: F did nothing - the magnifier button
+            recover_screen(g); sleep(1)
+            hit = find_icon(g, "map_search_btn", min_scale=0.3, max_scale=1.6, steps=14, threshold=0.70)
+            if hit:
+                log("    barbarians: F did nothing - tapping the search (magnifier) button")
+                g.click_rel(hit[0], hit[1]); sleep(3)
+                g.click_rel(0.285, 0.935); sleep(2)          # Barbarians icon
+                g.click_rel(0.245, 0.649); sleep(1.5)        # Barbarians tab
+                if g.find_image("barb_tab_on", 0.85):
+                    break
+        except Exception as e:
+            log(f"    (magnifier fallback failed: {e!r})")
         import cv2
         from common import BASE
         cv2.imwrite(os.path.join(BASE, "claude_out", "ba_nopanel%d.png" % attempt), g.screenshot())
@@ -2912,6 +2930,17 @@ def vip_shop(g, sleep, max_buys=60):
     if not g.find_image("vip_shop_title", 0.8):
         recover_screen(g)
         _city_reset(g, sleep)
+        try:                                                 # v308: the winged-shield badge above the Shop building
+            hit = find_icon(g, "vip_shop_badge", min_scale=0.3, max_scale=1.6, steps=14, threshold=0.70)
+            if hit:
+                log("    vip_shop: found the VIP badge above the Shop building")
+                g.click_rel(hit[0], hit[1]); sleep(3)
+                if not g.find_image("vip_shop_title", 0.8):
+                    if not _shop_probe(hit[0], min(0.95, hit[1] + 0.10)):   # the building under the badge
+                        recover_screen(g); _city_reset(g, sleep)
+        except Exception as e:
+            log(f"    (vip badge search failed: {e!r})")
+    if not g.find_image("vip_shop_title", 0.8):
         mem = _bpos("vip_shop")
         ok = False
         if mem:                                              # v137: this character's remembered spot
@@ -4671,6 +4700,11 @@ def read_conduct(g, sleep):
         x0, y0 = int(0.12 * w), int(0.18 * h)
         boxes = _ocr_boxes(img[y0:int(0.90 * h), x0:int(0.88 * w)], "settings_icons.png")
         lab = [b for b in boxes if _CONDUCT_WORDS.search(b[4] or "")]
+        if not lab:                                          # v308: more icons below - scroll the page once
+            _drag(g, 0.5, 0.75, 0.5, 0.30); sleep(2)
+            img = g.screenshot()
+            boxes = _ocr_boxes(img[y0:int(0.90 * h), x0:int(0.88 * w)], "settings_icons2.png")
+            lab = [b for b in boxes if _CONDUCT_WORDS.search(b[4] or "")]
         if not lab:
             log("    ! conduct: the 'Conduct Score' icon was not found on the Settings page (labels: "
                 + " | ".join(b[4] for b in boxes)[:200] + ")")
@@ -4842,6 +4876,16 @@ def _read_characters(g, sleep):
     cards = _char_cards(img)
     control.CITY["characters"] = cards
     control.CITY["characters_at"] = _t.strftime("%Y-%m-%d %H:%M")
+    try:                                              # v308: a picture of the characters page for the dashboard
+        import cv2, server_config
+        ok, jpg = cv2.imencode(".jpg", img if img is not None else g.screenshot(), [cv2.IMWRITE_JPEG_QUALITY, 70])
+        if ok:
+            dest = server_config.path("screen").rsplit("/", 1)[0] + "/characters.jpg"
+            if control._gh_put_bytes(dest, control._seal_bytes(jpg.tobytes()), "bot: characters page"):
+                control.CITY["characters_shot"] = {"path": dest, "at": _t.strftime("%Y-%m-%d %H:%M")}
+                log("  read_characters: picture of the characters page sent to the dashboard")
+    except Exception as e:
+        log(f"  ! read_characters: picture not sent ({e!r})")
     if cards:
         _persist_save()
     log(f"  read_characters: {len(cards)} character(s): " + ", ".join(f"{c['name']} ({c['kingdom']}){' *' if c['current'] else ''}" for c in cards))
