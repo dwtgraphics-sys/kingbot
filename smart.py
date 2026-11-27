@@ -1590,9 +1590,17 @@ def read_resources(g, sleep=None):
         unit = 1e6 if big and min(big) >= 1e6 else 1e3 if big else 1e6
         vals = [int(v * unit) if i < 4 and v < 1000 else v for i, v in enumerate(vals)]   # unit lost by OCR
         res = dict(zip(RES_NAMES, vals))
+        import control
+        prev = dict(control.RESOURCES)                       # v295: one misread digit ('020.8M' for 320.8M)
+        if prev.get("read_at"):                              # dropped food by 300M in the stats
+            for k in RES_NAMES:
+                pv, nv = prev.get(k), res.get(k)
+                if isinstance(pv, (int, float)) and pv > 1_000_000 and isinstance(nv, (int, float)) \
+                        and (nv < pv * 0.4 or nv > pv * 2.5):
+                    log(f"  ? resources: {k} read as {nv:,} (was {pv:,}) - looks like an OCR slip, keeping {pv:,}")
+                    res[k] = pv
         res["read_at"] = _t.strftime("%Y-%m-%d %H:%M")
         res["ocr"] = " | ".join(lines)[:120]
-        import control
         control.RESOURCES.clear(); control.RESOURCES.update(res)
         try:
             _gem_day(gems_now=res.get("gems"))

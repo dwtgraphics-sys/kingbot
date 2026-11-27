@@ -300,6 +300,8 @@ def recover_screen(g=None, tries=4):
             g._click_absolute(0.5, 0.88); time.sleep(3)
             continue
         cf = g.find_image("btn_confirm_cmd", 0.8, img=img)
+        if cf and cancel_exit_notice(g, img):                # v295: that CONFIRM was "Exit the game?" - it closed
+            return True                                      # the game 4 times in an hour; CANCEL = plain view
         if cf:
             log("  ! a reward card was open - pressing CONFIRM")
             g._click_absolute(*cf[0]); time.sleep(2.5)
@@ -355,6 +357,8 @@ def recover_screen(g=None, tries=4):
                 log("  ! screen not recognised (no X / BACK found) - trying ESC once")
                 pyautogui.press("esc")
                 time.sleep(2)
+                if cancel_exit_notice(g, g.screenshot()):     # v295: ESC on the plain view asks "Exit the game?"
+                    return True                              # -> CANCEL; the view was already clean
                 continue
             log("  ! screen not recognised (no X / BACK found) - leaving it as it is")
             return False
