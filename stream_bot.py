@@ -240,6 +240,12 @@ def main():
         for p in old_senders:
             _run(["taskkill", "/PID", str(p), "/T", "/F"])
         log(f"closed {len(old_senders)} old Chrome sender process(es)")
+    if os.path.exists(OBS_EXE):                  # v301: register the virtual camera now; a running OBS that
+        had = subprocess.run(["reg", "query", rf"HKLM\SOFTWARE\Classes\CLSID\{VCAM_CLSID}"], capture_output=True,
+                             timeout=15, creationflags=NOWIN).returncode == 0
+        if not had and ensure_vcam() and obs_running():   # started without it must start again
+            _run(["taskkill", "/IM", "obs64.exe", "/F"])
+            log("OBS restarted so it can use the new virtual camera")
     active, since, last_health, last_out = None, None, 0.0, None
     while True:
         live = load(LIVE_FILE, {})
