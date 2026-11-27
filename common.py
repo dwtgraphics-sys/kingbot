@@ -281,6 +281,29 @@ def recover_screen(g=None, tries=4):
             g._click_absolute(*cts[0])
             time.sleep(25)
             continue
+        if not xb and not back:                              # v286: read the words - the title screen of a new
+            try:                                             # account did not match the picture, and ESC there
+                import smart                                 # opens "Exit the game?" (never press CONFIRM)
+                H, W = img.shape[:2]
+                tl = [(b, b[4].lower().strip()) for b in smart._ocr_boxes_uncached(img, "recover_ocr.png", 1.4)]
+                if any("exit the game" in t for _, t in tl):
+                    c = next((b for b, t in tl if t == "cancel" or t.endswith(" cancel")), None)
+                    if c:
+                        log("  ! 'Exit the game?' was open - pressing CANCEL")
+                        g._click_absolute((c[2] - 18 if c[4].strip().lower() != "cancel" else (c[0] + c[2]) / 2) / W,
+                                          ((c[1] + c[3]) / 2) / H)
+                    else:
+                        log("  ! 'Exit the game?' was open - CANCEL not read, waiting")
+                    time.sleep(2)
+                    continue
+                c = next((b for b, t in tl if "click to start" in t), None)
+                if c:
+                    log("  game start screen (read) - pressing 'Click to Start'")
+                    g._click_absolute(((c[0] + c[2]) / 2) / W, ((c[1] + c[3]) / 2) / H)
+                    time.sleep(25)
+                    continue
+            except Exception as e:
+                log(f"    (start-screen read failed: {e!r})")
         if xb:
             log("  ! a window was left open - pressing X")
             g._click_absolute(*xb[0])
