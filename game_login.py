@@ -426,27 +426,30 @@ def _tick_agreement(win):
         return False
     img = win.shot()
     agr = _find(_ocr(img), ("i have read and agreed", "have read and agreed", "user agreement")) or agr
-    px, py = agr[0] - 1.4 * (agr[3] - agr[1]), _center(agr)[1]           # the circle sits left of the sentence
-    if _circle_ticked(img, px, py):
+    th = agr[3] - agr[1]
+    px, py = agr[0] - 1.4 * th, _center(agr)[1]           # the circle sits left of the sentence
+    if _circle_ticked(img, px, py, 2.5 * th):
+        log("  game login: agreement circle already ticked")
         return True
     win.click_px(px, py); time.sleep(0.8)
-    ok = _circle_ticked(win.shot(), px, py)
+    ok = _circle_ticked(win.shot(), px, py, 2.5 * th)
     log("  game login: agreement circle " + ("ticked" if ok else "clicked (does not look ticked)"))
     return ok
 
 
-def _circle_ticked(img, px, py):
-    """v278: the ticked circle is a filled red dot with a white tick. Count clearly red pixels around it (the old
-    mean-colour test said 'not ticked' for a ticked circle, so the bot un-ticked it)."""
-    import numpy as np
+def _circle_ticked(img, px, py, span=None):
+    """v278/v281: the ticked circle is a filled red dot. Look for clearly red pixels in a strip left of the
+    sentence (OCR may drop the 'I', so the guessed centre can be a few pixels off)."""
     h, w = img.shape[:2]
-    r = 9
-    crop = img[max(0, int(py) - r):min(h, int(py) + r), max(0, int(px) - r):min(w, int(px) + r)].astype(int)
+    span = int(span or 20)
+    y0, y1 = max(0, int(py) - 9), min(h, int(py) + 9)
+    x0, x1 = max(0, int(px) - span), min(w, int(px) + 10)
+    crop = img[y0:y1, x0:x1].astype(int)
     if crop.size == 0:
         return False
     b, g, rr = crop[..., 0], crop[..., 1], crop[..., 2]
-    red = ((rr > 150) & (rr - g > 70) & (rr - b > 70)).mean()
-    return red > 0.12
+    red = ((rr > 150) & (rr - g > 70) & (rr - b > 70)).sum()
+    return red > 40
 
 
 def send_code(code, agree=False):
