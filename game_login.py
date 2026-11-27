@@ -183,6 +183,14 @@ class LoginWin:
     def shot(self):
         import cv2, numpy as np
         from PIL import ImageGrab
+        if not self.full:                                    # v273: bring the form in front first - another window
+            try:                                             # (a browser) on top of it was read instead
+                activate(self.hwnd)
+                user32.SetWindowPos(self.hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)   # HWND_TOPMOST, no move/size
+                time.sleep(0.3)
+                user32.SetWindowPos(self.hwnd, -2, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)   # back to normal, stays in front
+            except Exception:
+                pass
         self.refresh()
         img = ImageGrab.grab(bbox=(self.x, self.y, self.x + self.w, self.y + self.h), all_screens=True)
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
