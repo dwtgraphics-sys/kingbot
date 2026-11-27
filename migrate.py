@@ -29,8 +29,11 @@ import zipfile
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(BASE, "migrate")
 SHARED = ["templates/**", "vision_scales.json", "click_mode.txt", "tasks.json", "brain.json"]
-ACCOUNT = ["building_pos.json", "persist_city.json", "profiles_by_char.json", "task_state*.json", "gems_day*.json",
-           "rotation_state.json", "stats_days.json", "mat_scan_cd.json", "gather_next.txt"]
+ACCOUNT = ["building_pos.json", "persist_city.json", "task_state*.json", "gems_day*.json",
+           "stats_days.json", "mat_scan_cd.json", "gather_next.txt"]
+# URGENT-03: characters never travel between servers - profiles_by_char.json / rotation_state.json are not exported,
+# and the character list / per-character history are removed from persist_city.json and stats_days.json on export
+CHAR_KEYS = ("characters", "characters_at", "history_by_char", "profile_char")
 SECRETS = ["github_token.txt", "telegram.txt", "telegram_owner.txt", "local_config.json"]
 
 
@@ -52,6 +55,15 @@ def export(with_secrets=False):
                 "shared": _files(SHARED), "account": _files(ACCOUNT)}
     with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
         for f in files:
+            if f in ("persist_city.json", "stats_days.json"):      # URGENT-03: strip characters
+                try:
+                    d = json.load(open(os.path.join(BASE, f), encoding="utf-8"))
+                    for k in CHAR_KEYS + ("by_char",):
+                        d.pop(k, None)
+                    z.writestr(f, json.dumps(d, ensure_ascii=False))
+                    continue
+                except Exception:
+                    pass
             z.write(os.path.join(BASE, f), f)
         z.writestr("MANIFEST.json", json.dumps(manifest, ensure_ascii=False, indent=1))
     print(f"state:   {zp}  ({len(files)} files, {os.path.getsize(zp) // 1024} KB) - no secrets inside")

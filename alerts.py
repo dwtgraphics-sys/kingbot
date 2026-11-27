@@ -30,6 +30,7 @@ LABEL = {
     "on_server_offline": "📡 انقطاع اتصال اللعبة",
     "on_subscription_expiring": "⏳ الاشتراك ينتهي قريباً",
     "bot_incident": "🧠 عطل جديد في البوت (الصورة في لوحة المسؤول)",
+    "conduct_low": "⚠️ عداد السلوك انخفض (يتوقف البوت عند 80 أو أقل)",
     "test": "✅ تنبيه تجريبي",
 }
 SETTINGS = [lambda: {}]          # bot.py sets this to read ctl.data["alerts"]

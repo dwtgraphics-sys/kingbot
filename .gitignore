@@ -39,3 +39,5 @@ migrate/
 dist/
 brain.json
 brain.json.tmp
+conduct_stop.json
+chars_purged_v1.txt

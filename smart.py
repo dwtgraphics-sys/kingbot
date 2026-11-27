@@ -4531,31 +4531,32 @@ def _open_characters(g, sleep):
 
 
 def _char_cards(img):
-    """Character cards: [{name, kingdom, power, current, x, y, avatar}] from OCR of the Account/Characters page."""
+    """Character cards: [{name, kingdom, kingdom_no, kingdom_name, power, current, x, y, avatar}] from OCR of the
+    Account/Characters page. URGENT-03: one card = name line, then '#1234 Kingdom of X', then the power number -
+    kingdom and power lines are never taken as names, and split OCR pieces never become extra characters."""
     import cv2, base64, re
     h, w = img.shape[:2]
     x0, y0, x1, y1 = int(0.26 * w), int(0.40 * h), int(0.85 * w), int(0.78 * h)
     boxes = _ocr_boxes(img[y0:y1, x0:x1], "chars.png")
     boxes = [(b[0] + x0, b[1] + y0, b[2] + x0, b[3] + y0, b[4].strip()) for b in boxes if b[4].strip()]
+    KING = re.compile(r"^#?\s*(\d{3,5})\s*(?:k[il1]ngd[o0]m\s*[o0][ft]\s*)?([A-Za-z][\w' .-]{2,})$", re.I)
+    POWER = re.compile(r"^#?\s*(\d{1,3}(?:\s*[,.]\s*\d{3})+|\d{4,})$")
+    is_king = lambda t: bool(KING.match(t)) and bool(re.search(r"k[il1]ngd|#", t, re.I))
+    is_power = lambda t: bool(POWER.match(t.replace(" ", "")))
     cards = []
     for b in boxes:
-        m = re.search(r"(?:#\s*|k(?:ingdom)?\.?\s*)?(\d{3,5})\s*(.*)", b[4], re.IGNORECASE)
-        if not m or not m.group(1):
+        if not is_king(b[4]):
             continue
-        cx = (b[0] + b[2]) / 2
-        same_col = [o for o in boxes if abs(o[0] - b[0]) < 0.03 * w]
-        above = [o for o in same_col if 0 < b[1] - o[1] < 0.045 * h]
-        below = [o for o in same_col if 0 < o[1] - b[1] < 0.035 * h]
+        m = KING.match(b[4])
+        col = [o for o in boxes if abs(o[0] - b[0]) < 0.05 * w and o is not b]
+        above = [o for o in col if 0 < b[1] - o[1] < 0.06 * h and not is_king(o[4]) and not is_power(o[4])]
+        below = [o for o in col if 0 < o[1] - b[1] < 0.05 * h and is_power(o[4])]
         name = max(above, key=lambda o: o[1])[4] if above else ""
-        if not name or name == "?":
-            name = m.group(2).strip()
-        if not name:
-            name = "?"
-        power = ""
-        for o in below:
-            pm = re.search(r"([\d,\.]{4,})", o[4])
-            if pm:
-                power = pm.group(1)
+        name = re.sub(r"\s+", "", name) if re.match(r"^\[", name) else name.strip()
+        if not name or len(re.sub(r"\W", "", name)) < 2:
+            continue                                              # no name line above: not a character card
+        power = re.sub(r"[^\d]", "", min(below, key=lambda o: o[1])[4]) if below else ""
+        power = f"{int(power):,}" if power else ""
         ax, ay = int(b[0] - 0.045 * w), int(b[1] + 0.005 * h)  # avatar circle left of the text
         r = int(0.03 * w)
         crop = img[max(0, ay - r):ay + r, max(0, ax - r):ax + r]
@@ -4566,10 +4567,18 @@ def _char_cards(img):
         chk = img[max(0, ay - r):ay + r, max(0, ax - int(1.6 * r)):max(1, ax - r // 2)]
         hsv = cv2.cvtColor(chk, cv2.COLOR_BGR2HSV) if chk.size else None
         current = bool(hsv is not None and cv2.countNonZero(cv2.inRange(hsv, (45, 120, 120), (80, 255, 255))) > 30)
-        cards.append({"name": name, "kingdom": "#" + m.group(1) + " " + m.group(2).strip(), "power": power,
-                      "current": current, "x": round(cx / w, 4), "y": round(((b[1] + b[3]) / 2) / h, 4), "avatar": av})
-    return cards
-
+        kname = re.sub(r"\s+", " ", m.group(2)).strip()
+        cards.append({"name": name, "kingdom": "#" + m.group(1) + " " + kname, "kingdom_no": m.group(1), "kingdom_name": kname,
+                      "power": power, "current": current, "x": round(((b[0] + b[2]) / 2) / w, 4),
+                      "y": round(((b[1] + b[3]) / 2) / h, 4), "avatar": av})
+    out, seen = [], set()
+    for c in cards:                                               # one card per name
+        k = re.sub(r"\W", "", c["name"]).lower()
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(c)
+    return out
 
 def _close_settings(g):
     """v259: the Settings window X - at (0.880, 0.135) on the 946x532 window (0.226 was the old 4:3 place and
@@ -4582,6 +4591,140 @@ def _close_settings(g):
     except Exception:
         pass
     g.click_rel(0.880, 0.135)
+
+
+CHAR_PURGE_MARK = os.path.join(BASE, "chars_purged_v1.txt")
+
+
+def purge_characters(why="purge"):
+    """URGENT-03: forget every cached character (list, per-character profiles, rotation state, per-character
+    history) - they may have been copied from another server. Each server reads its own account again."""
+    import json as _j, control
+    for k in ("characters", "characters_at", "history_by_char", "profile_char"):
+        control.CITY.pop(k, None)
+    for fn in ("profiles_by_char.json", "rotation_state.json"):
+        try:
+            os.remove(os.path.join(BASE, fn))
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            log(f"  ! purge {fn}: {e!r}")
+    try:
+        sf = os.path.join(BASE, "stats_days.json")
+        if os.path.isfile(sf):
+            d = _j.load(open(sf, encoding="utf-8"))
+            if d.pop("by_char", None) is not None:
+                _j.dump(d, open(sf, "w", encoding="utf-8"), ensure_ascii=False)
+    except Exception as e:
+        log(f"  ! purge stats by character: {e!r}")
+    _persist_save()
+    log(f"Characters cache cleared ({why}) - the character list starts empty until this server reads its own account.")
+
+
+def purge_characters_once():
+    if os.path.isfile(CHAR_PURGE_MARK):
+        return
+    purge_characters("one-time clean-up of characters copied from other servers")
+    try:
+        open(CHAR_PURGE_MARK, "w").write("done")
+    except Exception:
+        pass
+
+
+CONDUCT_STOP_FILE = os.path.join(BASE, "conduct_stop.json")
+_CONDUCT_WORDS = re.compile(r"conduct|c0nduct|behavio|سلوك", re.I)
+_CONDUCT_ZONES = (("at risk", "at_risk"), ("risk", "at_risk"), ("question", "questionable"), ("excellent", "excellent"), ("good", "good"))
+
+
+def read_conduct(g, sleep):
+    """URGENT-02: Settings -> the 'Conduct Score' gauge icon -> read the score (0-100), zone and restriction line,
+    then close both windows (the Settings page is never left open). Returns the score or None."""
+    import control, time as _t
+    recover_screen(g); sleep(1)
+    if _queue_cards(g):
+        _barb_close(g, sleep)
+    g.click_rel(0.030, 0.040); sleep(3)                      # governor avatar -> profile
+    g.click_rel(0.244, 0.910); sleep(3)                      # Settings
+    score, zone, restrict, raw = None, "", "", ""
+    try:
+        img = g.screenshot(); h, w = img.shape[:2]
+        x0, y0 = int(0.12 * w), int(0.18 * h)
+        boxes = _ocr_boxes(img[y0:int(0.90 * h), x0:int(0.88 * w)], "settings_icons.png")
+        lab = [b for b in boxes if _CONDUCT_WORDS.search(b[4] or "")]
+        if not lab:
+            log("    ! conduct: the 'Conduct Score' icon was not found on the Settings page (labels: "
+                + " | ".join(b[4] for b in boxes)[:200] + ")")
+            return None
+        b = lab[0]
+        cx, cy = (b[0] + b[2]) / 2 + x0, b[1] + y0          # the icon sits right above its label
+        g.click_rel(cx / w, max(0.05, cy / h - 0.065)); sleep(3)
+        img2 = g.screenshot()
+        boxes2 = _ocr_boxes(img2[int(0.12 * h):int(0.90 * h), int(0.15 * w):int(0.85 * w)], "conduct_win.png", scale=2.0)
+        raw = " | ".join(x[4] for x in boxes2)[:300]
+        log("    conduct OCR: " + raw)
+        if not any(_CONDUCT_WORDS.search(x[4] or "") for x in boxes2):
+            g.click_rel(cx / w, cy / h); sleep(3)            # tap the label itself
+            img2 = g.screenshot()
+            boxes2 = _ocr_boxes(img2[int(0.12 * h):int(0.90 * h), int(0.15 * w):int(0.85 * w)], "conduct_win2.png", scale=2.0)
+            raw = " | ".join(x[4] for x in boxes2)[:300]
+            log("    conduct OCR (2): " + raw)
+        # the score: the tallest standalone number 0-100 (gauge ticks 0 / 100 are small, so prefer the tallest box)
+        nums = []
+        for x in boxes2:
+            t = (x[4] or "").strip().replace("O", "0").replace("o", "0")
+            if re.fullmatch(r"\d{1,3}", t) and 0 <= int(t) <= 100:
+                nums.append((x[3] - x[1], int(t)))
+        if nums:
+            nums.sort(reverse=True)
+            cand = [n for hh, n in nums if hh >= nums[0][0] * 0.8]
+            score = next((n for n in cand if n not in (0, 100)), cand[0])
+        low = raw.lower()
+        zone = next((z for k, z in _CONDUCT_ZONES if k in low), "")
+        m = re.search(r"(no restrictions?|restricted[^|]*|restriction[^|]*)", raw, re.I)
+        restrict = m.group(1).strip()[:60] if m else ""
+    finally:
+        try:
+            hits = [p for p in (g.find_image("btn_x", 0.75, find_all=True) or []) if p[1] < 0.35]
+            if hits:
+                g.click_rel(*sorted(hits, key=lambda p: -p[0])[0]); sleep(2)
+        except Exception:
+            pass
+        _close_settings(g); sleep(2)
+        recover_screen(g)
+    if score is None:
+        log("    ! conduct: the score could not be read")
+        return None
+    info = {"score": score, "zone": zone, "restriction": restrict, "read_at": _t.strftime("%Y-%m-%d %H:%M")}
+    control.CITY["conduct"] = info
+    prof = control.CITY.setdefault("profile", {})
+    prof["conduct"] = score
+    _persist_save()
+    log(f"  conduct: {score}/100 {zone or ''} {restrict or ''}".rstrip())
+    return score
+
+
+def conduct_stopped():
+    return os.path.isfile(CONDUCT_STOP_FILE)
+
+
+def conduct_stop(score, limit, why=""):
+    import json as _j, time as _t
+    try:
+        with open(CONDUCT_STOP_FILE, "w", encoding="utf-8") as f:
+            _j.dump({"score": score, "limit": limit, "at": _t.strftime("%Y-%m-%d %H:%M:%S"), "why": why}, f)
+    except Exception:
+        pass
+
+
+def conduct_clear(why=""):
+    try:
+        os.remove(CONDUCT_STOP_FILE)
+        log(f"Conduct safety stop cleared ({why}).")
+    except FileNotFoundError:
+        pass
+
+
+SMART["read_conduct"] = lambda g, sleep, **_o: (read_conduct(g, sleep), True)[1]
 
 
 SIGNED_OUT_FILE = os.path.join(BASE, "signed_out.json")
@@ -5228,6 +5371,26 @@ def _read_ap_ratio(img):
     return None
 
 
+_GOV_NOISE = re.compile(r"gov[ae]rn|g[o0]vern|\bid\b|\(id|id[:;,.]|\d{6,}", re.I)
+
+
+def _is_gov_header(t):
+    """'Governor (ID: 194813507)' as OCR returns it ('Governor ,ID; 194813507)', 'Gmvernor (1D 1948...')."""
+    low = t.lower()
+    return bool(re.search(r"\d{7,}", t)) and bool(re.search(r"g[o0m]v|gov|vern|\bi[dD1]\b|id[:;,.]", low))
+
+
+def _clean_gov_name(t):
+    """A governor name from one OCR line, or '' when the line is the header, a label or noise."""
+    nm = re.sub(r"^[^\w\[\u0600-\u06FF]+", "", str(t or "")).split("(")[0].strip()
+    nm = re.sub(r"\s{2,}", " ", nm)
+    if not nm or _GOV_NOISE.search(nm):
+        return ""
+    if re.match(r"(?i)^(civ|civilization|alliance|all[il1]ance|power|kill|ki11|vip)\b", nm):
+        return ""
+    return nm[:32] if len(re.sub(r"\W", "", nm)) >= 2 else ""
+
+
 def read_profile(g, sleep):
     """Open the governor profile (avatar top-left), OCR name / alliance / power / kill points, crop the portrait,
     read VIP from the top bar. Sends everything to the dashboard (control.CITY['profile'])."""
@@ -5299,13 +5462,23 @@ def read_profile(g, sleep):
             return ""
         def upfix(t):
             return " ".join(wd.replace("l", "L") if sum(c.isupper() for c in wd) >= len(wd) - 2 else wd for wd in t.split())
+        # URGENT-01: the name is the first real line AFTER the "Governor (ID: 123...)" header - never the header itself
+        hdr = next((k for k, t in enumerate(lines) if _is_gov_header(t)), None)
+        if hdr is not None:
+            m = re.search(r"(\d{7,})", lines[hdr])
+            if m:
+                prof["gid"] = m.group(1)
+            for t in lines[hdr + 1:hdr + 3]:
+                nm = _clean_gov_name(t)
+                if nm:
+                    prof["name"] = nm
+                    break
         for i, ln in enumerate(lines):
             low = ln.lower().replace(" ", "")
-            if i == 1 or (i > 0 and lines[i - 1].lower()[:3] in ("gov", "gmo", "gme", "gav")):
-                if "name" not in prof:
-                    nm = re.sub(r"^[^\w\[]+", "", ln).split("(")[0].strip()
-                    if nm:
-                        prof["name"] = nm
+            if hdr is None and "name" not in prof and (i == 1 or (i > 0 and lines[i - 1].lower()[:3] in ("gov", "gmo", "gme", "gav"))):
+                nm = _clean_gov_name(ln)
+                if nm:
+                    prof["name"] = nm
             if low.startswith("civ"):
                 prof["civ"] = ln.split(" ", 1)[1].strip() if " " in ln else ""
             elif low.startswith("all"):
@@ -5321,7 +5494,7 @@ def read_profile(g, sleep):
                 prof["kp"] = num(ln) or _kp_popup(g, sleep)
             if "gid" not in prof:
                 m = re.search(r"(\d{7,})", ln)
-                if m and i == 0:
+                if m and i <= 2:
                     prof["gid"] = m.group(1)
         try:                                             # UX-01: action points "cur / max" for the dashboard AP card
             apv = _read_ap_ratio(img)
@@ -5337,7 +5510,11 @@ def read_profile(g, sleep):
         if vip:
             prof["vip"] = vip
         old = control.CITY.get("profile") or {}
-        for k in ("ch", "conduct", "vip", "kp", "power"):
+        if not prof.get("name"):                          # URGENT-01: keep the last good name rather than show OCR noise
+            if old.get("name") and _clean_gov_name(old["name"]):
+                prof["name"] = old["name"]
+            log("    ! profile: the governor name could not be read this time" + (" - kept the last one" if prof.get("name") else ""))
+        for k in ("ch", "conduct", "vip", "kp", "power", "gid"):
             if old.get(k) and not prof.get(k):
                 prof[k] = old[k]
         control.CITY["profile"] = prof
@@ -5645,6 +5822,12 @@ def _persist_load():
 
 try:
     _persist_load()
+except Exception:
+    pass
+
+
+try:
+    purge_characters_once()             # URGENT-03: characters copied from other servers are dropped once
 except Exception:
     pass
 

@@ -20,13 +20,35 @@ import game_login
 smart.SMART["queue_manager"] = queue_manager.run
 
 
-def conduct_watch(g, sleep, **_opts):
-    """v252: the dashboard's 'Conduct watch' - read the governor profile (Conduct is read there, never from
-    the Settings page) so conduct_hold() can stop field activities below the owner's limit."""
-    smart.read_profile(g, sleep)
-    import control
-    v = (control.CITY.get("profile") or {}).get("conduct")
-    log(f"  conduct_watch: Conduct {v if v is not None else 'not read'}")
+def conduct_watch(g, sleep, notify_below=100, stop_below=80, **_opts):
+    """URGENT-02: read the Conduct Score from Settings -> Conduct Score (closing Settings after), alert under
+    notify_below and STOP the bot at stop_below or lower (default 80) - the safety stop holds until the owner
+    resumes from the dashboard or a later reading is above the limit."""
+    v = smart.read_conduct(g, sleep)
+    try:
+        lim = int(stop_below or 80)
+        note = int(notify_below or 100)
+    except Exception:
+        lim, note = 80, 100
+    if v is None:
+        log("  conduct_watch: Conduct not read")
+        return True
+    log(f"  conduct_watch: Conduct {v}/100 (alert below {note}, safety stop at {lim} or lower)")
+    if v < note:
+        try:
+            alerts.fire("conduct_low", f"Conduct {v}/100", screenshot=False)
+        except Exception:
+            pass
+    if v <= lim:
+        smart.conduct_stop(v, lim, "conduct_watch")
+        log(f"! SAFETY STOP: Conduct score {v} is at or below {lim} - the bot stops until you resume it from the dashboard.")
+        try:
+            import brain
+            brain.record("stuck", f"conduct safety stop: score {v} <= {lim}", task="conduct_watch", shot=True)
+        except Exception:
+            pass
+    elif smart.conduct_stopped():
+        smart.conduct_clear(f"conduct is {v}, above {lim}")
     return True
 
 
@@ -907,6 +929,34 @@ def logout_game(g, cid=None):
     return res
 
 
+def conduct_stop_wait():
+    """URGENT-02: the Conduct safety stop - no game actions; answer the dashboard; re-read the score every 3 hours."""
+    import json as _j
+    info = load_json(smart.CONDUCT_STOP_FILE, {}) or {}
+    log(f"Conduct safety stop: score {info.get('score')} <= {info.get('limit')} - the bot does nothing in the game until you resume it.")
+    last = time.time()
+    while smart.conduct_stopped():
+        check_stop()
+        try:
+            ctl.poll()
+            ctl.screenshot_if_asked()
+            action_if_asked()
+        except (Stop, SystemExit):
+            raise
+        except Exception:
+            pass
+        ctl.write_status(state="paused", task=f"Conduct safety stop ({info.get('score')}/100 <= {info.get('limit')})")
+        if time.time() - last > 3 * 3600:
+            last = time.time()
+            try:
+                g = get_game()
+                if g:
+                    conduct_watch(g, sleep, stop_below=info.get("limit") or 80)
+            except Exception:
+                pass
+        time.sleep(30)
+
+
 def signed_out_wait():
     """The account is signed out: click nothing. Answer the dashboard and look at the screen every 2 minutes -
     when the city or the map shows again, someone logged in and the bot works again."""
@@ -1138,6 +1188,16 @@ def _do_action(g, req):
             up = ctl.upload_screen("bot: screenshot (" + do + ")")
             log(f"  {do}{' ' + str(req.get('target')) if do == 'safe_tap' else ''}: "
                 + ("done" if ok else "refused") + (", picture uploaded" if up else ", picture upload failed"))
+        elif do == "purge_characters":                             # URGENT-03: clear this server's cached characters
+            smart.purge_characters("dashboard")
+            kb_guard.command("action", req.get("id"), do, "done", "characters cleared")
+        elif do == "conduct_resume":                               # URGENT-02: the owner resumes after a Conduct safety stop
+            smart.conduct_clear("resumed from the dashboard")
+            kb_guard.command("action", req.get("id"), do, "done", "resumed")
+        elif do == "read_conduct":                                 # URGENT-02: read the Conduct Score now
+            g_ = get_game()
+            v = smart.read_conduct(g_, sleep) if g_ else None
+            kb_guard.command("action", req.get("id"), do, "done" if v is not None else "failed", f"conduct {v}" if v is not None else "not read")
         elif do in ("sign_out", "logout_game"):                   # v258 / ADM-03: dashboard button
             return logout_game(g, req.get("id"))
         elif do == "rollback":                                   # ADM-02: back to the previous version
@@ -2176,6 +2236,9 @@ def main():
                 continue
             if smart.signed_out():
                 signed_out_wait()
+                continue
+            if smart.conduct_stopped():                      # URGENT-02: Conduct at or below the safety limit
+                conduct_stop_wait()
                 continue
             log(f"Round started (settings from {source}).")
             RUN_NOW[0] = False

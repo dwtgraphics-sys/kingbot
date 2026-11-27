@@ -15,7 +15,7 @@ DL_URL = "https://drive.google.com/uc?export=download&id={}"
 VERSION_FILE = os.path.join(BASE, "version.json")
 NEVER_OVERWRITE = {"routines.json", "tasks.json", "log.txt", "version.json", "telegram.txt", "telegram_owner.txt",
                    "3_start_bot.bat", "local_config.json", ".env", "github_token.txt", "vision_scales.json",
-                   "signed_out.json", "signout_sched.json", "brain.json"}
+                   "signed_out.json", "signout_sched.json", "brain.json", "conduct_stop.json"}
 # ADM-02: server-specific runtime folders/prefixes an update never touches (config, state, logs, slot assignments)
 RUNTIME_PREFIX = ("config/", "state/", "logs/", "slots/", "templates/", "claude_out/", "migrate/", "backup_v",
                   "stream_chrome/", "roadmap/")

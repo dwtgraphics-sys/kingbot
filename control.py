@@ -495,6 +495,11 @@ class Control:
                 status["dropped_options"] = dict(DROPPED)
             import updater                              # ADM-02: version, backups, rollback hold, last updates
             status["update"] = updater.update_info()
+            try:                                        # URGENT-02: the Conduct safety stop, if any
+                cs = os.path.join(BASE_DIR, "conduct_stop.json")
+                status["conduct_stop"] = load_json(cs, None) if os.path.isfile(cs) else None
+            except Exception:
+                pass
             try:                                        # BRAIN-01: incident memory - admin decisions in, list out
                 import brain
                 brain.apply_admin(d.get("brain_notes"))
