@@ -135,10 +135,37 @@ def _candidates():
 LOGIN_WORDS = ("log in", "verification code", "enter your email", "get code", "guest login")
 
 
+COVER_EXES = ("claude.exe",)        # v276: the Claude desktop app window sat on top of the Log In form
+
+
+def _minimize_covers():
+    """Minimise windows that are known to cover the game (the Claude desktop app). Nothing else is touched."""
+    n = 0
+    Enum = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+
+    def cb(hwnd, _):
+        nonlocal n
+        try:
+            if user32.IsWindowVisible(hwnd) and not user32.IsIconic(hwnd) and _exe_of(hwnd) in COVER_EXES:
+                user32.SetWindowPos(hwnd, -2, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
+                user32.ShowWindow(hwnd, 6)                                   # SW_MINIMIZE
+                n += 1
+        except Exception:
+            pass
+        return True
+
+    user32.EnumWindows(Enum(cb), 0)
+    if n:
+        log(f"  game login: minimised {n} window(s) of the Claude app that covered the game")
+        time.sleep(0.8)
+    return n
+
+
 class LoginWin:
     """The area the Log In form is drawn in. Each candidate window is read by OCR and the one that shows the
     form wins; if none does, the whole screen is used (clicks are then in screen pixels)."""
     def __init__(self, hwnd):
+        _minimize_covers()
         self.hwnd = hwnd
         self.full = False
         best = None
