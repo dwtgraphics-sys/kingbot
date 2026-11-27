@@ -257,8 +257,14 @@ def main():
         try:
             if on and (active is not True or now - last_health > HEALTH):
                 last_health = now
+                obs_new = False
                 if not obs_running():
-                    start_obs()
+                    obs_new = bool(start_obs())
+                if obs_new and sender_running():          # v305: a sender opened before the OBS camera existed
+                    for p in (sender_pids() or []):       # waits on "Share your Camera" forever - start it again
+                        _run(["taskkill", "/PID", str(p), "/T", "/F"])
+                    SENDER["proc"] = None
+                    log("Chrome sender restarted so it finds the new OBS camera")
                 if not sender_running():
                     start_sender()
                 if active is not True:
