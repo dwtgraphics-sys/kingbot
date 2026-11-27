@@ -114,10 +114,40 @@ def sender_running():
     return bool(pids)
 
 
+VCAM_CLSID = "{A3FCE0F5-3493-419F-958A-ABA1250EC20B}"     # OBS Virtual Camera (DirectShow)
+
+
+def ensure_vcam():
+    """v301: the sender asks Chrome for the camera named 'OBS'. A portable OBS on a new server never registered its
+    virtual camera, so the viewer only spun. Register it (regsvr32) when its class is missing."""
+    try:
+        r = subprocess.run(["reg", "query", rf"HKLM\SOFTWARE\Classes\CLSID\{VCAM_CLSID}"], capture_output=True,
+                           timeout=15, creationflags=NOWIN)
+        if r.returncode == 0:
+            return True
+        root = os.path.dirname(os.path.dirname(os.path.dirname(OBS_EXE)))           # ...\obs-studio
+        dlls = []
+        for d, _, files in os.walk(os.path.join(root, "data", "obs-plugins")):
+            dlls += [os.path.join(d, f) for f in files if f.lower().startswith("obs-virtualcam-module") and f.lower().endswith(".dll")]
+        if not dlls:
+            log("! OBS virtual camera module not found - the stream has no picture")
+            return False
+        for dll in dlls:
+            subprocess.run(["regsvr32", "/s", dll], timeout=60, creationflags=NOWIN)
+        ok = subprocess.run(["reg", "query", rf"HKLM\SOFTWARE\Classes\CLSID\{VCAM_CLSID}"], capture_output=True,
+                            timeout=15, creationflags=NOWIN).returncode == 0
+        log("OBS virtual camera registered" if ok else "! OBS virtual camera could not be registered")
+        return ok
+    except Exception as e:
+        log(f"! virtual camera check failed: {e!r}")
+        return False
+
+
 def start_obs():
     if not os.path.exists(OBS_EXE):
         log("! OBS is not installed at " + OBS_EXE)
         return False
+    ensure_vcam()
     subprocess.Popen([OBS_EXE, "--startvirtualcam", "--minimize-to-tray", "--disable-shutdown-check"],
                      cwd=os.path.dirname(OBS_EXE), creationflags=DETACH)
     log("OBS started with the virtual camera")
