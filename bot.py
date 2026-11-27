@@ -1088,6 +1088,16 @@ def action_if_asked():
         except Exception:
             pass
         return
+    if do in ("conduct_resume", "purge_characters"):        # URGENT-02/03: no game window needed
+        _do_action(None, req)
+        kb_guard.command("action", req["id"], do, "done", "")
+        try:
+            import control
+            control.CITY["action_done"] = str(req["id"])
+            ctl.write_status(state="working", task=f"dashboard: {do} done")
+        except Exception:
+            pass
+        return
     g = get_game()
     if g is None:
         kb_guard.command("action", req["id"], do, "failed", "game window not found")
@@ -1190,14 +1200,12 @@ def _do_action(g, req):
                 + ("done" if ok else "refused") + (", picture uploaded" if up else ", picture upload failed"))
         elif do == "purge_characters":                             # URGENT-03: clear this server's cached characters
             smart.purge_characters("dashboard")
-            kb_guard.command("action", req.get("id"), do, "done", "characters cleared")
         elif do == "conduct_resume":                               # URGENT-02: the owner resumes after a Conduct safety stop
             smart.conduct_clear("resumed from the dashboard")
-            kb_guard.command("action", req.get("id"), do, "done", "resumed")
         elif do == "read_conduct":                                 # URGENT-02: read the Conduct Score now
-            g_ = get_game()
-            v = smart.read_conduct(g_, sleep) if g_ else None
-            kb_guard.command("action", req.get("id"), do, "done" if v is not None else "failed", f"conduct {v}" if v is not None else "not read")
+            v = smart.read_conduct(g, sleep) if g else None
+            if v is None:
+                return "conduct not read"
         elif do in ("sign_out", "logout_game"):                   # v258 / ADM-03: dashboard button
             return logout_game(g, req.get("id"))
         elif do == "rollback":                                   # ADM-02: back to the previous version
