@@ -343,7 +343,7 @@ def _errors(boxes):
 
 
 # ------------------------------------------------------------------ the two steps
-def send_email(email):
+def send_email(email, agree=False):
     email = str(email or "").strip()
     if not re.fullmatch(r"[^@\s]{1,64}@[^@\s]{1,190}\.[A-Za-z]{2,}", email):
         set_stage("need_email", "البريد غير صحيح")
@@ -371,6 +371,13 @@ def send_email(email):
     if not get:
         set_stage("need_email", "لم أجد زر Get Code")
         return "failed: Get Code not found"
+    if agree:                                                # v275: the game sends no code before the agreement
+        _tick_agreement(win)
+        get, boxes = _look(win, ("get code", "send code", "get verification"), scrolls=(0, -3, -3)) or (get, boxes)
+        get = get or _find(boxes, ("get code",))
+    if not get:
+        set_stage("need_email", "لم أجد زر Get Code")
+        return "failed: Get Code not found"
     log("  game login: pressing Get Code")
     win.click_px(*_center(get)); time.sleep(4)
     boxes = _ocr(win.shot())
@@ -382,6 +389,23 @@ def send_email(email):
     set_stage("code_sent", "أُرسل الكود إلى " + STATE["email_hint"])
     log("  game login: code requested - waiting for the code from the dashboard")
     return "done"
+
+
+def _tick_agreement(win):
+    """Tick the 'I have read and agreed ...' circle (only called when the customer ticked it in the dashboard)."""
+    agr, _ = _look(win, ("i have read and agreed", "have read and agreed", "user agreement"), scrolls=(0, -3))
+    if not agr:
+        log("  game login: agreement sentence not found")
+        return False
+    img = win.shot()
+    agr = _find(_ocr(img), ("i have read and agreed", "have read and agreed", "user agreement")) or agr
+    px, py = agr[0] - 1.4 * (agr[3] - agr[1]), _center(agr)[1]           # the circle sits left of the sentence
+    if _circle_ticked(img, px, py):
+        return True
+    win.click_px(px, py); time.sleep(0.8)
+    ok = _circle_ticked(win.shot(), px, py)
+    log("  game login: agreement circle " + ("ticked" if ok else "clicked (does not look ticked)"))
+    return ok
 
 
 def _circle_ticked(img, px, py):
@@ -424,16 +448,7 @@ def send_code(code, agree=False):
     cx, cy = _center(box)
     win.click_px(min(cx, box[0] + 40), cy); time.sleep(0.5)     # left part of the box, away from Get Code
     _type(code)
-    agr, _ = _look(win, ("have read and agreed", "user agreement"), scrolls=(0, -3))
-    if agr:
-        img = win.shot()
-        boxes = _ocr(img)
-        agr = _find(boxes, ("have read and agreed", "user agreement")) or agr
-        px, py = agr[0] - 1.4 * (agr[3] - agr[1]), _center(agr)[1]           # the circle sits left of the sentence
-        if not _circle_ticked(img, px, py):
-            win.click_px(px, py); time.sleep(0.8)
-            if not _circle_ticked(win.shot(), px, py):
-                log("  game login: the agreement circle does not look ticked - START may refuse")
+    _tick_agreement(win)
     start, _ = _look(win, ("start",), exact=True, scrolls=(0, -3))
     if not start:
         set_stage("code_sent", "لم أجد زر START")
@@ -478,7 +493,7 @@ def handle(req):
 def _handle(req, do):
     try:
         if do == "game_login_email":
-            return send_email(req.get("email"))
+            return send_email(req.get("email"), bool(req.get("agree")))
         if do == "game_login_code":
             return send_code(req.get("code"), bool(req.get("agree")))
     except Exception as e:
