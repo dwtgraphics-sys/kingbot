@@ -245,7 +245,7 @@ class LoginWin:
 
 
 PHRASES = ("verification code login", "password login", "enter your email address", "enter your verification code",
-           "get code", "send code", "resend", "i have read and agreed", "user agreement", "start", "guest login", "log in")
+           "get code", "send code", "resend", "i have read and agreed", "user agreement", "start", "login now", "guest login", "log in")
 
 
 def _ocr_words(img_bgr, scale):
@@ -337,7 +337,7 @@ def _type(text, clear_first=True):
 
 
 def _safe_texts(boxes):
-    return [b[4][:30] for b in boxes if "@" not in b[4]][:25]          # never the email
+    return [b[4][:30] for b in boxes if "@" not in b[4] and not re.fullmatch(r"[0-9 ]{4,10}", b[4].strip())][:25]   # never the email or the code
 
 
 def _look(win, words, exact=False, scrolls=(0, -3, 3, 3)):
@@ -498,10 +498,11 @@ def send_code(code, agree=False):
     win.click_px(min(cx, box[0] + 40), cy); time.sleep(0.5)     # left part of the box, away from Get Code
     _type(code)
     _tick_agreement(win)
-    start, _ = _look(win, ("start",), exact=True, scrolls=(0, -3))
+    # v309: older SDK windows say START, SDK 1.2.6 says "Login Now" (also "Log In Now" / "Sign In")
+    start, _ = _look(win, ("start", "login now", "log in now", "loginnow", "sign in", "log in"), exact=True, scrolls=(0, -3))
     if not start:
-        set_stage("code_sent", "لم أجد زر START")
-        return "failed: START not found"
+        set_stage("code_sent", "لم أجد زر تسجيل الدخول (START / Login Now)")
+        return "failed: START / Login Now not found"
     win.click_px(*_center(start))
     for _ in range(20):                                      # up to 60 s
         time.sleep(3)
