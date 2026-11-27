@@ -2283,6 +2283,8 @@ def main():
                     except Exception:
                         pass
                     SESSION_WATCH[0] = 0.0
+                    if kb_guard.HEALTH.get("session") != "disconnected":    # v304: minimised RDP window
+                        kb_guard.force_console(log, after_ok=_after_console)
                     if session_watch() and keep_screen_alive_ok():
                         log("  keep-screen: the screen is on again - continuing in 20 seconds")
                         idle(20, state="working")

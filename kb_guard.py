@@ -161,6 +161,28 @@ def _tscon(log):
         return -2, repr(e)[:120]
 
 
+_FORCE = {"at": 0.0}
+
+
+def force_console(log, after_ok=None, every=120):
+    """v304: the session can look 'active' while no picture is drawn - a Remote Desktop window that is only
+    MINIMISED stops drawing the screen, every grab fails and clicks end at 0,0. Moving the session to the
+    console (tscon) works for that too; it only closes the Remote Desktop window. At most every 2 minutes."""
+    now = time.time()
+    if now - _FORCE["at"] < every:
+        return False
+    _FORCE["at"] = now
+    rc, out = _tscon(log)
+    time.sleep(5)
+    log(f"  session: screen not drawn although the session is active - moved it to the console (rc {rc})")
+    if after_ok:
+        try:
+            after_ok()
+        except Exception:
+            pass
+    return rc == 0
+
+
 def session_guard(log, after_ok=None):
     """Call often (cheap). Returns True when the session is (now) usable.
     Disconnected -> tscon with backoff 1, 2, 5, 10 min; success is checked, not assumed."""
