@@ -245,7 +245,7 @@ class LoginWin:
 
 
 PHRASES = ("verification code login", "password login", "enter your email address", "enter your verification code",
-           "get code", "send code", "i have read and agreed", "user agreement", "start", "guest login", "log in")
+           "get code", "send code", "resend", "i have read and agreed", "user agreement", "start", "guest login", "log in")
 
 
 def _ocr_words(img_bgr, scale):
@@ -468,8 +468,12 @@ def send_code(code, agree=False):
     for s in (0, -3, -3, 3):                                 # the box, never the "Verification Code Login" tab
         if s:
             win.scroll(s)
-        box = next((b for b in _ocr(win.shot()) if ("enter your verification" in b[4].lower() or
+        bxs = _ocr(win.shot())
+        box = next((b for b in bxs if ("enter your verification" in b[4].lower() or
                     ("verification code" in b[4].lower() and "login" not in b[4].lower()))), None)
+        if not box:                                          # v279: the code is already in the box (no placeholder)
+            box = next((b for b in bxs if re.fullmatch(r"[0-9A-Za-z]{4,8}", b[4].replace(" ", "")) and
+                        any(c.isdigit() for c in b[4]) and "@" not in b[4]), None)
         if box:
             break
     if not box:
