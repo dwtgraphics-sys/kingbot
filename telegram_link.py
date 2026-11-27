@@ -47,8 +47,8 @@ class Telegram:
         try:                                                 # v290: a new server had neither - install them once
             import truststore, certifi  # noqa: F401
         except Exception:
-            if not getattr(TelegramLink, "_pip_tried", False):
-                TelegramLink._pip_tried = True
+            if not getattr(Telegram, "_pip_tried", False):
+                Telegram._pip_tried = True
                 try:
                     import subprocess, sys as _sys
                     subprocess.run([_sys.executable, "-m", "pip", "install", "-q", "truststore", "certifi"],
