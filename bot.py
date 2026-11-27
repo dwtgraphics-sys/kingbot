@@ -1160,6 +1160,22 @@ def _do_action(g, req):
                 kb_guard.command("action", req.get("id"), "update_now", "done", "new version installed - restarting")
                 _save_action_done(req.get("id"))
                 _status_then_exit(state="restarting", task="installing an update")
+        elif do == "install_obs":                                # v289: OBS for the live stream on a new server
+            import subprocess
+            ps1 = os.path.join(BASE, "tools", "install_obs.ps1")
+            log("Installing OBS Studio for the live stream (tools/install_obs.ps1) ...")
+            try:
+                r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps1],
+                                   capture_output=True, timeout=1200, creationflags=0x08000000)
+                out = (r.stdout or b"").decode("utf-8", "replace").strip().splitlines()[-6:]
+                err = (r.stderr or b"").decode("utf-8", "replace").strip().splitlines()[-3:]
+                for ln in out + err:
+                    log("  obs install: " + ln[:160])
+                if r.returncode != 0:
+                    return "failed: install_obs exit " + str(r.returncode)
+            except Exception as e:
+                log(f"  ! obs install failed: {e!r}")
+                return "failed: " + repr(e)[:100]
         elif do == "signed_in":                                  # the owner logged in again
             smart.clear_signed_out("dashboard")
         elif do == "vision_scan":                                # v254: learn every picture visible on this screen
