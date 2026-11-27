@@ -394,13 +394,13 @@ def send_email(email, agree=False):
     win.click_px(*_center(box)); time.sleep(0.5)
     _type(email)
     log("  game login: email typed")
-    get, boxes = _look(win, ("get code", "send code", "get verification"), scrolls=(0, -3, -3))
+    get, boxes = _look(win, ("get code", "resend", "send code", "get verification"), scrolls=(0, -3, -3))
     if not get:
         set_stage("need_email", "لم أجد زر Get Code")
         return "failed: Get Code not found"
     if agree:                                                # v275: the game sends no code before the agreement
         _tick_agreement(win)
-        get, boxes = _look(win, ("get code", "send code", "get verification"), scrolls=(0, -3, -3)) or (get, boxes)
+        get, boxes = _look(win, ("get code", "resend", "send code", "get verification"), scrolls=(0, -3, -3)) or (get, boxes)
         get = get or _find(boxes, ("get code",))
     if not get:
         set_stage("need_email", "لم أجد زر Get Code")
