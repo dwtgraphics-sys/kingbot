@@ -175,6 +175,35 @@ def interception_lib():
 CURRENT_GAME = [None]
 
 
+def cancel_exit_notice(g, img):
+    """v287: the title screen answers ESC with NOTICE 'Exit the game?' (CONFIRM / CANCEL). Read the words and
+    press CANCEL. Returns True when that notice was there. CONFIRM is never pressed."""
+    try:
+        import smart
+        H, W = img.shape[:2]
+        tl = [(b, b[4].lower().strip()) for b in smart._ocr_boxes_uncached(img, "exit_ocr.png", 1.4)]
+    except Exception as e:
+        log(f"    (exit-notice read failed: {e!r})")
+        return False
+    if not any("exit the game" in t or "exit game" in t for _, t in tl):
+        return False
+    c = next((b for b, t in tl if t == "cancel"), None)
+    if c:
+        x = (c[0] + c[2]) / 2
+    else:
+        c = next((b for b, t in tl if t.endswith("cancel")), None)       # "CONFIRM CANCEL" read as one line
+        if c:
+            x = c[2] - (c[2] - c[0]) * 0.18
+    if not c:
+        log("  ! 'Exit the game?' is open - CANCEL was not read; pressing ESC (closes it)")
+        pyautogui.press("esc"); time.sleep(1.5)
+        return True
+    log("  ! 'Exit the game?' was open - pressing CANCEL")
+    g._click_absolute(x / W, ((c[1] + c[3]) / 2) / H)
+    time.sleep(1.5)
+    return True
+
+
 def close_gem_dialogs(g=None):
     """SAFETY: if a window asking to spend gems is open, press NO. Returns True if such a window was seen."""
     g = g or CURRENT_GAME[0]
@@ -191,6 +220,8 @@ def close_gem_dialogs(g=None):
             return seen
         no = g.find_image("btn_no", 0.8, img=img)
         if not no and not g.find_image("btn_confirm_word", 0.85, img=img):
+            if cancel_exit_notice(g, img):                   # v287: it was "Exit the game?" - CANCEL, never CONFIRM
+                continue
             # v141: a NOTICE title with no NO / CONFIRM is the Notice Board (events news), not a gem window
             log("  ! the Notice Board was open - closing it")
             g._click_absolute(0.766, 0.268); time.sleep(2)
