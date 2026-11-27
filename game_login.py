@@ -436,14 +436,17 @@ def _tick_agreement(win):
 
 
 def _circle_ticked(img, px, py):
-    """The agreement circle is filled with the red accent once it is ticked."""
+    """v278: the ticked circle is a filled red dot with a white tick. Count clearly red pixels around it (the old
+    mean-colour test said 'not ticked' for a ticked circle, so the bot un-ticked it)."""
+    import numpy as np
     h, w = img.shape[:2]
-    r = 7
-    crop = img[max(0, int(py) - r):min(h, int(py) + r), max(0, int(px) - r):min(w, int(px) + r)]
+    r = 9
+    crop = img[max(0, int(py) - r):min(h, int(py) + r), max(0, int(px) - r):min(w, int(px) + r)].astype(int)
     if crop.size == 0:
         return False
-    b, g, rr = [float(crop[..., i].mean()) for i in range(3)]
-    return rr > 140 and rr - max(b, g) > 50
+    b, g, rr = crop[..., 0], crop[..., 1], crop[..., 2]
+    red = ((rr > 150) & (rr - g > 70) & (rr - b > 70)).mean()
+    return red > 0.12
 
 
 def send_code(code, agree=False):
