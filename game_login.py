@@ -425,8 +425,12 @@ def _tick_agreement(win):
         log("  game login: agreement sentence not found")
         return False
     img = win.shot()
-    agr = _find(_ocr(img), ("i have read and agreed", "have read and agreed", "user agreement")) or agr
+    bxs = _ocr(img)                                          # v282: the LEFT end of the sentence - the 'User Agreement'
+    ms = [b for b in bxs if any(k in b[4].lower() for k in ("have read", "agreed to", "user agreement"))]   # box sat mid-line
+    if ms:
+        agr = min(ms, key=lambda b: b[0])
     th = agr[3] - agr[1]
+    log(f"  game login: agreement sentence starts at x={int(agr[0])} ('{agr[4][:20]}')")
     px, py = agr[0] - 1.4 * th, _center(agr)[1]           # the circle sits left of the sentence
     if _circle_ticked(img, px, py, 2.5 * th):
         log("  game login: agreement circle already ticked")
