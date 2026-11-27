@@ -200,10 +200,55 @@ class LoginWin:
         time.sleep(0.8)
 
 
+PHRASES = ("verification code login", "password login", "enter your email address", "enter your verification code",
+           "get code", "send code", "i have read and agreed", "user agreement", "start", "guest login", "log in")
+
+
+def _ocr_words(img_bgr, scale):
+    """[(x1, y1, x2, y2, line, word)] in image pixels (ocr_words.ps1)."""
+    import cv2, subprocess
+    big = cv2.resize(img_bgr, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+    path = os.path.join(BASE, "claude_out", "login_ocr.png")
+    cv2.imwrite(path, big)
+    out = []
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                            os.path.join(BASE, "ocr_words.ps1"), path], capture_output=True, timeout=60,
+                           creationflags=0x08000000)
+        for ln in (r.stdout or b"").decode("utf-8", errors="replace").splitlines():
+            p = ln.split("|", 5)
+            if len(p) == 6 and p[0].lstrip("-").isdigit() and p[4].isdigit():
+                out.append((int(p[0]) / scale, int(p[1]) / scale, int(p[2]) / scale, int(p[3]) / scale, int(p[4]), p[5].strip()))
+    except Exception as e:
+        log(f"    (ocr_words failed: {e!r})")
+    return out
+
+
+def _words_to_boxes(words):
+    """Line boxes (like ocr_boxes) PLUS a box for every known phrase inside a line, made from its own words -
+    so 'Get Code' gets its own box even when OCR puts it on one line with the code box's placeholder."""
+    sq = lambda x: re.sub(r"[^a-z0-9@]", "", x.lower())
+    lines = {}
+    for w in words:
+        lines.setdefault(w[4], []).append(w)
+    boxes = []
+    for ws in lines.values():
+        ws.sort(key=lambda w: w[0])
+        span = lambda a: (min(w[0] for w in a), min(w[1] for w in a), max(w[2] for w in a), max(w[3] for w in a))
+        for ph in PHRASES:
+            n = len(ph.split())
+            for i in range(len(ws) - n + 1):
+                part = ws[i:i + n]
+                if sq("".join(w[5] for w in part)) == sq(ph):
+                    boxes.append(span(part) + (" ".join(w[5] for w in part),))
+        boxes.append(span(ws) + (" ".join(w[5] for w in ws),))
+    boxes.sort(key=lambda b: (round(b[1] / 6), len(b[4])))        # same row: the exact phrase before the whole line
+    return boxes
+
+
 def _ocr(img, strong=False):
-    """v270: strong=True reads light-grey placeholder text too (contrast stretch, bigger scale)."""
-    import smart
-    name = "login_ocr.png"
+    """v270: strong=True reads light-grey placeholder text too (contrast stretch, bigger scale).
+    v271: word-level OCR, phrase boxes first (see _words_to_boxes)."""
     try:
         if strong:
             import cv2
@@ -211,22 +256,23 @@ def _ocr(img, strong=False):
             g = cv2.normalize(g, None, 0, 255, cv2.NORM_MINMAX)
             g = cv2.convertScaleAbs(g, alpha=1.8, beta=-160)          # light grey -> dark, white stays white
             img = cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
-            return smart._ocr_boxes_uncached(img, name, 2.4)
-        return smart._ocr_boxes_uncached(img, name, 1.6)
+            return _words_to_boxes(_ocr_words(img, 2.4))
+        return _words_to_boxes(_ocr_words(img, 1.6))
     finally:
         try:                                               # the picture can show the email / code: never keep it
-            os.remove(os.path.join(BASE, "claude_out", name))
+            os.remove(os.path.join(BASE, "claude_out", "login_ocr.png"))
         except Exception:
             pass
 
 
 def _find(boxes, words, exact=False):
     """First box whose text matches one of words (lower case); boxes with a NEVER word are skipped."""
+    sq = lambda x: re.sub(r"[\s.:]", "", x)                 # v271: OCR often glues words ("GetCode")
     for b in boxes:
         t = b[4].lower().strip()
         if any(n in t for n in NEVER):
             continue
-        if any((t == w) if exact else (w in t) for w in words):
+        if any((sq(t) == sq(w)) if exact else (sq(w) in sq(t)) for w in words):
             return b
     return None
 
@@ -297,7 +343,7 @@ def send_email(email):
     log(f"  game login: {len(bx)} texts read, tab {'found' if tab else 'not found'}")
     if tab:
         win.click_px(*_center(tab)); time.sleep(1.5)
-    box, _ = _look(win, ("enter your email", "email address"))
+    box, _ = _look(win, ("enter your email", "email address", "@"))     # "@": the email is already in the box
     if not box:
         set_stage("need_email", "لم أجد خانة البريد في نافذة الدخول")
         return "failed: email box not found"
