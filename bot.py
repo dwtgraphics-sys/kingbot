@@ -1088,9 +1088,12 @@ def action_if_asked():
         except Exception:
             pass
         return
-    if do in ("conduct_resume", "purge_characters"):        # URGENT-02/03: no game window needed
-        _do_action(None, req)
-        kb_guard.command("action", req["id"], do, "done", "")
+    if do in ("conduct_resume", "purge_characters", "install_obs", "update_now"):   # URGENT-02/03, v303: no game window needed
+        log(f"Dashboard action: {do}")
+        res = _do_action(None, req)
+        _save_action_done(req.get("id"))
+        kb_guard.command("action", req["id"], do, "failed" if str(res or "").startswith("failed") else "done",
+                         str(res or "") if str(res or "").startswith("failed") else "")
         try:
             import control
             control.CITY["action_done"] = str(req["id"])
