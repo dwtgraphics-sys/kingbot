@@ -1254,6 +1254,99 @@ def _building_probe(g, sleep, kind):
     return probe
 
 
+
+# ---------------- v312: recognise buildings by their PICTURE (no saved click coordinates) ----------------
+# builtin_templates/buildings/<kind>*.png - pictures of each building (the owner's screenshots, cropped to the
+# building body, without the ready-bubble). Cities differ per character and the camera moves, so the bot looks
+# for the building itself on the screen at several sizes and clicks its centre.
+BUILDING_PIC_KINDS = ("tavern", "hospital", "blacksmith", "scout_camp", "builders_hut", "merchant", "vip_shop", "farm")
+_BPIC = {"tpl": {}, "scale": {}}
+BPIC_MIN = {"merchant": 0.75, "vip_shop": 0.75, "hospital": 0.70}   # stricter where look-alikes exist
+
+
+def _building_pics(kind):
+    import glob, cv2
+    from common import BUILTIN_DIR, TEMPL_DIR
+    if kind not in _BPIC["tpl"]:
+        files = []
+        for d in (os.path.join(TEMPL_DIR, "buildings"), os.path.join(BUILTIN_DIR, "buildings")):
+            files += sorted(glob.glob(os.path.join(d, kind + "*.png")))
+        _BPIC["tpl"][kind] = [t for t in (cv2.imread(f) for f in files) if t is not None]
+    return _BPIC["tpl"][kind]
+
+
+def find_building_pics(g, kind, img=None, min_score=None, many=False):
+    """Where is <kind> on the city screen? Multi-scale picture match (building width 55-180 px on a 946 px wide
+    game, scaled to the real game size). Returns [(rel_x, rel_y, score)] best first ([] when not seen)."""
+    import cv2, numpy as np
+    tpls = _building_pics(kind)
+    if not tpls:
+        return []
+    if min_score is None:
+        min_score = BPIC_MIN.get(kind, 0.62)
+    if img is None:
+        img = g.screenshot()
+    H0, W0 = img.shape[:2]
+    if W0 > 700:                                              # half size: 4x faster, buildings stay 30-90 px wide
+        img = cv2.resize(img, (W0 // 2, H0 // 2), interpolation=cv2.INTER_AREA)
+    H, W = img.shape[:2]
+    gw = W / 946.0
+    hits = []
+    for t in tpls:
+        th, tw = t.shape[:2]
+        known = _BPIC["scale"].get((kind, tw))
+        lo, hi = 55 * gw / tw, 180 * gw / tw
+        scales = (np.arange(max(lo, known * 0.9), min(hi, known * 1.1) + 1e-9, 0.01 * (known / 0.15))
+                  if known else np.geomspace(lo, hi, 24))
+        best = None
+        for sc in scales:
+            tt = cv2.resize(t, None, fx=sc, fy=sc, interpolation=cv2.INTER_AREA)
+            if tt.shape[0] < 10 or tt.shape[0] >= H or tt.shape[1] >= W:
+                continue
+            r = cv2.matchTemplate(img, tt, cv2.TM_CCOEFF_NORMED)
+            if many:
+                ys, xs = np.where(r >= min_score)
+                for y, x in zip(ys, xs):
+                    hits.append(((x + tt.shape[1] / 2) / W, (y + tt.shape[0] / 2) / H, float(r[y, x])))
+            _, mv, _, ml = cv2.minMaxLoc(r)
+            if best is None or mv > best[0]:
+                best = (mv, sc, ml, tt.shape[:2])
+        if best and best[0] >= min_score:
+            mv, sc, (x, y), (h, w) = best
+            _BPIC["scale"][(kind, tw)] = sc                   # the same server keeps the same zoom
+            if not many:
+                hits.append(((x + w / 2) / W, (y + h / 2) / H, float(mv)))
+    hits.sort(key=lambda h: -h[2])
+    out = []                                                  # one hit per building (drop near-duplicates)
+    for h in hits:
+        if all(abs(h[0] - o[0]) > 0.04 or abs(h[1] - o[1]) > 0.06 for o in out):
+            out.append(h)
+    return out
+
+
+def building_by_picture(g, sleep, kind, verify=None, tries=2):
+    """Click <kind> where its picture is seen. verify(x, y) -> True when the right window/name appeared
+    (default: the building name above the spot). Returns (x, y) or None. Nothing is saved."""
+    for attempt in range(tries):
+        if attempt:
+            _city_reset(g, sleep)
+        pts = find_building_pics(g, kind)
+        if not pts:
+            continue
+        for (x, y, sc) in pts[:2]:
+            if not (0.03 < x < 0.97 and 0.10 < y < 0.92):
+                continue
+            log(f"  {kind}: seen by picture at {x:.3f},{y:.3f} (match {sc:.2f})")
+            if verify is not None:
+                if verify(x, y):
+                    return (x, y)
+            else:
+                g.click_rel(x, y); sleep(2)
+                if kind not in BUILDING_WORDS or _name_above(g, kind, x, y):
+                    return (x, y)
+            recover_screen(g)
+    return None
+
 def find_building(g, sleep, kind, extra=()):
     """v149: click a building by its NAME, because every character's city is laid out differently.
 
@@ -1263,6 +1356,10 @@ def find_building(g, sleep, kind, extra=()):
     is remembered for this character. Returns (x, y) or None.
     """
     kind = (kind or "").lower()
+    if kind in BUILDING_PIC_KINDS:                           # v312: by picture first - no saved coordinates
+        p = building_by_picture(g, sleep, kind)
+        if p:
+            return p
     spots = []
     mem = _bpos(kind)
     if mem:
@@ -3023,7 +3120,7 @@ def merchant(g, sleep, max_buys=8, free_refresh=False):
     from common import TEMPL_DIR, BUILTIN_DIR, close_gem_dialogs
     icons = sorted({os.path.splitext(os.path.basename(f))[0] for d in (TEMPL_DIR, BUILTIN_DIR)
                     for f in glob.glob(os.path.join(d, "merchant_icon*.png"))})
-    if not icons:
+    if not icons and not _building_pics("merchant"):         # v312: the shipped building picture is enough
         if _t.time() - MERCHANT_STATE["warned"] > 24 * 3600:
             MERCHANT_STATE["warned"] = _t.time()
             log("  - merchant: no picture of the merchant yet (record 'merchant_icon' once with record.py)")
@@ -3037,6 +3134,11 @@ def merchant(g, sleep, max_buys=8, free_refresh=False):
         if p:
             pos = p[0]
             break
+    if not pos:                                              # v312: the merchant's building by picture
+        pp = find_building_pics(g, "merchant")
+        if pp:
+            pos = (pp[0][0], pp[0][1])
+            log(f"  merchant: seen by picture at {pos[0]:.3f},{pos[1]:.3f} (match {pp[0][2]:.2f})")
     if not pos:
         log("  - merchant: the Mysterious Merchant is not in the city now")
         import control as _c
@@ -3280,6 +3382,9 @@ def _open_tavern(g, sleep):
     """v137: reset the camera, try this character's remembered spot, then the default spot,
     and if both fail search the city once (cities differ between characters)."""
     _city_reset(g, sleep)
+    if building_by_picture(g, sleep, "tavern", verify=lambda x, y: _tavern_try(g, sleep, x, y)):   # v312
+        return True
+    _city_reset(g, sleep)
     spots = []
     mem = _bpos("tavern")
     if mem:
@@ -3469,6 +3574,8 @@ def materials(g, sleep, kinds=("leather", "ore", "ebony", "bone"), every=None):
             recover_screen(g)
     if not opened:
         _city_reset(g, sleep)
+    if not opened:                                           # v312: the Blacksmith by its picture first
+        opened = bool(building_by_picture(g, sleep, "blacksmith", verify=lambda x, y: _mat_try(g, sleep, x, y, need_name=False)))
     mem = None if opened else _bpos("blacksmith")
     if mem and _mat_try(g, sleep, mem[0], mem[1], need_name=False):
         opened = True
