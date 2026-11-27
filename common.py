@@ -346,6 +346,15 @@ def recover_screen(g=None, tries=4):
             g._click_absolute(*cts[0])
             time.sleep(25)
             continue
+        if not xb and not back:                              # v310: the Queue Overview side panel has no X/BACK -
+            try:                                             # fold it with the arrow on its right edge
+                import queue_manager
+                if queue_manager.panel_visible(img):
+                    log("  ! the Queue Overview panel was left open - folding it (arrow)")
+                    g.click_rel(0.188, 0.500); time.sleep(1.5)
+                    continue
+            except Exception as e:
+                log(f"    (queue panel check failed: {e!r})")
         if not xb and not back:                              # v286: read the words - the title screen of a new
             try:                                             # account did not match the picture, and ESC there
                 import smart                                 # opens "Exit the game?" (never press CONFIRM)
