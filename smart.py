@@ -2544,7 +2544,13 @@ def _pick_commander_in_list(g, sleep, name, tag):
                 return True
         _drag(g, 0.50, 0.70, 0.50, 0.38)
         sleep(1.2)
-    log(f"  ! army: commander '{name}' not found in the list (pictures saved as cmd_{tag}*.png)")
+    log(f"  ! army: commander '{name}' not in the free-commander list - busy on another march or not owned "
+        f"(pictures saved as cmd_{tag}*.png)")
+    try:
+        import control as _c
+        _c.CITY.setdefault("preset_missing", {})[name] = time.strftime("%Y-%m-%d %H:%M")   # v299: shown in the dashboard
+    except Exception:
+        pass
     return False
 
 
@@ -2992,6 +2998,8 @@ def merchant(g, sleep, max_buys=8, free_refresh=False):
         if _t.time() - MERCHANT_STATE["warned"] > 24 * 3600:
             MERCHANT_STATE["warned"] = _t.time()
             log("  - merchant: no picture of the merchant yet (record 'merchant_icon' once with record.py)")
+        import control as _c
+        _c.CITY["merchant_state"] = "no_picture"           # v299: the dashboard shows why the merchant never runs
         return True
     _city_reset(g, sleep)
     pos = None
@@ -3002,6 +3010,8 @@ def merchant(g, sleep, max_buys=8, free_refresh=False):
             break
     if not pos:
         log("  - merchant: the Mysterious Merchant is not in the city now")
+        import control as _c
+        _c.CITY["merchant_state"] = "not_here"
         return True
     g.click_rel(*pos); sleep(3)
     refreshed, bought = 0, 0
@@ -3043,6 +3053,8 @@ def merchant(g, sleep, max_buys=8, free_refresh=False):
         stat("merchant", bought)
     cv2.imwrite(os.path.join(BASE, "claude_out", "merchant_last.png"), g.screenshot())
     log(f"  merchant: {bought} item(s) bought with resources" + (" (after a free refresh)" if refreshed else "") + ", gem items skipped")
+    import control as _c
+    _c.CITY["merchant_state"] = f"bought {bought}"
     recover_screen(g)
     return True
 
@@ -3555,7 +3567,11 @@ def sunset_canyon(g, sleep, max_battles=7):
     for _ in range(int(max_battles)):
         cb = g.find_image("canyon_challenge", 0.8)
         if not cb:
-            log("  ! sunset_canyon: the Sunset Canyon page is not open")
+            if fought:      # v299: after the last free battle the game leaves the canyon page - that is the normal end
+                log("  sunset_canyon: back from the last battle - finished")
+            else:
+                log("  ! sunset_canyon: the Sunset Canyon page is not open")
+                control.CITY["canyon_state"] = "page_not_open"
             break
         g.click_rel(*cb[0]); sleep(4)                        # opponent list
         img = g.screenshot()
@@ -3589,6 +3605,8 @@ def sunset_canyon(g, sleep, max_battles=7):
             g.click_rel(0.5, 0.88); sleep(2.5)
         cv2.imwrite(os.path.join(BASE, "claude_out", "canyon_last.png"), g.screenshot())
     control.CITY["canyon_read"] = _t.strftime("%H:%M")
+    if fought:
+        control.CITY["canyon_state"] = f"fought {fought}"
     log(f"  sunset_canyon: {fought} battle(s) fought (free attempts only)")
     for _k in range(3):
         if _in_city(g) or _on_map(g):
@@ -3617,6 +3635,8 @@ def hunt_guardians(g, sleep, max_attacks=2, search_radius=2):
         if _t.time() - GUARD_STATE["warned"] > 24 * 3600:
             GUARD_STATE["warned"] = _t.time()
             log("  - hunt_guardians: no guardian picture yet (record 'guardian' once with record.py on the map)")
+            import control as _c
+            _c.CITY["guardians_state"] = "no_picture"
             notify("info", "صيد الحراس: سجّل صورة الحارس مرة واحدة (guardian) من الخريطة حتى يتعرّف عليه البوت.")
         return True
     if _queue_full(g) or _march_cap_reached(g, "hunt_guardians"):
