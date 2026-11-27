@@ -937,6 +937,7 @@ def conduct_stop_wait():
     last = time.time()
     while smart.conduct_stopped():
         check_stop()
+        LAST_ACTIVITY[0] = time.time()                       # v303: a deliberate wait is not "stuck"
         try:
             ctl.poll()
             ctl.screenshot_if_asked()
@@ -964,6 +965,7 @@ def signed_out_wait():
     last_look = 0
     while smart.signed_out():
         check_stop()
+        LAST_ACTIVITY[0] = time.time()                       # v303: a deliberate wait is not "stuck"
         try:
             ctl.poll()
             ctl.screenshot_if_asked()
@@ -999,6 +1001,7 @@ def login_wait():
     last = 0
     while game_login.find_login_window(15):
         check_stop()
+        LAST_ACTIVITY[0] = time.time()                       # v303: waiting for the customer's email/code is not "stuck"
         try:
             session_watch()                                  # v269: keep the screen alive (Remote Desktop closed)
             ctl.poll()
