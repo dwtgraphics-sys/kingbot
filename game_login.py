@@ -464,6 +464,7 @@ def send_code(code, agree=False):
     win = LoginWin(hwnd)
     set_stage("logging_in", "جاري كتابة الكود وتسجيل الدخول")
     log("  game login: typing the code")
+    _tick_agreement(win)                                     # v280: first - its tooltip hides the code box
     box = None
     for s in (0, -3, -3, 3):                                 # the box, never the "Verification Code Login" tab
         if s:
@@ -474,6 +475,11 @@ def send_code(code, agree=False):
         if not box:                                          # v279: the code is already in the box (no placeholder)
             box = next((b for b in bxs if re.fullmatch(r"[0-9A-Za-z]{4,8}", b[4].replace(" ", "")) and
                         any(c.isdigit() for c in b[4]) and "@" not in b[4]), None)
+        if not box:                                          # v280: a tooltip can hide the code - use the row of
+            rs = _find(bxs, ("resend", "get code"))           # "Resend"/"Get Code" and the left edge of the email box
+            em = next((b for b in bxs if "@" in b[4] or "enter your email" in b[4].lower()), None)
+            if rs and em:
+                box = (em[0], rs[1], em[0] + 60, rs[3], "(code box)")
         if box:
             break
     if not box:
