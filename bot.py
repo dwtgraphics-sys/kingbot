@@ -1054,6 +1054,9 @@ def session_watch(every=60):
     return kb_guard.session_guard(log, after_ok=_after_console)
 
 
+NO_GAME_ACTIONS = ("conduct_resume", "purge_characters", "install_obs", "update_now")
+
+
 def action_if_asked():
     """v110: one-off actions from the dashboard: read_characters / switch_character."""
     d = ctl.data or {}
@@ -1091,7 +1094,7 @@ def action_if_asked():
         except Exception:
             pass
         return
-    if do in ("conduct_resume", "purge_characters", "install_obs", "update_now"):   # URGENT-02/03, v303: no game window needed
+    if do in NO_GAME_ACTIONS:                                # URGENT-02/03, v303: no game window needed
         log(f"Dashboard action: {do}")
         res = _do_action(None, req)
         _save_action_done(req.get("id"))
@@ -1104,12 +1107,31 @@ def action_if_asked():
         except Exception:
             pass
         return
+    steps_in = req.get("steps") if do == "multi" and isinstance(req.get("steps"), list) else [req]
+    try:
+        login_up = bool(game_login.find_login_window(5))
+    except Exception:
+        login_up = False
+    if login_up:                                             # v307: the game waits for a login - never click into it
+        ok_steps = [st for st in steps_in if st.get("do") in NO_GAME_ACTIONS]
+        log(f"Dashboard action: {do} - the game is waiting for a login, only "
+            + (", ".join(st.get("do") for st in ok_steps) or "nothing") + " can run now")
+        for st in ok_steps:
+            try:
+                _do_action(None, st)
+            except Exception as e:
+                log(f"  ! {st.get('do')}: {e!r}")
+        _save_action_done(req.get("id"))
+        skipped = [st.get("do") for st in steps_in if st not in ok_steps]
+        kb_guard.command("action", req["id"], do, "failed" if skipped else "done",
+                         ("اللعبة تنتظر تسجيل الدخول - أعد المحاولة بعد الدخول: " + ", ".join(skipped)) if skipped else "")
+        return
     g = get_game()
     if g is None:
         kb_guard.command("action", req["id"], do, "failed", "game window not found")
         return
     log(f"Dashboard action: {do}")
-    steps = req.get("steps") if do == "multi" and isinstance(req.get("steps"), list) else [req]
+    steps = steps_in
     import control
     results = []
     for i, step in enumerate(steps[:12]):
