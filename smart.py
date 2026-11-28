@@ -1582,12 +1582,33 @@ def rally_fort(g, sleep, level=10, preset=1, minutes=5, archers_only=True,
         return True
     press_key("f"); sleep(3)
     g.click_rel(0.285, 0.935); sleep(2)                      # Barbarians
-    g.click_rel(0.352, 0.651); sleep(2)                      # Barbarian Fort tab
+    P = _search_panel(g)                                     # v325: the panel's real position
+    if not P:
+        try:
+            hit = find_icon(g, "map_search_btn", min_scale=0.3, max_scale=1.6, steps=14, threshold=0.70)
+            if hit:
+                log("    rally_fort: F did nothing - tapping the search (magnifier) button")
+                g.click_rel(hit[0], hit[1]); sleep(3)
+                g.click_rel(0.285, 0.935); sleep(2)
+                P = _search_panel(g)
+        except Exception:
+            pass
+    if not P:
+        log("  ! rally_fort: the barbarian search panel did not open")
+        try:
+            import brain
+            brain.record("fail", "fort search panel did not open", task="rally_fort")
+        except Exception:
+            pass
+        recover_screen(g)
+        return True
+    g.click_rel(*P["tab_fort"]); sleep(2)                    # Barbarian Fort tab
+    P = _search_panel(g) or P
     for _ in range(12):
-        g.click_rel(0.204, 0.758); sleep(0.25)               # level down to 1
+        g.click_rel(*P["minus"]); sleep(0.25)                # level down to 1
     for _ in range(max(0, int(level) - 1)):
-        g.click_rel(0.394, 0.758); sleep(0.25)               # level up
-    g.click_rel(0.298, 0.820); sleep(4)                      # SEARCH
+        g.click_rel(*P["plus"]); sleep(0.25)                 # level up
+    g.click_rel(*P["search"]); sleep(4)                      # SEARCH
     r = g.find_image("btn_rally", 0.8)
     if not r:                                                # v317: the button at another size / by its word
         try:
@@ -2534,14 +2555,37 @@ def _barb_find_attack(g):
     return a[0] if a else None
 
 
+# v325: the map search panel (Barbarians / Fort / resources) moves up or down with the window and the account -
+# measured from the owner's picture and the 2026-11-28 ArchLord screenshot, every part of the panel sits at a fixed
+# distance from its SEARCH button, so the bot finds SEARCH first and clicks the rest relative to it.
+PANEL_OFFS = {"tab_barb": (-51, -121), "tab_fort": (51, -121), "minus": (-90, -44), "plus": (90, -44), "search": (0, 0)}
+PANEL_BASE_SCALE = 0.606                                    # btn_search scale on a 946x532 game
+
+
+def _search_panel(g, img=None):
+    """{'tab_barb': (rx, ry), ...} of the open search panel, or None when its SEARCH button is not seen."""
+    try:
+        hit = find_icon(g, "btn_search", min_scale=0.35, max_scale=1.8, steps=24, threshold=0.78, img=img)
+    except Exception:
+        hit = None
+    if not hit or hit[1] < 0.35:
+        return None
+    k = hit[3] / PANEL_BASE_SCALE
+    gw, gh = 946.0, 532.0
+    return {n: (hit[0] + dx * k / gw, hit[1] + dy * k / gh) for n, (dx, dy) in PANEL_OFFS.items()}
+
+
 def _barb_search(g, sleep, lo, hi):
     """Open the barbarian search at level <hi>; if nothing comes up (level not unlocked / none near),
     step down one level inside the panel and search again, down to <lo>. Returns (attack_pos, level)."""
+    P = None
     for attempt in range(2):
         press_key("f"); sleep(3)
         g.click_rel(0.285, 0.935); sleep(2)                  # Barbarians icon
-        g.click_rel(0.245, 0.649); sleep(1.5)                # Barbarians tab (not Fort)
-        if g.find_image("barb_tab_on", 0.85):
+        P = _search_panel(g)                                 # v325: the panel's real position
+        g.click_rel(*(P["tab_barb"] if P else (0.245, 0.649))); sleep(1.5)   # Barbarians tab (not Fort)
+        if g.find_image("barb_tab_on", 0.85) or (P and _search_panel(g)):
+            P = P or _search_panel(g)
             break
         try:                                                 # v308: F did nothing - the magnifier button
             recover_screen(g); sleep(1)
@@ -2576,21 +2620,22 @@ def _barb_search(g, sleep, lo, hi):
                 hi, lo = mx, min(int(lo), mx)
     except Exception as e:
         log(f"    (max barbarian level not read: {e!r})")
+    P = P or _search_panel(g) or {"minus": (0.204, 0.758), "plus": (0.394, 0.758), "search": (0.299, 0.821)}
     for _ in range(60):
-        g._click_absolute(0.204, 0.758); sleep(0.08)         # level down to 1 (fast clicks inside the panel)
+        g._click_absolute(*P["minus"]); sleep(0.08)          # level down to 1 (fast clicks inside the panel)
     for _ in range(max(0, int(hi) - 1)):
-        g._click_absolute(0.394, 0.758); sleep(0.12)         # level up
+        g._click_absolute(*P["plus"]); sleep(0.12)           # level up
     lvl = int(hi)
     while True:
         sleep(0.8)
-        g.click_rel(0.299, 0.821); sleep(3.5)                # SEARCH
+        g.click_rel(*P["search"]); sleep(3.5)                # SEARCH
         pos = _barb_find_attack(g)
         if pos:
             return pos, lvl
         if lvl <= int(lo) or not g.find_image("btn_back", 0.8):
             return None, lvl
         log(f"    no level {lvl} barbarian came up, trying {lvl - 1}")
-        g._click_absolute(0.204, 0.758); lvl -= 1              # one level down, panel still open
+        g._click_absolute(*P["minus"]); lvl -= 1               # one level down, panel still open
 
 
 def _barb_shot(g, name):
