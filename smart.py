@@ -2308,47 +2308,54 @@ def _rally_from_wanted(img, fx, fy, wanted):
 
 # ---------------- VIP chests + daily objectives ----------------
 def vip_chests(g, sleep):
-    """VIP window: daily VIP-points chest + 'FREE EVERY DAY' chest. Never the paid offer.
-    v329: checks that the VIP window really opened and reports what was claimed - before, a locked screen or a
-    missed click was still logged as 'done' and the day was marked finished without any chest."""
+    """VIP window: the daily VIP-points chest (top right) + the 'FREE EVERY DAY' chest. Never the paid offer.
+    v330: every button found by the owner's pictures (vip_badge2 / vip_title / vip_daily_claim / vip_free_claim);
+    the day only counts as done when the VIP window really opened."""
+    def _icon(name, thr=0.78, lo=0.3, hi=2.0):
+        try:
+            return find_icon(g, name, min_scale=lo, max_scale=hi, steps=18, threshold=thr)
+        except Exception:
+            return None
+
     def _vip_open():
+        if _icon("vip_title", 0.80):
+            return True
         try:
             img = g.screenshot(); h, w = img.shape[:2]
             words = " ".join(b[4] for b in _ocr_boxes(img[0:int(0.30 * h), int(0.15 * w):int(0.85 * w)], "vip_win.png"))
-            return bool(re.search(r"\bvip\b|vip\s*level|vip\s*points|v\s*i\s*p", words, re.I)), words
-        except Exception as e:
-            return False, repr(e)
-    g.click_rel(0.075, 0.046); sleep(3)                       # VIP badge
-    ok, words = _vip_open()
-    if not ok:
-        g.click_rel(0.075, 0.046); sleep(3)                   # once more (the first tap may only close a tip)
-        ok, words = _vip_open()
-    if not ok:
-        log(f"  ! vip_chests: the VIP window did not open (saw: {words[:80]!r}) - trying again later")
-        recover_screen(g)
-        return "retry"
-    claimed = 0
-    g.click_rel(0.705, 0.385); sleep(3)                       # daily points chest (CLAIM)
-    g.click_rel(0.5, 0.15); sleep(1.5)                        # close the reward card (inside VIP window area is safe)
-    for _ in range(3):                                        # every green CLAIM / FREE button inside the window
-        c = g.find_image("btn_claim_green", 0.8)
-        if not c:
-            try:
-                img = g.screenshot(); h, w = img.shape[:2]
-                hit = [b for b in _ocr_boxes(img[int(0.15 * h):int(0.92 * h), int(0.10 * w):int(0.95 * w)], "vip_claim.png")
-                       if re.fullmatch(r"\W*(claim|free)\W*", (b[4] or "").strip(), re.I)]
-                if hit:
-                    b0 = hit[0]
-                    c = [(((b0[0] + b0[2]) / 2 + 0.10 * w) / w, ((b0[1] + b0[3]) / 2 + 0.15 * h) / h)]
-            except Exception:
-                c = None
-        if not c:
+            return bool(re.search(r"\bvip\b|today.?s points|consecutive", words, re.I))
+        except Exception:
+            return False
+
+    for attempt in range(2):
+        hit = _icon("vip_badge2", 0.75, 0.2, 1.6)
+        if hit and hit[0] < 0.35 and hit[1] < 0.20:
+            g.click_rel(hit[0], hit[1])
+        else:
+            g.click_rel(0.075, 0.046)                         # VIP badge (top-left HUD)
+        sleep(3)
+        if _vip_open():
             break
-        g.click_rel(*c[0]); sleep(3)
-        g.click_rel(0.5, 0.15); sleep(1.5)
-        claimed += 1
+        recover_screen(g)
+    else:
+        log("  ! vip_chests: the VIP window did not open - trying again later")
+        return "retry"
+    got = []
+    for name, label in (("vip_daily_claim", "daily points chest"), ("vip_free_claim", "FREE EVERY DAY chest")):
+        for _ in range(2):
+            c = _icon(name, 0.80)
+            if not c:
+                break
+            g.click_rel(c[0], c[1]); sleep(3)
+            g.click_rel(0.5, 0.06); sleep(1.5)                # close the reward card (tap the window title bar)
+            if not _vip_open():                               # the reward card hid the window - one more tap
+                g.click_rel(0.5, 0.06); sleep(1.5)
+            got.append(label)
     recover_screen(g)
-    log(f"  vip_chests: VIP window opened - {claimed} extra chest(s) claimed (daily points chest tapped)")
+    if got:
+        log("  vip_chests: claimed " + ", ".join(got))
+    else:
+        log("  vip_chests: VIP window opened - nothing to claim (both chests already taken today)")
     return True
 
 
