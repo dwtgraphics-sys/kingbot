@@ -3660,11 +3660,28 @@ def _tavern_try(g, sleep, x, y, need_name=False):
         txt = " ".join(_ocr_lines(crop, "tavern_scan.png", scale=2)).lower()
         if "tavern" not in txt and "taver" not in txt:
             return False
+    import cv2
+    from common import BASE
+    try:
+        cv2.imwrite(os.path.join(BASE, "claude_out", "tavern_tap1.png"), g.screenshot())   # v358: what the tap showed
+    except Exception:
+        pass
     g.click_rel(x, min(0.95, y + 0.115)); sleep(3)           # chests button (just under the building)
     if g.find_image("tavern_silver_title", 0.8):
         return True
     from common import close_gem_dialogs
     close_gem_dialogs(g)
+    if not need_name:                                        # v358: the free-chest bubble over the building
+        recover_screen(g)                                    # (W85: the chests button is not at +0.115)
+        g.click_rel(x, max(0.05, y - 0.07)); sleep(3)
+        img = g.screenshot()
+        try:
+            cv2.imwrite(os.path.join(BASE, "claude_out", "tavern_tap2.png"), img)
+        except Exception:
+            pass
+        if g.find_image("tavern_silver_title", 0.8, img=img):
+            log("  tavern: opened through the bubble over the building")
+            return True
     return False
 
 
