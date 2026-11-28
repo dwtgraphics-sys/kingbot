@@ -1496,6 +1496,17 @@ DEFAULT_EVERY = {"collect_city": [30, 60], "daily_objectives": [480, 480], "alli
 DAILY_ONCE = {"vip_chests", "vip_shop", "tavern_legendary"}     # v67: once per game day (UTC); the day is stored in task_state
 
 
+def daily_key(name):
+    """v337: the 'done today' mark of a DAILY_ONCE activity belongs to the character that did it. With one key per
+    activity, W85's VIP chests (01:13) marked them done for ArchLord too, and ArchLord's chests were never opened
+    (vps-04-c001, 28 Nov). The first character ('default') keeps the old key."""
+    try:
+        ch = smart._char_key()
+    except Exception:
+        ch = "default"
+    return name + "_day" + ("" if ch in ("", "default") else "@" + ch)
+
+
 def task_every(t):
     """[min, max] minutes for an activity with its own timer, or None (runs every round)."""
     if t.get("routine") in DAILY_ONCE:
@@ -1961,7 +1972,7 @@ def one_round(settings):
         every = task_every(t)
         state = load_json(TASK_STATE_FILE, {})
         today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
-        if name in DAILY_ONCE and state.get(name + "_day") == today:
+        if name in DAILY_ONCE and state.get(daily_key(name)) == today:
             log(f"  - {name}: already done today (game day {today})")
             continue
         if every and time.time() < state.get(name, 0):
@@ -2080,7 +2091,7 @@ def one_round(settings):
                     pass
             if name in DAILY_ONCE and ok is not False and ok != "retry":
                 state = load_json(TASK_STATE_FILE, {})
-                state[name + "_day"] = today
+                state[daily_key(name)] = today
                 save_json(TASK_STATE_FILE, state)
                 log(f"  {name}: done for today ({today})")
             if every:
