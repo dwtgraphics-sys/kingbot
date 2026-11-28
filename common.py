@@ -196,6 +196,16 @@ def _cancel_right_of(img, rx, ry):
         return None
 
 
+def confirm_alone(img, rx, ry):
+    """v322: True only when a CONFIRM button stands alone in the middle (a reward / commander card).
+    'Exit the game?' has CONFIRM on the LEFT and CANCEL on the right. On vps-04-c001 OCR read nothing and the
+    cyan test missed the CANCEL, so recover_screen took that CONFIRM for a reward card and pressed it - the game
+    closed (queue_manager 'Game window closed', 27 Nov). An off-centre CONFIRM is never pressed now."""
+    if abs(rx - 0.5) > 0.05:
+        return False
+    return _cancel_right_of(img, rx, ry) is None
+
+
 def cancel_exit_notice(g, img):
     """v287: the title screen answers ESC with NOTICE 'Exit the game?' (CONFIRM / CANCEL). Read the words and
     press CANCEL. Returns True when that notice was there. CONFIRM is never pressed."""
@@ -334,6 +344,10 @@ def recover_screen(g=None, tries=4):
                 return True
             if cancel_exit_notice(g, img):
                 return True
+        if cf and not confirm_alone(img, *cf[0]):        # v322: a two-button dialog - maybe "Exit the game?"
+            log(f"  ! a CONFIRM button off-centre at {cf[0][0]:.3f},{cf[0][1]:.3f} (two-button dialog, maybe "
+                "'Exit the game?') - not pressing it")
+            cf = None
         if cf:
             log("  ! a reward card was open - pressing CONFIRM")
             g._click_absolute(*cf[0]); time.sleep(2.5)
