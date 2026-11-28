@@ -489,6 +489,9 @@ def netdrop_wait(g):
         CAPTCHA_BUSY[0] = False
 
 
+RELOGIN_HIST = []        # v321: times of the last 'another device' kicks
+
+
 def relogin_wait(g):
     """GUIDE-13: the game says the account was opened on another device. Wait relogin_cooldown_min minutes
     (default 10, dashboard) before reconnecting, so the owner can play on the other device without being kicked."""
@@ -497,11 +500,28 @@ def relogin_wait(g):
     TASK_NOW[0] = 0
     try:
         mins = max(1, min(240, int((ctl.data or {}).get("relogin_cooldown_min") or 10)))
-        log(f"The account was opened on another device - waiting {mins} min before logging in again.")
+        # v321: two servers (or a server and a phone) on the same game account kick each other every few
+        # minutes; each kick also closed the game client ('Game window closed' x6 on vps-01-main and
+        # vps-04-c001 on 27 Nov). Repeated kicks within 3 hours double the wait (max 2 h) and warn the owner.
+        now = time.time()
+        RELOGIN_HIST[:] = [t for t in RELOGIN_HIST if now - t < 3 * 3600] + [now]
+        n = len(RELOGIN_HIST)
+        if n > 1:
+            mins = min(120, max(mins, mins * 2 ** (n - 1)))
+        log(f"The account was opened on another device - waiting {mins} min before logging in again"
+            + (f" (kick {n} in 3 hours)" if n > 1 else "") + ".")
         try:
             smart.notify("info", f"دخل أحد للحساب من جهاز آخر — البوت ينتظر {mins} دقيقة ثم يعود")
         except Exception:
             pass
+        if n == 3:
+            try:
+                msg = ("نفس حساب اللعبة مفتوح على جهاز أو سيرفر آخر: طُرد البوت 3 مرات خلال 3 ساعات. "
+                       "إذا كان هذا الحساب يعمل على سيرفرين فهما يطردان بعضهما — اترك الحساب على سيرفر واحد فقط.")
+                smart.notify("warn", msg)
+                alerts.fire("bot_incident", msg, screenshot=False)
+            except Exception:
+                pass
         end = time.time() + mins * 60
         CAPTCHA[0] = "relogin"                               # no clicks while waiting
         while time.time() < end:
