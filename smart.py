@@ -1380,7 +1380,7 @@ UNIT_NEEDS = {"infantry": "barracks", "archer": "archery_range", "cavalry": "sta
 def city_hall_level():
     """The City Hall level the bot read in the game (per character), else the one set for the server."""
     import control as _c
-    for v in (_c.CITY.get("city_hall_level"), (_c.data or {}).get("city_hall_level")):
+    for v in (_c.CITY.get("city_hall_level"), (getattr(_c, "data", None) or {}).get("city_hall_level")):
         try:
             if int(v or 0) > 0:
                 return int(v)
