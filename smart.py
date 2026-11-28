@@ -3193,11 +3193,155 @@ SMART["attack_barbarians"] = attack_barbarians
 COMMANDER_NAMES = ["Aethelflaed", "Afonso", "Alexander Nevsky", "Alexander the Great", "Alp Arslan", "Amanitore", "Archimedes", "Artemisia", "Arthur Pendragon", "Ashurbanipal", "Attila", "Babur", "Bai Qi", "Baibars", "Belisarius", "Belisarius Prime", "Bertrand du Guesclin", "Bjorn Ironside", "Boudica", "Boudica Prime", "Cao Cao", "Casimir", "Catherine de' Medici", "Centurion", "Chandragupta", "Charlemagne", "Charles Martel", "Cheok Jun-Gyeong", "Choe Yeong", "City Keeper", "Cleopatra", "Constance", "Constantine", "Cyrus the Great", "Diaochan", "Dido", "Dragon Lancer", "Edward", "El Cid", "Eleanor of Aquitaine", "Elizabeth", "Eulji Mundeok", "Flavius Aetius", "Frederick", "Gaius Marius", "Gajah Mada", "Gang Gamchan", "Genghis Khan", "Gilgamesh", "Gonzalo de Cordoba", "Gorgo", "Guan Yu", "Hannibal Barca", "Harald Sigurdsson", "Hayam Wuruk", "Hector", "Henry", "Heraclius", "Hermann", "Hermann Prime", "Honda Tadakatsu", "Huo Qubing", "Imhotep", "Ishida Mitsunari", "Ivar the Boneless", "Jadwiga", "Jan Zizka", "Joan of Arc", "Joan of Arc Prime", "John Hunyadi", "Julius Caesar", "Justinian", "Keira", "Kusunoki Masashige", "Lancelot", "Lapu-Lapu", "Leonidas", "Liu Che", "Lohar", "Lu Bu", "Margaret", "Markswoman", "Mary", "Matilda of Flanders", "Matthias", "Mehmed", "Minamoto no Yoshitsune", "Moctezuma", "Montezuma", "Mulan", "Narses", "Nebuchadnezzar", "Osman", "Pacal", "Pakal", "Pelagius", "Pepin", "Pericles", "Philip", "Pyrrhus", "Qin Shi Huang", "Ragnar Lodbrok", "Ragnar Lodbrok Prime", "Ramesses", "Richard", "Saladin", "Sargon the Great", "Sarka", "Scipio Aemilianus", "Scipio Africanus", "Seondeok", "Shajar al-Durr", "Shapur", "Siyaj K'ak", "Stephen III", "Subutai", "Suleiman", "Sun Tzu", "Sun Tzu Prime", "Takeda Shingen", "Tariq ibn Ziyad", "Theodora", "Thutmose", "Tokugawa Ieyasu", "Tomoe Gozen", "Tomyris", "Torgny", "Trajan", "Vercingetorix", "Wak Chanil Ajaw", "William I", "William Wallace", "Wu Zetian", "Xiang Yu", "Yahya ibn Khalid", "Yi Seong-Gye", "Yi Sun-Sin", "Zeno", "Zenobia", "Zhuge Liang"]
 
 
+def _cmd_page_open(g, img=None):
+    """v365: the commander page (P): TALENTS / SKILLS buttons and 'Commander Power' at the bottom right."""
+    try:
+        img = g.screenshot() if img is None else img
+        h, w = img.shape[:2]
+        words = " ".join(b[4] for b in _ocr_boxes(img[int(0.70 * h):, int(0.35 * w):], "cmdpage.png", 1.5)).lower()
+        return ("talent" in words and "skill" in words) or "commander power" in words
+    except Exception:
+        return False
+
+
+def _cmd_tiles(img):
+    """Portrait tiles of the commander list on the left: [(rel_x, rel_y, (x1, y1, x2, y2))], top to bottom.
+    Coloured blobs (rarity frames); joined blobs are split into tile-sized cells (a tile is ~0.14 of the height).
+    A wrong point only costs a tap: the name read on the right decides."""
+    import cv2, numpy as np
+    h, w = img.shape[:2]
+    X1, X2, Y1, Y2 = int(0.03 * w), int(0.25 * w), int(0.14 * h), int(0.98 * h)
+    hsv = cv2.cvtColor(img[Y1:Y2, X1:X2], cv2.COLOR_BGR2HSV)
+    m = ((hsv[..., 1] > 110) & (hsv[..., 2] > 120)).astype(np.uint8)
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    n, lab, st, cen = cv2.connectedComponentsWithStats(m)
+    side = 0.14 * h
+    pts = []
+    for k in range(1, n):
+        x, y, bw, bh, a = st[k]
+        if a < 0.3 * side * side:
+            continue
+        nx, ny = max(1, int(round(bw / side))), max(1, int(round(bh / side)))
+        for i in range(nx):
+            for j in range(ny):
+                cx = X1 + x + (i + 0.5) * bw / nx
+                cy = Y1 + y + (j + 0.5) * bh / ny
+                if all(abs(cx - px) > 0.6 * side or abs(cy - py) > 0.6 * side for px, py in pts):
+                    pts.append((cx, cy))
+    clean = [(X1 + cen[k][0], Y1 + cen[k][1]) for k in range(1, n)
+             if 0.6 * side < st[k][2] < 1.5 * side and 0.6 * side < st[k][3] < 1.5 * side and st[k][4] > 0.3 * side * side]
+    if len(clean) >= 2:                                      # a regular 2-column grid: rebuild it from the clean tiles
+        xs = sorted({round(c[0] / (0.5 * side)) for c in clean})
+        cols = []
+        for c in sorted(clean, key=lambda c: c[0]):
+            if not cols or c[0] - cols[-1] > 0.6 * side:
+                cols.append(c[0])
+        ys = sorted(c[1] for c in clean)
+        steps = [b - a for a, b in zip(ys, ys[1:]) if b - a > 0.6 * side]
+        if steps and len(cols) >= 2:
+            dy = min(steps)
+            pts, y = [], ys[0]
+            while y < 0.96 * h:
+                pts += [(cx, y) for cx in cols[:2]]
+                y += dy
+    hs = side / 2
+    out = [(cx / w, cy / h, (int(max(0, cx - hs)), int(max(0, cy - hs)), int(min(w, cx + hs)), int(min(h, cy + hs))))
+           for cx, cy in pts]
+    return sorted(out, key=lambda t: (round(t[1] * 8), t[0]))
+
+
+def _cmd_read_right(g, img):
+    """Name (roster name) and level from the right side of the commander page, or (None, 0)."""
+    import re as _re, roster
+    h, w = img.shape[:2]
+    boxes = _ocr_boxes(img[int(0.06 * h):int(0.42 * h), int(0.62 * w):int(0.98 * w)], "cmdright.png", 1.5)
+    name, lvl = None, 0
+    for b in sorted(boxes, key=lambda b: -(b[3] - b[1])):          # biggest text first (the name)
+        c = roster.info(b[4])
+        if c and not name:
+            name = c["name"]
+    txt = " ".join(b[4] for b in boxes)
+    m = _re.search(r"level\s*(\d{1,2})\s*/\s*\d{1,2}", txt, _re.I)
+    if m:
+        lvl = int(m.group(1))
+    return name, lvl
+
+
+def read_commanders_page(g, sleep):
+    """v365: P opens the commander page; every portrait on the left is tapped and the name + level are read on the
+    right. Commanders not owned yet (Summon x/10) have no level and are skipped. None = the page did not open."""
+    import cv2, base64, control, time as _t
+    from common import hotkey_open
+    if not hotkey_open(g, "p", lambda: _cmd_page_open(g), 3, "the commander page"):
+        hit = find_icon(g, "btn_commanders", 0.4, 2.0, 14, 0.75)
+        if not hit:
+            return None
+        g.click_rel(hit[0], hit[1]); sleep(3)
+        if not _cmd_page_open(g):
+            recover_screen(g)
+            return None
+    found, levels, quiet = {}, {}, 0
+    for page in range(40):
+        img = g.screenshot()
+        tiles = _cmd_tiles(img)
+        new = 0
+        for (tx, ty, (x1, y1, x2, y2)) in tiles:
+            g.click_rel(tx, ty); sleep(1.2)
+            im2 = g.screenshot()
+            name, lvl = _cmd_read_right(g, im2)
+            if not name or name in found or lvl <= 0:
+                continue
+            crop = img[y1:y2, x1:x2]
+            av = ""
+            if crop.size:
+                ok, buf = cv2.imencode(".jpg", cv2.resize(crop, (64, 64), interpolation=cv2.INTER_AREA),
+                                       [cv2.IMWRITE_JPEG_QUALITY, 72])
+                if ok:
+                    av = "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
+            found[name], levels[name] = av, lvl
+            new += 1
+        quiet = quiet + 1 if new == 0 else 0
+        if quiet >= 2 or not tiles:
+            break
+        lx = sum(t[0] for t in tiles) / len(tiles)
+        _drag(g, lx, 0.85, lx, 0.40); sleep(1.5)                # next rows of the list
+    recover_screen(g)
+    if not found:
+        log("  read_commanders: the commander page opened but no name was read")
+        return {}
+    control.CITY["commanders"] = [{"name": n, "img": a, "level": levels.get(n, 0)} for n, a in found.items()]
+    control.CITY["commanders_at"] = _t.strftime("%Y-%m-%d %H:%M")
+    log(f"  read_commanders (P page): {len(found)} commander(s): " +
+        ", ".join(f"{n} {levels[n]}" for n in list(found)[:12]))
+    return found
+
+
 def read_commanders(g, sleep):
-    """Open New Troop on a barbarian (nothing is sent), open the commander list and read every commander the
+    """v365: first the commander page (P key / Commander button); the old way below only when it does not open.
+    Open New Troop on a barbarian (nothing is sent), open the commander list and read every commander the
     player owns: name (OCR, matched to the known list) + a small portrait. Sent to the dashboard picker."""
     import cv2, base64, control
     from common import BASE
+    try:
+        got = read_commanders_page(g, sleep)
+    except Exception as e:
+        log(f"  ! read_commanders: commander page failed: {e!r}")
+        recover_screen(g)
+        got = None
+    if got:
+        _persist_save()
+        try:                                                 # keep every character's commanders apart (as below)
+            from common import load_json, save_json
+            who = (control.CITY.get("rotation") or {}).get("char") or control.CITY.get("profile_char") or _char_key()
+            import re as _re
+            key = _re.sub(r"[^0-9A-Za-z_-]+", "_", str(who)).strip("_")[:30] or "char"
+            pf = os.path.join(BASE, "commanders_by_char.json")
+            store = load_json(pf, {})
+            store[key] = {"list": control.CITY["commanders"], "at": control.CITY["commanders_at"]}
+            save_json(pf, store)
+        except Exception as e:
+            log(f"  ! read_commanders: could not keep per character: {e!r}")
+        return True
     if _in_city(g) or not _on_map(g):
         press_key("space"); sleep(6)
     pos, _ = _barb_search(g, sleep, 1, 10)

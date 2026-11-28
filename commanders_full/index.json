@@ -542,10 +542,6 @@
    "full": "commanders_full/Yi Sun-sin.webp",
    "source": "IMG_0977.webp"
   },
-  "Yi To": {
-   "full": "commanders_full/Yi To.webp",
-   "source": "IMG_0978.webp"
-  },
   "Zenobia": {
    "full": "commanders_full/Zenobia.webp",
    "source": "IMG_0979.webp"
@@ -561,6 +557,10 @@
   "Šárka": {
    "full": "commanders_full/Sarka.webp",
    "source": "IMG_0947.webp"
+  },
+  "Yi Do": {
+   "full": "commanders_full/Yi Do.webp",
+   "source": "IMG_0978.webp"
   }
  }
 }

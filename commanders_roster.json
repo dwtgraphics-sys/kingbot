@@ -10,10 +10,14 @@
    "aliases": []
   },
   {
-   "name": "Yi To",
+   "name": "Yi Do",
    "rarity": "Legendary",
    "role": "Infantry",
-   "aliases": []
+   "aliases": [
+    "Yi To",
+    "Sejong the Great",
+    "Sejong"
+   ]
   },
   {
    "name": "Liu Che",
