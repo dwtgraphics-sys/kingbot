@@ -332,6 +332,28 @@ def screen_is_clear(g=None):
                                                           ("hud_space_city", 0.85), ("hud_space_map", 0.85)))
 
 
+def skip_counselor(g=None, img=None, max_taps=25):
+    """v339 (owner): the tutorial 'Counselor' lady talks in a box at the bottom - press the arrow at the
+    box's bottom-right (or the box itself) until she is gone. Returns True when she was there."""
+    g = g or CURRENT_GAME[0]
+    if g is None:
+        return False
+    hit = g.find_image("counselor_tag", 0.78, img=img)
+    if not hit:
+        return False
+    log("  tutorial: the Counselor is talking - skipping her instructions")
+    for n in range(max_taps):
+        x, y = hit[0]
+        ax, ay = min(0.80, x + 0.058), min(0.93, y + 0.20)  # the arrow at the box's bottom-right
+        g.click_rel(ax, ay); time.sleep(1.3)
+        hit = g.find_image("counselor_tag", 0.78)
+        if not hit:
+            log(f"  tutorial: Counselor gone after {n + 1} tap(s)")
+            return True
+    log("  ! tutorial: the Counselor is still talking - she may be waiting for a tap somewhere else")
+    return True
+
+
 def recover_screen(g=None, tries=4):
     """Bring the game back to the plain city/map view: press NO on gem windows, use the BACK arrow,
     else ESC once. Returns True when the screen is clear."""
@@ -343,6 +365,8 @@ def recover_screen(g=None, tries=4):
             activate(g.hwnd)
         close_gem_dialogs(g)
         img = g.screenshot()
+        if skip_counselor(g, img=img):                     # v339: tutorial "Counselor" talk - skip it
+            continue
         chat = g.find_image("chat_close", 0.85, img=img)
         if chat:
             log("  ! the chat panel was open - closing it")
