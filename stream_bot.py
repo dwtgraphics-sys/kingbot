@@ -43,8 +43,11 @@ try:                                                    # v196: from local_confi
 except Exception:
     STREAM_ID, STREAM_PW = "kbb294c813b7", "ct1q-ZeP"
 VIEW_URL = f"https://vdo.ninja/?view={STREAM_ID}&password={STREAM_PW}&label=Kingbot"
-PUSH_URL = (f"https://vdo.ninja/?push={STREAM_ID}&webcam&videodevice=OBS&audiodevice=0&autostart"
+# v349: no OBS any more - Chrome shares the game window itself (screenshare, picked automatically by its title)
+PUSH_URL = (f"https://vdo.ninja/?push={STREAM_ID}&screenshare&autostart&noaudio&audiodevice=0"
             f"&password={STREAM_PW}&quality=1&label=Kingbot")
+GAME_TITLE = "Rise of Kingdoms"
+USE_OBS = False
 
 TICK = 5            # seconds between checks of live_state.json
 HEALTH = 60         # seconds between process health checks while streaming
@@ -346,12 +349,44 @@ def start_obs():
     return True
 
 
+POLICY = {"done": False}
+
+
+def allow_capture_without_click():
+    """v349: a page may only share a window after a click. Chrome's policy ScreenCaptureWithoutGestureAllowedForOrigins
+    lets vdo.ninja (and only it) start the share by itself, so the minimized sender needs no hand."""
+    if POLICY["done"]:
+        return
+    POLICY["done"] = True
+    key = r"HKLM\SOFTWARE\Policies\Google\Chrome\ScreenCaptureWithoutGestureAllowedForOrigins"
+    try:
+        q = subprocess.run(["reg", "query", key, "/v", "1"], capture_output=True, text=True, timeout=15, creationflags=NOWIN)
+        if "vdo.ninja" not in (q.stdout or ""):
+            subprocess.run(["reg", "add", key, "/v", "1", "/t", "REG_SZ", "/d", "https://vdo.ninja", "/f"],
+                           capture_output=True, timeout=15, creationflags=NOWIN)
+            log("Chrome policy set: vdo.ninja may share the game window without a click")
+    except Exception as e:
+        log(f"! could not set the Chrome screen-capture policy: {e!r}")
+
+
+def stop_obs_for_good():
+    """v349: OBS is no longer used. Close it if an older version left it running."""
+    if obs_running():
+        _run(["taskkill", "/IM", "obs64.exe"])
+        time.sleep(3)
+        if obs_running():
+            _run(["taskkill", "/IM", "obs64.exe", "/F"])
+        log("OBS closed - the stream now uses Chrome window sharing only")
+
+
 def start_sender():
     if not os.path.exists(CHROME_EXE):
         log("! Chrome is not installed at " + CHROME_EXE)
         return False
     SENDER["at"] = time.time()
+    allow_capture_without_click()
     SENDER["proc"] = subprocess.Popen([CHROME_EXE, f"--user-data-dir={CHROME_PROFILE}", "--use-fake-ui-for-media-stream",
+                      f"--auto-select-desktop-capture-source={GAME_TITLE}", "--enable-usermedia-screen-capturing",
                       "--autoplay-policy=no-user-gesture-required", "--disable-background-timer-throttling",
                       "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows",
                       "--no-first-run", "--no-default-browser-check", "--start-minimized", "--new-window", PUSH_URL],
@@ -432,12 +467,14 @@ def main():
         for p in old_senders:
             _run(["taskkill", "/PID", str(p), "/T", "/F"])
         log(f"closed {len(old_senders)} old Chrome sender process(es)")
-    if os.path.exists(OBS_EXE):                  # v301: register the virtual camera now; a running OBS that
+    if USE_OBS and os.path.exists(OBS_EXE):      # v301: register the virtual camera now; a running OBS that
         had = subprocess.run(["reg", "query", rf"HKLM\SOFTWARE\Classes\CLSID\{VCAM_CLSID}"], capture_output=True,
                              timeout=15, creationflags=NOWIN).returncode == 0
         if not had and ensure_vcam() and obs_running():   # started without it must start again
             _run(["taskkill", "/IM", "obs64.exe", "/F"])
             log("OBS restarted so it can use the new virtual camera")
+    if not USE_OBS:
+        stop_obs_for_good()
     active, since, last_health, last_out = None, None, 0.0, None
     while True:
         live = load(LIVE_FILE, {})
@@ -448,14 +485,14 @@ def main():
             if on and (active is not True or now - last_health > HEALTH):
                 last_health = now
                 obs_new = False
-                if not obs_running():
+                if USE_OBS and not obs_running():
                     obs_new = bool(start_obs())
                 if obs_new and sender_running():          # v305: a sender opened before the OBS camera existed
                     for p in (sender_pids() or []):       # waits on "Share your Camera" forever - start it again
                         _run(["taskkill", "/PID", str(p), "/T", "/F"])
                     SENDER["proc"] = None
                     log("Chrome sender restarted so it finds the new OBS camera")
-                if not obs_new:
+                if USE_OBS and not obs_new:
                     obs_health()
                 if not sender_running():
                     start_sender()
