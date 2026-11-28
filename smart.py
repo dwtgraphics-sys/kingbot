@@ -3805,8 +3805,17 @@ def _blue_buttons(img, y0=0.62, y1=0.78):
 def _tavern_page_open(g, which, img=None):
     img = img if img is not None else g.screenshot()
     if which == "legend":
-        if find_icon(g, "legendary_title", 0.6, 1.8, 13, 0.75, img=img):
+        if find_icon(g, "legendary_title", 0.7, 1.4, 11, 0.72, img=img):
             return True
+        if not g.find_image("hud_space_city", 0.85, img=img) and not g.find_image("tavern_silver_title", 0.8, img=img):
+            import cv2 as _cv                                # v369: the page's OPEN buttons (blue or orange) under
+            hsv = _cv.cvtColor(img, _cv.COLOR_BGR2HSV)       # the chest, and no city HUD
+            h, w = img.shape[:2]
+            band = hsv[int(0.68 * h):int(0.80 * h), int(0.2 * w):int(0.8 * w)]
+            blue = _cv.inRange(band, (95, 150, 180), (110, 255, 255)).mean() / 255
+            orange = _cv.inRange(band, (15, 150, 180), (30, 255, 255)).mean() / 255
+            if blue > 0.04 or orange > 0.15:
+                return True
         h, w = img.shape[:2]
         t = " ".join(_ocr_lines(img[0:int(0.22 * h), int(0.3 * w):int(0.7 * w)], "legend_title_ocr.png", scale=2)).lower()
         return "legendary" in t
