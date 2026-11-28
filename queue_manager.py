@@ -452,6 +452,9 @@ def open_panel(g, sleep):
     img = g.screenshot()
     if panel_visible(img):
         return img
+    from common import hotkey_open                       # v358: J = Troops shortcut, checked by the panel colour
+    if hotkey_open(g, "j", lambda: panel_visible(g.screenshot()), 2.5, "the Queue Overview"):
+        return g.screenshot()
     boxes, img = smart.queue_panel(g, sleep)
     if img is not None:
         return img

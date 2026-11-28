@@ -521,6 +521,38 @@ def recover_screen(g=None, tries=4):
     return False
 
 
+HOTKEY_FAIL = {}      # key -> (misses in a row, time of the last miss)
+
+
+def hotkey_open(g, key, check, wait=2.5, label=""):
+    """v358: open a game window with its keyboard shortcut (Settings > Shortcuts: V VIP, J Troops, H Events,
+    O Alliance, F Search, I Items, P Commanders, L Quests, B Build) instead of finding and tapping its button.
+    Pressed only on the plain city / map view; check() must confirm the window opened, otherwise the screen
+    is recovered and the caller uses the mouse. A key that missed 3 times in a row rests for 6 hours."""
+    misses, last = HOTKEY_FAIL.get(key, (0, 0.0))
+    if misses >= 3 and time.time() - last < 6 * 3600:
+        return False
+    if g is None:
+        return False
+    if not screen_is_clear(g):
+        recover_screen(g)
+    activate(g.hwnd)
+    press_key(key)
+    time.sleep(wait)
+    try:
+        ok = bool(check())
+    except Exception:
+        ok = False
+    if ok:
+        HOTKEY_FAIL[key] = (0, 0.0)
+        log(f"    shortcut {key.upper()}: {label or 'window'} opened")
+        return True
+    HOTKEY_FAIL[key] = (misses + 1, time.time())
+    log(f"    shortcut {key.upper()} did not open {label or 'the window'} - using the mouse")
+    recover_screen(g)
+    return False
+
+
 def press_key(key):
     """Press a key through Interception if available (games accept it), otherwise normally.
     SAFETY: never press a key while a 'spend gems' window is open; Space only on the plain city/map view."""

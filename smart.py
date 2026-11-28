@@ -2444,7 +2444,10 @@ def vip_chests(g, sleep):
         except Exception:
             return False
 
+    from common import hotkey_open
     for attempt in range(2):
+        if attempt == 0 and hotkey_open(g, "v", _vip_open, 3, "the VIP window"):   # v358: V = VIP
+            break
         hit = _icon("vip_badge2", 0.75, 0.2, 1.6)
         if hit and hit[0] < 0.35 and hit[1] < 0.20:
             g.click_rel(hit[0], hit[1])
@@ -2526,22 +2529,26 @@ def events(g, sleep, max_tabs=8, max_claims=20):
     from common import TEMPL_DIR, BUILTIN_DIR, BASE, close_gem_dialogs
     icons = sorted({os.path.splitext(os.path.basename(f))[0] for d in (TEMPL_DIR, BUILTIN_DIR)
                     for f in glob.glob(os.path.join(d, "icon_events*.png"))})
-    if not icons:
-        if _t.time() - EVENTS_STATE["warned"] > 24 * 3600:
-            EVENTS_STATE["warned"] = _t.time()
-            log("  - events: no picture of the Events icon yet (record 'icon_events' once with record.py)")
-        return True
     recover_screen(g)
-    pos = None
-    for n in icons:
-        p = g.find_image(n, 0.8)
-        if p:
-            pos = p[0]
-            break
-    if not pos:
-        log("  - events: the Events icon is not on the screen")
-        return True
-    g.click_rel(*pos); sleep(3)
+    from common import hotkey_open, screen_is_clear
+    # v358: H = Events. Opened when the plain view is gone and the hub's tab list shows on the left.
+    if not hotkey_open(g, "h", lambda: not screen_is_clear(g) and not g.find_image("btn_vipshop_hex", 0.8),
+                       3, "the Events hub"):
+        pos = None
+        for n in icons:
+            p = g.find_image(n, 0.8)
+            if p:
+                pos = p[0]
+                break
+        if not pos:
+            if not icons and _t.time() - EVENTS_STATE["warned"] > 24 * 3600:
+                EVENTS_STATE["warned"] = _t.time()
+                log("  - events: H did not open the Events hub and there is no picture of its icon yet "
+                    "(record 'icon_events' once with record.py)")
+            elif icons:
+                log("  - events: the Events icon is not on the screen")
+            return True
+        g.click_rel(*pos); sleep(3)
     claimed, seen = 0, set()
     for _tab in range(int(max_tabs)):
         img = g.screenshot()
