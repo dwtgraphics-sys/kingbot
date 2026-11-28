@@ -43,11 +43,15 @@ try:                                                    # v196: from local_confi
 except Exception:
     STREAM_ID, STREAM_PW = "kbb294c813b7", "ct1q-ZeP"
 VIEW_URL = f"https://vdo.ninja/?view={STREAM_ID}&password={STREAM_PW}&label=Kingbot"
-# v349: no OBS any more - Chrome shares the game window itself (screenshare, picked automatically by its title)
-PUSH_URL = (f"https://vdo.ninja/?push={STREAM_ID}&screenshare&autostart&noaudio&audiodevice=0"
-            f"&password={STREAM_PW}&quality=1&label=Kingbot")
+PUSH_URL_SHARE = (f"https://vdo.ninja/?push={STREAM_ID}&screenshare&autostart&noaudio&audiodevice=0"
+                  f"&password={STREAM_PW}&quality=1&label=Kingbot")
+PUSH_URL_OBS = (f"https://vdo.ninja/?push={STREAM_ID}&webcam&videodevice=OBS&audiodevice=0&autostart"
+                f"&password={STREAM_PW}&quality=1&label=Kingbot")
 GAME_TITLE = "Rise of Kingdoms"
-USE_OBS = False
+# v350: back to OBS - in the v349 test Chrome's auto-pick did not find the game window, shared the WHOLE screen,
+# and its window came up over the game (28 Nov). The Chrome-only path stays here for a later try.
+USE_OBS = True
+PUSH_URL = PUSH_URL_OBS if USE_OBS else PUSH_URL_SHARE
 
 TICK = 5            # seconds between checks of live_state.json
 HEALTH = 60         # seconds between process health checks while streaming
@@ -384,9 +388,10 @@ def start_sender():
         log("! Chrome is not installed at " + CHROME_EXE)
         return False
     SENDER["at"] = time.time()
-    allow_capture_without_click()
-    SENDER["proc"] = subprocess.Popen([CHROME_EXE, f"--user-data-dir={CHROME_PROFILE}", "--use-fake-ui-for-media-stream",
-                      f"--auto-select-desktop-capture-source={GAME_TITLE}", "--enable-usermedia-screen-capturing",
+    share = [] if USE_OBS else [f"--auto-select-desktop-capture-source={GAME_TITLE}", "--enable-usermedia-screen-capturing"]
+    if not USE_OBS:
+        allow_capture_without_click()
+    SENDER["proc"] = subprocess.Popen([CHROME_EXE, f"--user-data-dir={CHROME_PROFILE}", "--use-fake-ui-for-media-stream", *share,
                       "--autoplay-policy=no-user-gesture-required", "--disable-background-timer-throttling",
                       "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows",
                       "--no-first-run", "--no-default-browser-check", "--start-minimized", "--new-window", PUSH_URL],
