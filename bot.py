@@ -1146,7 +1146,7 @@ def session_watch(every=60):
 
 
 RUN_TASK_OK = ("read_city_hall", "rally_fort", "attack_barbarians", "gather", "tavern", "merchant", "alliance_help", "collect_city",
-               "vip_chests", "train_troops", "sunset_canyon", "materials")
+               "vip_chests", "train_troops", "sunset_canyon", "materials", "tavern_legendary")
 NO_GAME_ACTIONS = ("conduct_resume", "purge_characters", "install_obs", "update_now")
 
 

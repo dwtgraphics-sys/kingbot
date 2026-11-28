@@ -3802,37 +3802,47 @@ def _blue_buttons(img, y0=0.62, y1=0.78):
             if ar > 900 and bw > 0.05 * w]
 
 
-def _tavern_try(g, sleep, x, y, need_name=False):
+def _tavern_page_open(g, which, img=None):
+    img = img if img is not None else g.screenshot()
+    if which == "legend":
+        if find_icon(g, "legendary_title", 0.6, 1.8, 13, 0.75, img=img):
+            return True
+        h, w = img.shape[:2]
+        t = " ".join(_ocr_lines(img[0:int(0.22 * h), int(0.3 * w):int(0.7 * w)], "legend_title_ocr.png", scale=2)).lower()
+        return "legendary" in t
+    return bool(g.find_image("tavern_silver_title", 0.8, img=img))
+
+
+def _tavern_try(g, sleep, x, y, need_name=False, which="chests"):
+    """Tap the Tavern, then one of the three hex buttons that come up under it (owner's pictures, 28 Nov):
+    left = info, middle (blue, helmet + magnifier) = the tavern chests, right (gold, crowned helmet) = the
+    Legendary Chests. v359: the buttons are found by their pictures, not at a fixed offset."""
     g.click_rel(x, y); sleep(2)                              # Tavern building
+    img = g.screenshot()
     if need_name:                                            # scanning: only press the button under a building called Tavern
-        img = g.screenshot()
         h, w = img.shape[:2]
         crop = img[max(0, int((y - 0.22) * h)):int((y + 0.04) * h), max(0, int((x - 0.22) * w)):min(w, int((x + 0.22) * w))]
         txt = " ".join(_ocr_lines(crop, "tavern_scan.png", scale=2)).lower()
         if "tavern" not in txt and "taver" not in txt:
             return False
+    tpl = "tavern_btn_legend" if which == "legend" else "tavern_btn_chests"
+    hit = find_icon(g, tpl, 0.5, 1.7, 13, 0.70, img=img)
+    if hit and hit[1] > y - 0.02:                            # the hex buttons sit under the building
+        log(f"  tavern: '{which}' button found by picture at {hit[0]:.3f},{hit[1]:.3f} (match {hit[2]:.2f})")
+        g.click_rel(hit[0], hit[1]); sleep(3)
+        if _tavern_page_open(g, which):
+            return True
+    elif which == "chests":
+        g.click_rel(x, min(0.95, y + 0.115)); sleep(3)       # old: chests button just under the building
+        if _tavern_page_open(g, which):
+            return True
     import cv2
-    from common import BASE
+    from common import BASE, close_gem_dialogs
     try:
-        cv2.imwrite(os.path.join(BASE, "claude_out", "tavern_tap1.png"), g.screenshot())   # v358: what the tap showed
+        cv2.imwrite(os.path.join(BASE, "claude_out", f"tavern_tap_{which}.png"), img)
     except Exception:
         pass
-    g.click_rel(x, min(0.95, y + 0.115)); sleep(3)           # chests button (just under the building)
-    if g.find_image("tavern_silver_title", 0.8):
-        return True
-    from common import close_gem_dialogs
     close_gem_dialogs(g)
-    if not need_name:                                        # v358: the free-chest bubble over the building
-        recover_screen(g)                                    # (W85: the chests button is not at +0.115)
-        g.click_rel(x, max(0.05, y - 0.07)); sleep(3)
-        img = g.screenshot()
-        try:
-            cv2.imwrite(os.path.join(BASE, "claude_out", "tavern_tap2.png"), img)
-        except Exception:
-            pass
-        if g.find_image("tavern_silver_title", 0.8, img=img):
-            log("  tavern: opened through the bubble over the building")
-            return True
     return False
 
 
@@ -3853,18 +3863,18 @@ def _tavern_bubble(g, sleep):
     return _tavern_try(g, sleep, hit[0], hit[1] + 0.06)
 
 
-def _open_tavern(g, sleep):
+def _open_tavern(g, sleep, which="chests"):
     """v137: reset the camera, try this character's remembered spot, then the default spot,
     and if both fail search the city once (cities differ between characters)."""
     _city_reset(g, sleep)
     try:
-        if _tavern_bubble(g, sleep):
+        if which == "chests" and _tavern_bubble(g, sleep):
             return True
         recover_screen(g)
         _city_reset(g, sleep)
     except Exception as e:
         log(f"  (tavern bubble check failed: {e!r})")
-    if building_by_picture(g, sleep, "tavern", verify=lambda x, y: _tavern_try(g, sleep, x, y)):   # v312
+    if building_by_picture(g, sleep, "tavern", verify=lambda x, y: _tavern_try(g, sleep, x, y, which=which)):   # v312
         return True
     _city_reset(g, sleep)
     spots = []
@@ -3874,13 +3884,13 @@ def _open_tavern(g, sleep):
     if (0.835, 0.505) not in spots:
         spots.append((0.835, 0.505))
     for (x, y) in spots:
-        if _tavern_try(g, sleep, x, y):
+        if _tavern_try(g, sleep, x, y, which=which):
             if not mem or tuple(mem) != (x, y):
                 _bpos("tavern", (x, y))
             return True
         recover_screen(g)
         _city_reset(g, sleep)
-    return bool(_scan_building(g, sleep, "tavern", lambda x, y: _tavern_try(g, sleep, x, y, need_name=True)))
+    return bool(_scan_building(g, sleep, "tavern", lambda x, y: _tavern_try(g, sleep, x, y, need_name=True, which=which)))
 
 
 TAVERN_LAST = {"opened_page": False}
@@ -3944,13 +3954,44 @@ def tavern(g, sleep, max_open=12):
 
 
 def tavern_legendary(g, sleep):
-    """v357: the legendary (Golden) chest sits on the same tavern page as the Silver one; its free OPEN is
-    blue once a day like the others, so the tavern run opens it. The old fixed-spot version tapped the wrong
-    place in W85's city, read nothing and marked the day as done."""
-    r = tavern(g, sleep)
-    if TAVERN_LAST.get("opened_page"):
-        return True
-    return "retry"                                           # page not reached - not done for today
+    """v359 (owner's pictures): Tavern -> right gold hex button -> Legendary Chests page. Only a FREE open is
+    pressed (blue button). The orange OPEN / OPEN 10 / OPEN ALL buttons spend keys - never pressed."""
+    from common import close_gem_dialogs, BASE
+    import cv2
+    if ensure_screen(g, sleep, "city", tries=2) != "city":
+        log("  ! tavern_legendary: the city is not showing - try later")
+        return "retry"
+    if not _open_tavern(g, sleep, which="legend"):
+        log("  ! tavern_legendary: the Legendary Chests page did not open - try later")
+        recover_screen(g)
+        return "retry"
+    img = g.screenshot()
+    try:
+        cv2.imwrite(os.path.join(BASE, "claude_out", "legendary_last.png"), img)
+    except Exception:
+        pass
+    btn = _blue_buttons(img, 0.70, 0.93)                     # blue = free; orange = keys (never)
+    if btn:
+        g.click_rel(*btn[0]); sleep(4)
+        if close_gem_dialogs(g):
+            log("  ! tavern_legendary: a gem window appeared - answered NO")
+        else:
+            for _k in range(6):                              # reward animation / commander card
+                img2 = g.screenshot()
+                if _tavern_page_open(g, "legend", img=img2):
+                    break
+                cf = g.find_image("btn_confirm_cmd", 0.8, img=img2)
+                if cf and __import__("common").tavern_result(img2, *cf[0]):
+                    g.click_rel(*cf[0]); sleep(2.5)
+                else:
+                    g.click_rel(0.5, 0.92); sleep(2)
+            log("  tavern_legendary: free legendary chest opened")
+            stat("tavern", 1)
+    else:
+        log("  - tavern_legendary: no free legendary chest now (keys are never used)")
+    g.click_rel(0.021, 0.025); sleep(2)                      # back
+    recover_screen(g)
+    return True
 
 
 SMART["tavern"] = tavern
