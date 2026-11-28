@@ -790,6 +790,75 @@ def ensure_game_size(hwnd):
         return False
 
 
+CAPTURE = {"mode": None, "fails": 0, "off_until": 0.0, "checked": False}
+
+
+def _printwindow(hwnd, w, h):
+    """BGR picture of the window's client area drawn by the window itself (PrintWindow, PW_CLIENTONLY |
+    PW_RENDERFULLCONTENT), so a window on top (launcher, Chrome, an error box) does not hide the game."""
+    gdi = ctypes.windll.gdi32
+    hdc = user32.GetDC(hwnd)
+    if not hdc:
+        return None
+    mem = gdi.CreateCompatibleDC(hdc)
+    bmp = gdi.CreateCompatibleBitmap(hdc, w, h)
+    old = gdi.SelectObject(mem, bmp)
+    try:
+        if not user32.PrintWindow(hwnd, mem, 3):
+            return None
+
+        class BIH(ctypes.Structure):
+            _fields_ = [("biSize", wintypes.DWORD), ("biWidth", ctypes.c_long), ("biHeight", ctypes.c_long),
+                        ("biPlanes", wintypes.WORD), ("biBitCount", wintypes.WORD), ("biCompression", wintypes.DWORD),
+                        ("biSizeImage", wintypes.DWORD), ("biXPelsPerMeter", ctypes.c_long),
+                        ("biYPelsPerMeter", ctypes.c_long), ("biClrUsed", wintypes.DWORD), ("biClrImportant", wintypes.DWORD)]
+        bi = BIH()
+        bi.biSize, bi.biWidth, bi.biHeight, bi.biPlanes, bi.biBitCount = ctypes.sizeof(BIH), w, -h, 1, 32
+        buf = (ctypes.c_ubyte * (w * h * 4))()
+        if gdi.GetDIBits(mem, bmp, 0, h, buf, ctypes.byref(bi), 0) != h:
+            return None
+        return np.frombuffer(buf, dtype=np.uint8).reshape(h, w, 4)[..., :3].copy()
+    finally:
+        gdi.SelectObject(mem, old)
+        gdi.DeleteObject(bmp)
+        gdi.DeleteDC(mem)
+        user32.ReleaseDC(hwnd, hdc)
+
+
+def window_capture(game):
+    """v360: picture of the game window itself. The first time it is compared with a normal screen grab; if the two
+    differ (a game that cannot draw itself this way) or it comes back black 3 times in a row, the bot uses the
+    screen grab for 30 minutes. Returns None to mean 'use the screen grab'."""
+    if time.time() < CAPTURE["off_until"]:
+        return None
+    try:
+        frame = _printwindow(game.hwnd, game.w, game.h)
+    except Exception:
+        frame = None
+    if frame is None or float(frame.mean()) < 8 or float(frame.std()) < 3:
+        CAPTURE["fails"] += 1
+        if CAPTURE["fails"] >= 3:
+            CAPTURE["fails"], CAPTURE["off_until"] = 0, time.time() + 1800
+            log("  ! window capture gave empty pictures - screen grab for 30 minutes")
+        return None
+    CAPTURE["fails"] = 0
+    if not CAPTURE["checked"]:
+        CAPTURE["checked"] = True
+        try:
+            ref = cv2.cvtColor(np.array(ImageGrab.grab(bbox=(game.x, game.y, game.x + game.w, game.y + game.h),
+                                                       all_screens=True)), cv2.COLOR_RGB2BGR)
+            diff = float(np.abs(ref.astype(np.int16) - frame.astype(np.int16)).mean())
+        except Exception:
+            diff = 0.0                                   # no screen to compare with - the window picture is all we have
+        if diff > 30:                                    # maybe something covered the game - check again in 2 h
+            CAPTURE["checked"], CAPTURE["off_until"] = False, time.time() + 7200
+            log(f"  ! window capture does not match the screen (difference {diff:.0f}) - screen grab for 2 hours")
+            return None
+        CAPTURE["mode"] = "window"
+        log(f"  window capture on: the game is read from its own window (difference to the screen {diff:.0f})")
+    return frame
+
+
 class Game:
     def __init__(self):
         self.hwnd = find_window()
@@ -957,6 +1026,9 @@ class Game:
     def screenshot(self):
         # NOTE: UnityCrashHandler64.exe runs from game start (it is dormant, not a sign of a
         # crash), so it cannot be used as a frozen-client test. A black frame is the reliable one.
+        frame = window_capture(self)                  # v360: the game window itself, even under other windows
+        if frame is not None:
+            return frame
         img = ImageGrab.grab(bbox=(self.x, self.y, self.x + self.w, self.y + self.h), all_screens=True)
         frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         # v156: a crashed or off-screen game window grabs a pure black picture. The bot used to

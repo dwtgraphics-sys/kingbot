@@ -1866,7 +1866,7 @@ def read_resources(g, sleep=None):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     cv2.imwrite(path, _bar_image(img))
     try:
-        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+        r = __import__("winocr").run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                             os.path.join(BASE, "ocr.ps1"), path],
                            capture_output=True, encoding="utf-8", errors="replace", timeout=40, creationflags=0x08000000)
         out, err = r.stdout, r.stderr
@@ -2139,7 +2139,7 @@ def _ocr_image(img_bgr, name="ocr_tmp.png", variants=("bin", "plain", "bin2")):
             path = os.path.join(BASE, "claude_out", name)
             cv2.imwrite(path, g)
             try:
-                r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                r = __import__("winocr").run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                                     os.path.join(BASE, "ocr.ps1"), path],
                                    capture_output=True, encoding="utf-8", errors="replace", timeout=40, creationflags=0x08000000)
                 txt = r.stdout.strip()
@@ -2156,7 +2156,7 @@ def _ocr_image(img_bgr, name="ocr_tmp.png", variants=("bin", "plain", "bin2")):
         path = os.path.join(BASE, "claude_out", name)
         cv2.imwrite(path, g)
         try:
-            r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+            r = __import__("winocr").run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                                 os.path.join(BASE, "ocr.ps1"), path],
                                capture_output=True, encoding="utf-8", errors="replace", timeout=40, creationflags=0x08000000)
             txt = " ".join(r.stdout.split())
@@ -3524,7 +3524,7 @@ def _ocr_lines(img_bgr, name="ocr_lines.png", scale=2.5, invert=False):
     path = os.path.join(BASE, "claude_out", name)
     cv2.imwrite(path, g0)
     try:
-        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+        r = __import__("winocr").run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                             os.path.join(BASE, "ocr.ps1"), path],
                            capture_output=True, encoding="utf-8", errors="replace", timeout=60, creationflags=0x08000000)
         return [l.strip() for l in r.stdout.splitlines() if l.strip()]
@@ -4250,7 +4250,7 @@ def _ocr_boxes_uncached(img_bgr, name="ocr_boxes.png", scale=2.0):
     cv2.imwrite(path, big)
     out = []
     try:
-        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+        r = __import__("winocr").run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                             os.path.join(BASE, "ocr_boxes.ps1"), path],
                            capture_output=True, timeout=60, creationflags=0x08000000)
         raw = r.stdout or b""

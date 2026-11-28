@@ -289,7 +289,7 @@ def _ocr_words(img_bgr, scale):
     cv2.imwrite(path, big)
     out = []
     try:
-        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+        r = __import__("winocr").run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                             os.path.join(BASE, "ocr_words.ps1"), path], capture_output=True, timeout=60,
                            creationflags=0x08000000)
         for ln in (r.stdout or b"").decode("utf-8", errors="replace").splitlines():
