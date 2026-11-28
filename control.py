@@ -60,6 +60,7 @@ ALLOWED_KEYS = {
     "alerts",                                   # TASK-18
     "sign_out_schedule",                        # v258
     "plan",                                     # PLAN-01: solo | leader | solo_leader_bundle | group
+    "vary_order",                               # v331: a different task order each day of the week
     "brain_notes"                               # BRAIN-01: admin decisions per incident {key: {status, note, at}}
 }
 

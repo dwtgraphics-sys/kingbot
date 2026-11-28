@@ -114,6 +114,46 @@ MARCH_GROUPS = {"rallies": ("rally_fort", "join_rally"), "gathering": ("gather_g
                 "barbarians": ("attack_barbarians",)}
 
 
+MARCH_ROUTINES = {"rally_fort", "join_rally", "gather_gems", "gather", "attack_barbarians", "hunt_guardians"}
+DAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def _day_shuffle(tasks, seed):
+    """One day's order: the march tasks stay together in their priority order (TASK-06) and the block moves;
+    every other activity is shuffled."""
+    rnd = random.Random(seed)
+    marches = [t for t in tasks if t.get("routine") in MARCH_ROUTINES]
+    others = [t for t in tasks if t.get("routine") not in MARCH_ROUTINES]
+    rnd.shuffle(others)
+    at = rnd.randint(0, len(others)) if others else 0
+    return others[:at] + marches + others[at:]
+
+
+def day_order(tasks, settings):
+    """v331 (owner): the activities do not start in the same order every day. A weekly plan - each day of the
+    week has its own order, a new plan every week and per character - is written to the dashboard."""
+    if not settings.get("vary_order", True):
+        try:
+            import control as _c
+            _c.CITY.pop("week_order", None)
+        except Exception:
+            pass
+        return tasks
+    import control as _c
+    prof = _c.CITY.get("profile") if isinstance(_c.CITY.get("profile"), dict) else {}
+    who = str(prof.get("gid") or prof.get("name") or "")
+    now = datetime.datetime.utcnow()
+    y, wk, wd = now.isocalendar()
+    week = {}
+    for d in range(7):
+        order = _day_shuffle(tasks, f"{who}|{y}-W{wk:02d}|{d}")
+        week[DAY_NAMES[d]] = [t.get("routine") for t in order if t.get("enabled", True)]
+    _c.CITY["week_order"] = {"week": f"{y}-W{wk:02d}", "today": DAY_NAMES[wd - 1], "days": week,
+                             "at": time.strftime("%Y-%m-%d %H:%M")}
+    out = _day_shuffle(tasks, f"{who}|{y}-W{wk:02d}|{wd - 1}")
+    return out
+
+
 def march_priority(tasks, mc):
     """TASK-06: march tasks run in the dashboard order (march_control.priority_order, e.g. ["rallies", "gathering",
     "barbarians"]); they keep the first places the march tasks had, every other task keeps its place."""
@@ -1886,6 +1926,7 @@ def one_round(settings):
             tasks.append({"routine": "hunt_guardians", "times": 1, "enabled": True,
                           "max_attacks": int(eh.get("guardians_max_attacks") or 2)})
     tasks = queue_tasks(tasks)                               # v197: one Queue Overview task
+    tasks = day_order(tasks, settings)                       # v331: each day of the week its own order
     tasks = march_priority(tasks, settings.get("march_control") or {})   # TASK-06
     smart.MARCH_CONTROL.clear(); smart.MARCH_CONTROL.update(settings.get("march_control") or {})
     smart.COMMANDER_PRESETS.clear(); smart.COMMANDER_PRESETS.update(settings.get("commander_presets") or {})   # TASK-07
