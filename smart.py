@@ -2308,17 +2308,47 @@ def _rally_from_wanted(img, fx, fy, wanted):
 
 # ---------------- VIP chests + daily objectives ----------------
 def vip_chests(g, sleep):
-    """VIP window: daily VIP-points chest (top right) + 'FREE EVERY DAY' chest. Never the paid offer."""
+    """VIP window: daily VIP-points chest + 'FREE EVERY DAY' chest. Never the paid offer.
+    v329: checks that the VIP window really opened and reports what was claimed - before, a locked screen or a
+    missed click was still logged as 'done' and the day was marked finished without any chest."""
+    def _vip_open():
+        try:
+            img = g.screenshot(); h, w = img.shape[:2]
+            words = " ".join(b[4] for b in _ocr_boxes(img[0:int(0.30 * h), int(0.15 * w):int(0.85 * w)], "vip_win.png"))
+            return bool(re.search(r"\bvip\b|vip\s*level|vip\s*points|v\s*i\s*p", words, re.I)), words
+        except Exception as e:
+            return False, repr(e)
     g.click_rel(0.075, 0.046); sleep(3)                       # VIP badge
+    ok, words = _vip_open()
+    if not ok:
+        g.click_rel(0.075, 0.046); sleep(3)                   # once more (the first tap may only close a tip)
+        ok, words = _vip_open()
+    if not ok:
+        log(f"  ! vip_chests: the VIP window did not open (saw: {words[:80]!r}) - trying again later")
+        recover_screen(g)
+        return "retry"
+    claimed = 0
     g.click_rel(0.705, 0.385); sleep(3)                       # daily points chest (CLAIM)
     g.click_rel(0.5, 0.15); sleep(1.5)                        # close the reward card (inside VIP window area is safe)
-    c = g.find_image("btn_claim_green", 0.8)
-    if c and c[0][0] > 0.6:
+    for _ in range(3):                                        # every green CLAIM / FREE button inside the window
+        c = g.find_image("btn_claim_green", 0.8)
+        if not c:
+            try:
+                img = g.screenshot(); h, w = img.shape[:2]
+                hit = [b for b in _ocr_boxes(img[int(0.15 * h):int(0.92 * h), int(0.10 * w):int(0.95 * w)], "vip_claim.png")
+                       if re.fullmatch(r"\W*(claim|free)\W*", (b[4] or "").strip(), re.I)]
+                if hit:
+                    b0 = hit[0]
+                    c = [(((b0[0] + b0[2]) / 2 + 0.10 * w) / w, ((b0[1] + b0[3]) / 2 + 0.15 * h) / h)]
+            except Exception:
+                c = None
+        if not c:
+            break
         g.click_rel(*c[0]); sleep(3)
         g.click_rel(0.5, 0.15); sleep(1.5)
-        log("  vip_chests: free daily VIP chest claimed")
+        claimed += 1
     recover_screen(g)
-    log("  vip_chests: done")
+    log(f"  vip_chests: VIP window opened - {claimed} extra chest(s) claimed (daily points chest tapped)")
     return True
 
 
@@ -3149,6 +3179,9 @@ def vip_shop(g, sleep, max_buys=60):
                         recover_screen(g); _city_reset(g, sleep)
         except Exception as e:
             log(f"    (vip badge search failed: {e!r})")
+    if not g.find_image("vip_shop_title", 0.8):              # v329: the Shop building / its VIP bubble by picture
+        recover_screen(g); _city_reset(g, sleep)
+        building_by_picture(g, sleep, "vip_shop", verify=lambda x, y: _shop_probe(x, y))
     if not g.find_image("vip_shop_title", 0.8):
         mem = _bpos("vip_shop")
         ok = False
