@@ -117,9 +117,9 @@ def last_warning():
 # ---------------------------------------------------------------- recording
 def record(kind, msg, task=None, screen=None, shot=True, detail=None):
     """kind: error (exception) | fail (task returned False) | stuck | warn.  Returns the incident key."""
-    if kind == "error" and "screen grab failed" in str(msg):
-        # v317: the Remote Desktop session was disconnected - an environment state the round loop
-        # recovers from, not a fault in the activity. Never open a bug report for it.
+    if kind == "error" and ("screen grab failed" in str(msg) or "Game window closed" in str(msg)):
+        # v317/v320: the Remote Desktop session was disconnected, or the game client closed - environment
+        # states the round loop recovers from (reconnect / reopen), not faults in the activity.
         return None
     task = task or _task["name"] or "-"
     screen = screen or _task["screen"]

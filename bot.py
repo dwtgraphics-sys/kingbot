@@ -202,6 +202,13 @@ def no_screen_error(e):
     return "screen grab failed" in repr(e)
 
 
+def game_gone_error(e):
+    """v320: the game client closed under the activity (crash, self-exit, update). Common.refresh() raises
+    RuntimeError('Game window closed'); the round loop then warns the owner and reopens the game
+    (game_launcher.ensure_game_running, START on the launcher). That is a game state, not a code fault."""
+    return "Game window closed" in repr(e)
+
+
 def watch_error(prefix, e):
     """Log a watchdog failure without flooding log.txt.
 
@@ -1357,6 +1364,8 @@ def _do_action(g, req):
         log(f"! dashboard action {do} failed: {e!r}")
         if no_screen_error(e):                               # v317: no screen is not a bug report
             return "failed: the server screen is not available"
+        if game_gone_error(e):                               # v320: nor is a game that closed
+            return "failed: the game window closed"
         kb_guard.error(f"action {do}: {e!r}")
         try:
             import brain
@@ -1880,7 +1889,7 @@ def one_round(settings):
         try:
             recover_screen(g)
         except Exception as e:
-            if no_screen_error(e):                           # v317: the desktop is gone - stop the round now,
+            if no_screen_error(e) or game_gone_error(e):     # v317/v320: no screen / no game - stop the round now,
                 raise                                        # do not start the next activity blind
         every = task_every(t)
         state = load_json(TASK_STATE_FILE, {})
@@ -1964,10 +1973,12 @@ def one_round(settings):
             except (Stop, NewSettings, SystemExit, pyautogui.FailSafeException):
                 raise
             except Exception as e:
-                if no_screen_error(e):                       # v317: not a code fault - the round loop
-                    log(f"  {name}: stopped - the server screen is not available")   # reconnects the session
+                if no_screen_error(e) or game_gone_error(e):    # v317/v320: not a code fault - the round
+                    why = "no screen" if no_screen_error(e) else "game closed"   # loop reconnects / reopens
+                    log(f"  {name}: stopped - " + ("the server screen is not available" if why == "no screen"
+                                                   else "the game window closed (it will be reopened)"))
                     TASK_RESULT[name] = {"at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                         "ok": False, "result": "no screen"}
+                                         "ok": False, "result": why}
                     raise
                 kb_guard.error(f"{name}: {e!r}")
                 if brain:
