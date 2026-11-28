@@ -1589,8 +1589,31 @@ def rally_fort(g, sleep, level=10, preset=1, minutes=5, archers_only=True,
         g.click_rel(0.394, 0.758); sleep(0.25)               # level up
     g.click_rel(0.298, 0.820); sleep(4)                      # SEARCH
     r = g.find_image("btn_rally", 0.8)
+    if not r:                                                # v317: the button at another size / by its word
+        try:
+            hit = find_icon(g, "btn_rally", min_scale=0.5, max_scale=1.8, steps=14, threshold=0.74)
+            if hit:
+                log(f"    rally_fort: RALLY found at scale {hit[3]:.2f} (score {hit[2]:.2f})")
+                r = [hit[:2]]
+        except Exception:
+            pass
+    if not r:
+        try:
+            img = g.screenshot(); h, w = img.shape[:2]
+            for x1, y1, x2, y2, t in _ocr_boxes(img, "rally_btn.png", 1.5):
+                if re.fullmatch(r"\W*rally\W*", t.strip(), re.I):
+                    r = [(((x1 + x2) / 2) / w, ((y1 + y2) / 2) / h)]
+                    log("    rally_fort: RALLY found by its word")
+                    break
+        except Exception:
+            pass
     if not r:
         log("  ! rally_fort: no level %s fort found right now (RALLY button missing)" % level)
+        try:                                                 # v317: picture for the admin panel (brain)
+            import brain
+            brain.record("fail", "RALLY button not found after the fort search (level %s)" % level, task="rally_fort")
+        except Exception:
+            pass
         back = g.find_image("btn_back", 0.8)
         if back:
             g.click_rel(*back[0]); sleep(2)
