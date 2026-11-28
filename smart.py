@@ -2908,8 +2908,9 @@ TROOP_WORDS = {
 
 
 def _norm_name(t):
-    import re as _re
-    return _re.sub(r"[^a-z]", "", (t or "").lower())
+    # v340: accents and ligatures folded ("Æthelflæd" == "Aethelflaed", "Lü Bu" == "Lu Bu")
+    import roster
+    return roster.fold(t)
 
 
 def _pick_commander_in_list(g, sleep, name, tag):
@@ -2917,7 +2918,9 @@ def _pick_commander_in_list(g, sleep, name, tag):
     Saves a picture of every page to claude_out so a wrong layout can be fixed. True if clicked."""
     import cv2
     from common import BASE
-    want = _norm_name(name)
+    import roster
+    wants = [v for v in roster.variants(name) if len(v) >= 4] or [_norm_name(name)]   # v340: every spelling
+    want = wants[0]
     if not want:
         return False
     for page in range(6):
@@ -2926,7 +2929,7 @@ def _pick_commander_in_list(g, sleep, name, tag):
         cv2.imwrite(os.path.join(BASE, "claude_out", "cmd_%s%d.png" % (tag, page)), img)
         for x1, y1, x2, y2, txt in _ocr_boxes(img, "cmd_ocr.png"):
             t = _norm_name(txt)
-            if len(t) >= 4 and (t in want or want in t or (len(want) > 6 and want[:7] in t)):
+            if len(t) >= 4 and any(t in wv or wv in t or (len(wv) > 6 and wv[:7] in t) for wv in wants):
                 g.click_rel(((x1 + x2) / 2) / w, ((y1 + y2) / 2) / h); sleep(1.5)
                 # a USE / SELECT / CONFIRM button may follow
                 for key in ("btn_use", "btn_confirm", "btn_select"):
@@ -3199,7 +3202,9 @@ def read_commanders(g, sleep):
         log("  read_commanders: no New Troop (all march slots busy) - retry in 30 min"); _barb_close(g, sleep); return "retry"
     g.click_rel(*nt[0]); sleep(3)
     g.click_rel(0.33, 0.37); sleep(2.5)                      # commander list
-    known = {_norm_name(n): n for n in COMMANDER_NAMES}
+    import roster
+    known = {_norm_name(n): roster.canonical(n) for n in COMMANDER_NAMES}
+    known.update(roster.known())                             # v340: full roster + every alias -> canonical name
     found, levels, last = {}, {}, None
     for page in range(8):
         img = g.screenshot()

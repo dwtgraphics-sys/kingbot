@@ -1,0 +1,951 @@
+{
+ "version": 1,
+ "source": "owner list 28 Nov 2026 (142) + 5 seen in game pictures / old list",
+ "count": 147,
+ "commanders": [
+  {
+   "name": "Sun Tzu Prime",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Yi To",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Liu Che",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Bai Qi",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Scipio Aemilianus",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Scipio Africanus Prime",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "William Wallace",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Selim I",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Gorgo",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Guan Yu",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Leonidas I",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": [
+    "Leonidas"
+   ]
+  },
+  {
+   "name": "Harald Sigurdsson",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Pakal II",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": [
+    "Pakal",
+    "Pacal",
+    "Pacal II"
+   ]
+  },
+  {
+   "name": "Tariq ibn Ziyad",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Sargon the Great",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Cheok Jun-gyeong",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Alexander the Great",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Charles Martel",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Richard I",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Constantine I",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Zenobia",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Flavius Aetius",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Pyrrhus",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Ivar the Boneless",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Imhotep",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Tokugawa Ieyasu",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Ragnar Lodbrok",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Ragnar Lodbrok Prime",
+   "rarity": "Legendary",
+   "role": "Infantry",
+   "aliases": []
+  },
+  {
+   "name": "Ivan IV",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Arthur Pendragon",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Achilles",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Alexander Nevsky",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Joan of Arc Prime",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Huo Qubing",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Belisarius Prime",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "William Marshal",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Subutai",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Attila",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Takeda Shingen",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Xiang Yu",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Chandragupta Maurya",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": [
+    "Chandragupta"
+   ]
+  },
+  {
+   "name": "William I",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Saladin",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Genghis Khan",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Cao Cao",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Minamoto no Yoshitsune",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Bertrand du Guesclin",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Jadwiga",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Jan Žižka",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": [
+    "Jan Zizka"
+   ]
+  },
+  {
+   "name": "Justinian I",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": [
+    "Justinian"
+   ]
+  },
+  {
+   "name": "Eleanor of Aquitaine",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": []
+  },
+  {
+   "name": "Gang Gam-chan",
+   "rarity": "Legendary",
+   "role": "Cavalry",
+   "aliases": [
+    "Gang Gamchan"
+   ]
+  },
+  {
+   "name": "Qin Shi Huang",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Zhuge Liang",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Hermann Prime",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Boudica Prime",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Alp Arslan",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Ashurbanipal",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Shapur I",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": [
+    "Shapur"
+   ]
+  },
+  {
+   "name": "Hayam Wuruk",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Henry V",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Gilgamesh",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Nebuchadnezzar II",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Artemisia I",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Ramesses II",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Tomyris",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Edward of Woodstock",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": [
+    "Edward"
+   ]
+  },
+  {
+   "name": "Cyrus the Great",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Yi Seong-Gye",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": [
+    "YSG"
+   ]
+  },
+  {
+   "name": "El Cid",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Dido",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Amanitore",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Siyaj K'ak'",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Choe Yeong",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Shajar al-Durr",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Thutmose III",
+   "rarity": "Legendary",
+   "role": "Archer",
+   "aliases": []
+  },
+  {
+   "name": "Vercingetorix",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Hector",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Philip II",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": [
+    "Philip"
+   ]
+  },
+  {
+   "name": "David IV",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Trajan",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Yi Sun-sin",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": [
+    "YSS"
+   ]
+  },
+  {
+   "name": "Theodora",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Wu Zetian",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Heraclius",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Matthias Corvinus",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": [
+    "Matthias"
+   ]
+  },
+  {
+   "name": "Lapu-Lapu",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Suleiman I",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": [
+    "Suleiman"
+   ]
+  },
+  {
+   "name": "Honda Tadakatsu",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Mehmed II",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Julius Caesar",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Frederick I",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Charlemagne",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Hannibal Barca",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Lü Bu",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": [
+    "Lu Bu"
+   ]
+  },
+  {
+   "name": "Mulan",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": []
+  },
+  {
+   "name": "Æthelflæd",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": [
+    "Aethelflaed"
+   ]
+  },
+  {
+   "name": "Moctezuma I",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": [
+    "Moctezuma",
+    "Montezuma"
+   ]
+  },
+  {
+   "name": "Pepin the Short",
+   "rarity": "Legendary",
+   "role": "Leadership",
+   "aliases": [
+    "Pepin"
+   ]
+  },
+  {
+   "name": "Archimedes",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": []
+  },
+  {
+   "name": "Afonso",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": []
+  },
+  {
+   "name": "Babur",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": []
+  },
+  {
+   "name": "Gonzalo de Córdoba",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": [
+    "Gonzalo de Cordoba"
+   ]
+  },
+  {
+   "name": "Gajah Mada",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": []
+  },
+  {
+   "name": "John Hunyadi",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": []
+  },
+  {
+   "name": "Elizabeth I",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": [
+    "Elizabeth"
+   ]
+  },
+  {
+   "name": "Margaret I",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": []
+  },
+  {
+   "name": "Maria Theresa",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": []
+  },
+  {
+   "name": "Stephen the Great",
+   "rarity": "Legendary",
+   "role": "Engineering",
+   "aliases": [
+    "Stephen III"
+   ]
+  },
+  {
+   "name": "Cleopatra VII",
+   "rarity": "Legendary",
+   "role": "Gathering",
+   "aliases": [
+    "Cleopatra"
+   ]
+  },
+  {
+   "name": "Queen Seondeok",
+   "rarity": "Legendary",
+   "role": "Gathering",
+   "aliases": [
+    "Seondeok"
+   ]
+  },
+  {
+   "name": "Ishida Mitsunari",
+   "rarity": "Legendary",
+   "role": "Gathering",
+   "aliases": []
+  },
+  {
+   "name": "Casimir III",
+   "rarity": "Legendary",
+   "role": "Gathering",
+   "aliases": [
+    "Casimir"
+   ]
+  },
+  {
+   "name": "Tamar of Georgia",
+   "rarity": "Legendary",
+   "role": "Gathering",
+   "aliases": []
+  },
+  {
+   "name": "Sun Tzu",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Joan of Arc",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Björn Ironside",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": [
+    "Bjorn Ironside"
+   ]
+  },
+  {
+   "name": "Baibars",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Belisarius",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Pelagius",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Boudica",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Hermann",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Kusunoki Masashige",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Osman I",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Scipio Africanus",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Eulji Mundeok",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Lohar",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Diaochan",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Keira",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Matilda of Flanders",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Catherine de' Medici",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Wak Chanil Ajaw",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Yahya ibn Khalid",
+   "rarity": "Epic",
+   "role": "",
+   "aliases": [
+    "Yahya"
+   ]
+  },
+  {
+   "name": "Gaius Marius",
+   "rarity": "Elite",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Constance",
+   "rarity": "Elite",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Šárka",
+   "rarity": "Elite",
+   "role": "",
+   "aliases": [
+    "Sarka"
+   ]
+  },
+  {
+   "name": "Lancelot",
+   "rarity": "Elite",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Tomoe Gozen",
+   "rarity": "Elite",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Centurion",
+   "rarity": "Advanced",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "City Keeper",
+   "rarity": "Advanced",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Dragon Lancer",
+   "rarity": "Advanced",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Markswoman",
+   "rarity": "Advanced",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Mary I",
+   "rarity": "",
+   "role": "",
+   "aliases": [
+    "Mary"
+   ],
+   "unlisted": true
+  },
+  {
+   "name": "Pericles",
+   "rarity": "",
+   "role": "",
+   "aliases": [],
+   "unlisted": true
+  },
+  {
+   "name": "Zeno",
+   "rarity": "",
+   "role": "",
+   "aliases": [],
+   "unlisted": true
+  },
+  {
+   "name": "Narses",
+   "rarity": "",
+   "role": "",
+   "aliases": [],
+   "unlisted": true
+  },
+  {
+   "name": "Torgny",
+   "rarity": "",
+   "role": "",
+   "aliases": [],
+   "unlisted": true
+  }
+ ]
+}
