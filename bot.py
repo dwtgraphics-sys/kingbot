@@ -1054,6 +1054,8 @@ def session_watch(every=60):
     return kb_guard.session_guard(log, after_ok=_after_console)
 
 
+RUN_TASK_OK = ("rally_fort", "attack_barbarians", "gather", "tavern", "merchant", "alliance_help", "collect_city",
+               "vip_chests", "train_troops", "sunset_canyon", "materials")
 NO_GAME_ACTIONS = ("conduct_resume", "purge_characters", "install_obs", "update_now")
 
 
@@ -1318,6 +1320,18 @@ def _do_action(g, req):
             smart.read_profile(g, sleep)
         elif do == "read_commanders":
             smart.read_commanders(g, sleep)
+        elif do == "run_task":                                   # v316: dashboard "test now" - one task, once
+            routine = str(req.get("routine") or "")
+            fn = smart.SMART.get(routine)
+            if routine not in RUN_TASK_OK or not fn:
+                log(f"  ! run_task: '{routine}' cannot be started from the dashboard")
+                return "failed: not allowed"
+            import inspect
+            params = req.get("params") if isinstance(req.get("params"), dict) else {}
+            ok_args = set(inspect.signature(fn).parameters)
+            kw = {k: v for k, v in params.items() if k in ok_args}
+            log(f"  run_task: {routine} once now {kw}")
+            fn(g, sleep, **kw)
         elif do == "switch_character":
             prev = load_json(ROT_FILE, {}).get("name") or _active_char()
             res = smart.switch_character(g, sleep, name=req.get("name", ""), kingdom=req.get("kingdom", ""))

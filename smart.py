@@ -1560,7 +1560,7 @@ def _rally_swap_commanders(g, sleep, primary_commander, secondary_commander=""):
 
 
 def rally_fort(g, sleep, level=10, preset=1, minutes=5, archers_only=True,
-               primary_commander="", secondary_commander="", troop_type="", troops=0):
+               primary_commander="", secondary_commander="", troop_type="", troops=0, need_qin=True):
     """Launch a rally on a Barbarian Fort.
 
     v189: the dashboard can name the primary and secondary commander, the troop type and the troop
@@ -1608,7 +1608,7 @@ def rally_fort(g, sleep, level=10, preset=1, minutes=5, archers_only=True,
         # v189: the user chose the commanders - swap them in instead of checking for Qin Shi Huang
         if not _rally_swap_commanders(g, sleep, primary_commander, secondary_commander):
             log("  ! rally_fort: could not change the commanders - keeping loadout %s" % preset)
-    elif not g.find_image("qin_face", 0.72):
+    elif need_qin and not g.find_image("qin_face", 0.72):
         log("  ! rally_fort: the commander is not Qin Shi Huang - rally cancelled")
         try:
             import cv2
@@ -1634,7 +1634,8 @@ def rally_fort(g, sleep, level=10, preset=1, minutes=5, archers_only=True,
             stat("rally")
         except Exception:
             pass
-        log(f"  rally_fort: rally launched on a level {level} fort with Qin Shi Huang (archers, {minutes} min)")
+        log(f"  rally_fort: rally launched on a level {level} fort with loadout {preset}"
+            + (" (archers)" if archers_only else "") + f", {minutes} min")
     if _on_map(g):
         press_key("space"); sleep(4)
     return True
