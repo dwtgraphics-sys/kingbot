@@ -1135,7 +1135,7 @@ def session_watch(every=60):
     return kb_guard.session_guard(log, after_ok=_after_console)
 
 
-RUN_TASK_OK = ("rally_fort", "attack_barbarians", "gather", "tavern", "merchant", "alliance_help", "collect_city",
+RUN_TASK_OK = ("read_city_hall", "rally_fort", "attack_barbarians", "gather", "tavern", "merchant", "alliance_help", "collect_city",
                "vip_chests", "train_troops", "sunset_canyon", "materials")
 NO_GAME_ACTIONS = ("conduct_resume", "purge_characters", "install_obs", "update_now")
 
@@ -1313,6 +1313,8 @@ def _do_action(g, req):
             smart.purge_characters("dashboard")
         elif do == "conduct_resume":                               # URGENT-02: the owner resumes after a Conduct safety stop
             smart.conduct_clear("resumed from the dashboard")
+        elif do == "read_city_hall":                               # v343: read the City Hall level now
+            smart.read_city_hall(g, sleep)
         elif do == "read_conduct":                                 # URGENT-02: read the Conduct Score now
             v = smart.read_conduct(g, sleep) if g else None
             if v is None:
@@ -1944,6 +1946,16 @@ def one_round(settings):
     smart.MARCH_CONTROL.clear(); smart.MARCH_CONTROL.update(settings.get("march_control") or {})
     smart.COMMANDER_PRESETS.clear(); smart.COMMANDER_PRESETS.update(settings.get("commander_presets") or {})   # TASK-07
     qm_on = any(t.get("routine") == "queue_manager" and t.get("enabled", True) for t in tasks)
+    try:                                                     # v343: City Hall level once a day per character
+        import control as _cm
+        last = str(_cm.CITY.get("city_hall_read") or "")
+        if last[:10] != time.strftime("%Y-%m-%d"):
+            smart.read_city_hall(g, sleep)
+        smart.ch_locks()
+    except (Stop, SystemExit, pyautogui.FailSafeException):
+        raise
+    except Exception as e:
+        log(f"! read_city_hall failed: {e!r}")
     for t in tasks:
         if not t.get("enabled", True):
             continue

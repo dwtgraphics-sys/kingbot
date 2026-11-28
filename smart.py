@@ -1378,12 +1378,70 @@ UNIT_NEEDS = {"infantry": "barracks", "archer": "archery_range", "cavalry": "sta
 
 
 def city_hall_level():
+    """The City Hall level the bot read in the game (per character), else the one set for the server."""
     import control as _c
-    try:
-        lv = int((_c.data or {}).get("city_hall_level") or _c.CITY.get("city_hall_level") or 0)
-    except Exception:
-        lv = 0
-    return lv
+    for v in (_c.CITY.get("city_hall_level"), (_c.data or {}).get("city_hall_level")):
+        try:
+            if int(v or 0) > 0:
+                return int(v)
+        except Exception:
+            pass
+    return 0
+
+
+CH_LOCK_NAMES = {"academy": "البحث العلمي (الأكاديمية)", "blacksmith": "إنتاج المواد (الحداد)", "scout_camp": "الكشافة",
+                 "shop": "متجر VIP", "alliance_center": "مركز التحالف", "archery_range": "الرماة",
+                 "stable": "الفرسان", "siege_workshop": "الحصار", "merchant": "التاجر الغامض",
+                 "sunset_canyon": "وادي الغروب", "tavern": "الحانة", "hospital": "المستشفى"}
+
+
+def ch_locks():
+    """v343: what the dashboard locks for the current City Hall level - {routine: building} + units."""
+    import control as _c
+    lv = city_hall_level()
+    out = {"level": lv, "routines": {}, "units": []}
+    if lv:
+        out["routines"] = {r: b for r, b in ROUTINE_NEEDS.items() if not has_building(b)}
+        out["units"] = [u for u, b in UNIT_NEEDS.items() if not has_building(b)]
+    _c.CITY["ch_locks"] = out
+    return out
+
+
+def read_city_hall(g, sleep):
+    """v343 (owner): read the City Hall level - tap the City Hall (found by its name plate) and read 'Lv. N'."""
+    import control as _c
+    _city_reset(g, sleep)
+    spot = find_building(g, sleep, "city_hall")
+    if not spot:
+        log("  ! read_city_hall: the City Hall was not found")
+        return True
+    x, y = spot
+    lv = None
+    for attempt in range(2):
+        img = g.screenshot(); h, w = img.shape[:2]
+        crop = img[max(0, int((y - 0.32) * h)):int((y + 0.14) * h), max(0, int((x - 0.32) * w)):min(w, int((x + 0.32) * w))]
+        lines = _ocr_lines(crop, "city_hall_lv.png", scale=round(max(1.2, min(4.0, 1000.0 / max(1, crop.shape[1]))), 1))
+        txt = " | ".join(lines)
+        m = (re.search(r"\bl\s*v\s*l?\s*\.?\s*:?\s*(\d{1,2})\b", txt, re.I) or re.search(r"level\s*:?\s*(\d{1,2})\b", txt, re.I)
+             or re.search(r"city\s*hall\D{0,6}(\d{1,2})\b", txt, re.I))
+        if m and 1 <= int(m.group(1)) <= 25:
+            lv = int(m.group(1))
+            break
+        log(f"    read_city_hall: no level in {txt[:120]!r}")
+        g.click_rel(x, y); sleep(1.6)
+    recover_screen(g)
+    if lv:
+        old = _c.CITY.get("city_hall_level")
+        _c.CITY["city_hall_level"] = lv
+        _c.CITY["city_hall_read"] = time.strftime("%Y-%m-%d %H:%M")
+        log(f"  read_city_hall: City Hall level {lv}" + (f" (was {old})" if old and old != lv else ""))
+        ch_locks()
+    else:
+        log("  ! read_city_hall: could not read the level")
+    return True
+
+
+SMART["read_city_hall"] = read_city_hall
 
 
 def has_building(kind):
