@@ -325,7 +325,7 @@ def screen_is_clear(g=None):
     if g is None:
         return True
     img = g.screenshot()
-    if g.find_image("btn_x", 0.85, img=img) or g.find_image("btn_x2", 0.85, img=img):
+    if g.find_image("btn_x", 0.85, img=img) or g.find_image("btn_x2", 0.85, img=img) or profile_panel_open(img):
         return False
     return any(g.find_image(n, t, img=img) for n, t in (("space_on_map", 0.75), ("space_on_city", 0.75),
                                                           ("city_build_icon", 0.8), ("map_search_icon", 0.8),
@@ -354,6 +354,20 @@ def skip_counselor(g=None, img=None, max_taps=25):
     return True
 
 
+def profile_panel_open(img):
+    """v355: the governor profile slides in from the left (dark blue panel, gold top). Its X is not matched by the
+    X pictures, and the Space button stays visible - the bot took it for the plain city and never closed it
+    (a wrong tap on the queue button opens it)."""
+    try:
+        import numpy as np
+        h, w = img.shape[:2]
+        r = img[int(.36 * h):int(.62 * h), int(.02 * w):int(.26 * w)].astype(np.int16)
+        b, g_, rr = r[..., 0], r[..., 1], r[..., 2]
+        return float(((b > 100) & (rr < 70) & (b > g_ + 20)).mean()) > 0.6
+    except Exception:
+        return False
+
+
 def recover_screen(g=None, tries=4):
     """Bring the game back to the plain city/map view: press NO on gem windows, use the BACK arrow,
     else ESC once. Returns True when the screen is clear."""
@@ -371,6 +385,10 @@ def recover_screen(g=None, tries=4):
         if chat:
             log("  ! the chat panel was open - closing it")
             g._click_absolute(*chat[0]); time.sleep(2)
+            continue
+        if profile_panel_open(img):                          # v355: before the "plain view" test below
+            log("  ! the governor profile was open - closing it (X)")
+            g._click_absolute(0.271, 0.025); time.sleep(1.5)
             continue
         if any(g.find_image(n, t, img=img) for n, t in (("space_on_map", 0.75), ("space_on_city", 0.75),
                                                           ("city_build_icon", 0.8), ("map_search_icon", 0.8))):
