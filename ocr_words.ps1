@@ -14,10 +14,13 @@ function Await($op, [Type]$t) {
     $task.Wait(-1) | Out-Null
     $task.Result
 }
-$engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+# v335: English first - the game text is English. With an Arabic (or other) Windows profile language the
+# engine read digits but no English words (vps-04-c001: "ocr_boxes: nothing" while resources were read).
+$engine = $null
+try { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage((New-Object Windows.Globalization.Language "en-US")) } catch {}
 if ($null -eq $engine) {
-    $lang = New-Object Windows.Globalization.Language "en-US"
-    $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($lang)
+    [Console]::Error.WriteLine("NO_EN_OCR")
+    $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 }
 if ($null -eq $engine) { Write-Output "NO_OCR_ENGINE"; exit 2 }
 $file = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($Path)) ([Windows.Storage.StorageFile])

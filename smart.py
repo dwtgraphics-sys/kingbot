@@ -4074,6 +4074,31 @@ def _ocr_boxes(img_bgr, name="ocr_boxes.png", scale=2.0):
                        lambda: _ocr_boxes_uncached(img_bgr, name, scale))
 
 
+EN_OCR_TRY = [0.0]
+
+
+def _install_en_ocr():
+    """v335: the English OCR language is missing on this Windows - add it (Windows capability, no restart needed),
+    at most once a day, in the background. Needs the bot to run as administrator (it does)."""
+    import time as _t, subprocess, threading
+    if _t.time() - EN_OCR_TRY[0] < 86400:
+        return
+    EN_OCR_TRY[0] = _t.time()
+    log("  ! OCR: the English text-reading language is missing on this server - installing it (Windows capability)")
+
+    def run():
+        try:
+            r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+                                "Add-WindowsCapability -Online -Name 'Language.OCR~~~en-US~0.0.1.0' | "
+                                "Select-Object -ExpandProperty RestartNeeded"],
+                               capture_output=True, timeout=1800, creationflags=0x08000000)
+            log("  OCR: English text reading installed" if r.returncode == 0 else
+                f"  ! OCR: install failed ({(r.stderr or b'').decode('utf-8', 'replace')[:160]})")
+        except Exception as e:
+            log(f"  ! OCR: install failed: {e!r}")
+    threading.Thread(target=run, daemon=True).start()
+
+
 def _ocr_boxes_uncached(img_bgr, name="ocr_boxes.png", scale=2.0):
     """Windows OCR with positions: [(x1, y1, x2, y2, text)] in the ORIGINAL image pixels."""
     import cv2, subprocess
@@ -4096,6 +4121,8 @@ def _ocr_boxes_uncached(img_bgr, name="ocr_boxes.png", scale=2.0):
             p = ln.split("|", 4)
             if len(p) == 5 and p[0].lstrip("-").isdigit():
                 out.append((int(p[0]) / scale, int(p[1]) / scale, int(p[2]) / scale, int(p[3]) / scale, p[4].strip()))
+        if "NO_EN_OCR" in (r.stderr or ""):
+            _install_en_ocr()
         if not out:
             log(f"    (ocr_boxes: nothing - out={r.stdout[:150]!r} err={r.stderr[:200]!r})")
     except Exception as e:
