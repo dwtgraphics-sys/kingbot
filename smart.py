@@ -1445,6 +1445,11 @@ def train_troops(g, sleep, tier=4, fast=False, buildings=None, use_bag=False,
     v137: each troop type has its own level (infantry / archers / cavalry / siege); 'tier' is the fallback.
     v147: 'fast' (the dashboard's fast-training switch) uses speedup items on a training that is
     already running - one item per building per round, and gems are still never touched."""
+    import queue_manager as _qm
+    if time.time() < _qm.TRAIN_NORES["until"]:               # v314: owner rule - few resources -> next task
+        log("  - train_troops: skipped - not enough resources last time, next try after "
+            + time.strftime("%H:%M", time.localtime(_qm.TRAIN_NORES["until"])))
+        return True
     if not _go_city(g, sleep):
         log("  ! train_troops: not in the city view")
         return True
@@ -1512,6 +1517,10 @@ def train_troops(g, sleep, tier=4, fast=False, buildings=None, use_bag=False,
             log(f"  ! train_troops: {name}: could not train (resources?) - closing"
                 + (" (using bag resources is not learned yet)" if use_bag else ""))
             g.click_rel(0.749, 0.299); sleep(1.5)
+            _qm.TRAIN_NORES["at"] = time.time()
+            _qm.TRAIN_NORES["until"] = time.time() + _qm.TRAIN_NORES_WAIT
+            log(f"  train_troops: not enough resources - the other buildings are skipped, moving to the next task")
+            break
     _close_training_window(g, sleep)
     log(f"  train_troops: started in {len(trained)} building(s): {', '.join(trained) or '-'}")
     return True

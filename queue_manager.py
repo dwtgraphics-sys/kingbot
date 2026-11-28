@@ -551,8 +551,20 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
         if not qm["train"]:
             log("  - queue_manager: no Unit Training rows were read - training is checked next time")
         tiers = {"infantry": inf_tier, "archer": arch_tier, "cavalry": cav_tier, "siege": siege_tier}
+        if need and time.time() < TRAIN_NORES["until"]:     # v314: owner rule - few resources -> next task
+            log(f"  - train: skipped - not enough resources at {time.strftime('%H:%M', time.localtime(TRAIN_NORES['at']))}, "
+                f"next try after {time.strftime('%H:%M', time.localtime(TRAIN_NORES['until']))}")
+            need = []
         for r in need:
-            if train_unit(g, sleep, r["unit"], tiers.get(r["unit"], 4)):
+            res = train_unit(g, sleep, r["unit"], tiers.get(r["unit"], 4))
+            if res == "no_res":
+                TRAIN_NORES["at"] = time.time()
+                TRAIN_NORES["until"] = time.time() + TRAIN_NORES_WAIT
+                log(f"  train: not enough resources - the other troops are skipped, moving to the next task "
+                    f"(training tried again in {TRAIN_NORES_WAIT // 60} min)")
+                break
+            if res:
+                TRAIN_NORES["until"] = 0
                 did.append("train " + r["unit"])
     h = qm["heal"]
     if heal and h and h["state"] == "done":               # "Troop Healed - Completed": tapping it collects them
@@ -783,6 +795,8 @@ def close_window(g, sleep):
 
 
 TIER_DX = {1: -6, 2: 46, 3: 98, 4: 150, 5: 200}
+TRAIN_NORES = {"at": 0, "until": 0}      # v314: when training failed for lack of resources
+TRAIN_NORES_WAIT = 60 * 60
 
 
 def train_unit(g, sleep, unit, tier=4):
@@ -809,12 +823,12 @@ def train_unit(g, sleep, unit, tier=4):
     if close_gem_dialogs(g):
         log(f"    ! train: {unit}: the game asked for gems - answered NO")
         close_window(g, sleep)
-        return False
+        return "no_res"                                      # v314: gems asked = not enough resources
     t2 = window_title(g)
     if "training" in t2:
         log(f"    ! train: {unit}: the window is still open (not enough resources?) - closing")
         close_window(g, sleep)
-        return False
+        return "no_res"
     log(f"  train: {unit} tier {tier} started")
     return True
 
