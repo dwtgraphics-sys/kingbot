@@ -17,7 +17,15 @@ function Await($op, [Type]$t) {
 # v335: English first - the game text is English. With an Arabic (or other) Windows profile language the
 # engine read digits but no English words (vps-04-c001: "ocr_boxes: nothing" while resources were read).
 $engine = $null
+# v344: any installed English recogniser (en-US / en-GB / en-...) - an en-GB-only server got NO_EN_OCR with en-US
 try { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage((New-Object Windows.Globalization.Language "en-US")) } catch {}
+if ($null -eq $engine) {
+    try {
+        foreach ($lg in [Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages) {
+            if ($lg.LanguageTag -like "en*") { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($lg); if ($null -ne $engine) { break } }
+        }
+    } catch {}
+}
 if ($null -eq $engine) {
     [Console]::Error.WriteLine("NO_EN_OCR")
     $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
