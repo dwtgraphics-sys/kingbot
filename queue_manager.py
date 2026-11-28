@@ -373,7 +373,15 @@ def ocr_panel(img):
     boxes = smart._ocr_boxes(crop, "qm_ocr.png", scale)
     lines = [((by1 + by2) / 2.0, bx1, t) for bx1, by1, bx2, by2, t in boxes]
     try:
-        lines = _merge_bar_lines(lines, _read_bars(crop, w))
+        bl = _read_bars(crop, w)
+        try:
+            import os
+            from common import BASE
+            with open(os.path.join(BASE, "claude_out", "qm_bars.txt"), "a", encoding="utf-8") as f:
+                f.write(time.strftime("%H:%M:%S ") + " || ".join(t for _, _, t in bl) + "\n")
+        except Exception:
+            pass
+        lines = _merge_bar_lines(lines, bl)
     except Exception as e:
         log(f"    (queue bars read failed: {e!r})")
     return lines
@@ -411,11 +419,20 @@ def _read_bars(crop, full_w):
     out = []
     for y0, y1, x0 in _find_bars(crop)[:8]:
         bar = cv2.resize(crop[y0:y1, x0:x_end], None, fx=5, fy=5, interpolation=cv2.INTER_CUBIC)
-        m = 255 - (bar.min(axis=2) > 170).astype(np.uint8) * 255
-        m = cv2.copyMakeBorder(m, 16, 16, 16, 16, cv2.BORDER_CONSTANT, value=255)
-        boxes = smart._ocr_boxes_uncached(cv2.cvtColor(m, cv2.COLOR_GRAY2BGR), "qm_bar.png", 1.0)
-        text = " ".join(t for _, t in sorted((bx1, t) for bx1, by1, bx2, by2, t in boxes))
-        text = re.sub(r"(\d)\s*-\s*(\d)", r"\1:\2", text).strip()
+        text = ""
+        for mode in ("gray", "bin"):                 # v354: Windows OCR misread the hard black/white picture -
+            mn = bar.min(axis=2)                     # first a soft one (white text -> dark on light grey)
+            if mode == "gray":
+                m = 255 - mn
+                m = cv2.normalize(m, None, 0, 255, cv2.NORM_MINMAX)
+            else:
+                m = 255 - (mn > 170).astype(np.uint8) * 255
+            m = cv2.copyMakeBorder(m, 16, 16, 16, 16, cv2.BORDER_CONSTANT, value=255)
+            boxes = smart._ocr_boxes_uncached(cv2.cvtColor(m, cv2.COLOR_GRAY2BGR), f"qm_bar_{mode}.png", 1.0)
+            text = " ".join(t for _, t in sorted((bx1, t) for bx1, by1, bx2, by2, t in boxes))
+            text = re.sub(r"(\d)\s*-\s*(\d)", r"\1:\2", text).strip()
+            if text and secs(norm(text)) is not None:
+                break
         if text and is_status(text):
             out.append(((y0 + y1) / 2.0, x0, text))
     return out
