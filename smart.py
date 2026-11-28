@@ -4295,6 +4295,14 @@ def probe_click_mode(g, sleep, force=False):
     if scr not in ("city", "map"):
         log(f"  click mode: not tested now (screen '{scr}') - keeping '{start}'")
         return start
+    try:                                                  # v348: a new (Stone Age) city has no queue button yet -
+        qb = g.find_image("queue_btn", 0.70)              # the test would "fail" every mode for 20 minutes
+    except Exception:
+        qb = None
+    if not qb:
+        CLICK_PROBED[0] = True
+        log(f"  click mode: no queue button on this account yet - test skipped, keeping '{start}'")
+        return start
     CLICK_PROBED[0] = True
     for mode in ("absolute", "message", "cursor"):
         if mode == "interception":
