@@ -328,7 +328,8 @@ def screen_is_clear(g=None):
     if g.find_image("btn_x", 0.85, img=img) or g.find_image("btn_x2", 0.85, img=img):
         return False
     return any(g.find_image(n, t, img=img) for n, t in (("space_on_map", 0.75), ("space_on_city", 0.75),
-                                                          ("city_build_icon", 0.8), ("map_search_icon", 0.8)))
+                                                          ("city_build_icon", 0.8), ("map_search_icon", 0.8),
+                                                          ("hud_space_city", 0.85), ("hud_space_map", 0.85)))
 
 
 def recover_screen(g=None, tries=4):
@@ -396,6 +397,14 @@ def recover_screen(g=None, tries=4):
                     continue
             except Exception as e:
                 log(f"    (queue panel check failed: {e!r})")
+        if not xb and not back and (g.find_image("hud_space_city", 0.85, img=img) or
+                                    g.find_image("hud_space_map", 0.85, img=img)):
+            # v336: the small HUD Space button (the screen detector's picture) is visible and nothing has X/BACK -
+            # the plain view. The old big Space pictures missed it on W85 and the bot sat in the city for hours
+            # ("a panel is open, Space was not pressed" -> no map -> no barbarians).
+            if i:
+                log("  screen recovered")
+            return True
         if not xb and not back:                              # v286: read the words - the title screen of a new
             try:                                             # account did not match the picture, and ESC there
                 import smart                                 # opens "Exit the game?" (never press CONFIRM)
