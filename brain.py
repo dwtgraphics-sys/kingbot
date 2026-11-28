@@ -99,6 +99,12 @@ def signature(task, kind, msg, screen=None):
 # - old open incidents that match a lesson are closed with the lesson as the note (the admin page shows it).
 # - a log line that matches a lesson's "handled" pattern counts as the bot applying that fix (stats per lesson).
 LESSONS = [
+    {"id": "city_hall_road", "since": 368,
+     "match": r"upgrade: no UPGRADE button|upgrade .*did not start|requirement chain too deep",
+     "handled": r"upgrade: first the requirement|upgrade: .* started",
+     "cause": "تطوير قاعة المدينة متوقف على شرط (جدار، حانة، ...) أو نقص موارد.",
+     "fix": "ملاحظة المالك: افتح تطوير قاعة المدينة واقرأ الشروط؛ إذا شرط غير مكتمل اضغط GO وطوّر ذلك المبنى أولاً (مثلاً الجدار ثم الحانة) ثم قاعة المدينة. الشروط محفوظة في ch_road_learned.json من المستوى 2 حتى 25.",
+     "owner": ""},
     {"id": "blacksmith_same_everywhere", "since": 359,
      "match": r"materials: the production window did not open|materials: queue card did not open production",
      "handled": r"Blacksmith .*seen by picture|blacksmith: seen by picture|materials: .* added",

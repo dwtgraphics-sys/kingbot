@@ -2,7 +2,8 @@
  "_note": "The bot's standing knowledge from the owner (read by the bot, shown in the admin brain panel).",
  "buildings": {
   "blacksmith": "The Blacksmith (material building) looks the SAME in every civilization and at every City Hall level - its picture (builtin_templates/buildings/blacksmith.png) is enough everywhere.",
-  "city_hall_2": "City Hall level 2 has only: storehouse, city hall, tavern, infantry barracks, farm, hospital, builder's hut (see city_buildings.json)."
+  "city_hall_2": "City Hall level 2 has only: storehouse, city hall, tavern, infantry barracks, farm, hospital, builder's hut (see city_buildings.json).",
+  "city_hall_upgrade": "Owner: to grow the city, open the City Hall's upgrade and read what it needs. Often the Wall must be upgraded first, then the Tavern, then the City Hall. Every unmet requirement has a GO button - follow it, upgrade that building, then come back. Resources only (never gems / INSTANT). Requirements seen per level are kept in ch_road_learned.json, levels 2 to 25 (max)."
  },
  "tutorial": {
   "counselor": "The Counselor lady starts tutorial instructions - skip them by tapping the arrow at the bottom of her talk box."

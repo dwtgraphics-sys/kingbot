@@ -4978,6 +4978,13 @@ def build_upgrade(g, sleep, mode="smart", speedups=False, use_bag=False):
     busy = [q for q in control.CITY.get("queues", []) if q.get("kind") == "build" and not q.get("done")]
     if len(busy) >= 2:
         log("  - build_upgrade: both builders are busy"); return True
+    if mode == "smart":                                      # v368: City Hall line first (its requirements too)
+        try:
+            upgrade_city_hall(g, sleep, speedups=speedups)
+            if (control.CITY.get("ch_upgrade") or {}).get("result") == "started":
+                return True
+        except Exception as e:
+            log(f"  ! upgrade_city_hall failed: {e!r}")
     if not queue_goto(g, sleep, "build") and not _queue_card(g, sleep, 0.462):
         log("  ! build_upgrade: the Queue Overview did not open"); recover_screen(g); return True
     import queue_manager as _qm
@@ -5020,6 +5027,118 @@ def build_upgrade(g, sleep, mode="smart", speedups=False, use_bag=False):
             _use_speedups(g, sleep, "building")
     recover_screen(g)
     return True
+
+
+# ---------------- v368: City Hall upgrade path (owner) ----------------
+# City Hall -> green Upgrade hexagon -> the upgrade window lists requirements ("Wall Lv. 3", "Tavern Lv. 3") with
+# a GO button when one is not met. The bot follows GO to that building, upgrades it the same way (it may have
+# its own requirement - followed up to 4 deep), and comes back to the City Hall next time. Resources only:
+# a gem offer is always refused, INSTANT is never pressed. What each level asked for is kept in
+# ch_road_learned.json so the bot learns the whole road from level 2 to 25.
+CH_REQ_FILE = "ch_road_learned.json"   # written by the bot, not shipped (updates keep it)
+
+
+def _upgrade_window(g):
+    """Read the open upgrade window: (title, requirement lines, GO buttons [(x, y, line)], UPGRADE button or None)."""
+    import queue_manager as _qm
+    img = g.screenshot(); h, w = img.shape[:2]
+    title = _qm.window_title(g, img) or ""
+    boxes = _ocr_boxes(img[int(0.10 * h):int(0.95 * h), int(0.05 * w):int(0.95 * w)], "upg_win.png", 1.6)
+    X0, Y0 = int(0.05 * w), int(0.10 * h)
+    rows = []
+    for b in sorted(boxes, key=lambda b: b[1]):
+        if rows and abs(rows[-1][0] - b[1]) < 10:
+            rows[-1][1].append(b)
+        else:
+            rows.append([b[1], [b]])
+    lines, gos = [], []
+    for y, bs in rows:
+        bs = sorted(bs, key=lambda b: b[0])
+        txt = " ".join(b[4] for b in bs).strip()
+        for b in bs:
+            if re.fullmatch(r"\W*go\W*", b[4].strip(), re.I):
+                gos.append(((X0 + (b[0] + b[2]) / 2) / w, (Y0 + (b[1] + b[3]) / 2) / h, txt))
+        if re.search(r"\blv\.?\s*\d|level\s*\d", txt, re.I):
+            lines.append(txt)
+    up = g.find_image("btn_upgrade_blue", 0.8, img=img)
+    up = up[0] if up else None
+    if not up:
+        hits = [b for b in boxes if re.fullmatch(r"\W*upgrade\W*", b[4].strip(), re.I) and (b[0] + X0) > 0.45 * w]
+        if hits:
+            b = max(hits, key=lambda b: b[1])
+            up = ((X0 + (b[0] + b[2]) / 2) / w, (Y0 + (b[1] + b[3]) / 2) / h)
+    return title, lines, gos, up
+
+
+def _press_upgrade_on_selected(g, sleep, who, depth=0):
+    """A building is selected (its round buttons show) - open its upgrade window and upgrade, following GO."""
+    from common import close_gem_dialogs
+    import queue_manager as _qm, control
+    spot = None
+    for _ in range(3):
+        img = g.screenshot()
+        spot = _qm.upgrade_button(g, img) or (g.find_image("hex_upgrade", 0.85, img=img) or [None])[0]
+        if spot:
+            break
+        sleep(1.5)
+    if not spot:
+        log(f"    upgrade: no Upgrade button under {who} (max level, or already upgrading)")
+        return "no_button"
+    g.click_rel(*spot); sleep(3)
+    title, lines, gos, up = _upgrade_window(g)
+    log(f"    upgrade window '{title[:40]}': needs {lines[:6]}" + (f" - {len(gos)} not met (GO)" if gos else " - all met"))
+    if "city hall" in title.lower() or who == "City Hall":
+        m = re.search(r"(\d{1,2})", title)
+        lv = control.CITY.get("city_hall_level")
+        try:
+            req = load_json(os.path.join(BASE, CH_REQ_FILE), {})
+            key = str(int(lv) + 1) if lv else (m.group(1) if m else "?")
+            req[key] = {"needs": lines[:8], "seen": time.strftime("%Y-%m-%d %H:%M")}
+            save_json(os.path.join(BASE, CH_REQ_FILE), req)
+            control.CITY["ch_road"] = req
+        except Exception as e:
+            log(f"    (could not keep the requirements: {e!r})")
+    if gos:
+        if depth >= 4:
+            log("    upgrade: requirement chain too deep - stopping here")
+            return "deep"
+        gx, gy, line = gos[0]
+        log(f"    upgrade: first the requirement '{line[:50]}' - GO")
+        g.click_rel(gx, gy); sleep(4)
+        return _press_upgrade_on_selected(g, sleep, line[:40], depth + 1)
+    if not up:
+        log(f"    ! upgrade: no UPGRADE button in '{title[:40]}'")
+        _save_failure(g, "upgrade_window", note=f"{who}: {title}")
+        return "no_upgrade"
+    g.click_rel(*up); sleep(3)
+    if close_gem_dialogs(g):
+        log(f"    - upgrade {who}: not enough resources / builders (gem offer refused)")
+        return "no_res"
+    t2, _l, _g, up2 = _upgrade_window(g)
+    if up2 and t2 == title:
+        log(f"    ! upgrade {who}: the upgrade did not start (resources? builder busy?)")
+        return "not_started"
+    log(f"  upgrade: {who} started ({title[:40]})")
+    return "started"
+
+
+def upgrade_city_hall(g, sleep, speedups=False):
+    """v368 (owner): upgrade the City Hall - or first whatever it needs (wall, tavern, ...)."""
+    import control
+    _city_reset(g, sleep)
+    spot = find_building(g, sleep, "city_hall")
+    if not spot:
+        log("  ! upgrade_city_hall: the City Hall was not found")
+        recover_screen(g); return True
+    res = _press_upgrade_on_selected(g, sleep, "City Hall")
+    control.CITY["ch_upgrade"] = {"result": res, "at": time.strftime("%Y-%m-%d %H:%M")}
+    if res == "started" and speedups:
+        _use_speedups(g, sleep, "building")
+    recover_screen(g)
+    return True
+
+
+SMART["upgrade_city_hall"] = upgrade_city_hall
 
 
 RES_STATE = {"last": "military"}
