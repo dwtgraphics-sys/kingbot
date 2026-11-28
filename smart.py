@@ -1262,9 +1262,14 @@ def _building_probe(g, sleep, kind):
 BUILDING_PIC_KINDS = ("tavern", "hospital", "blacksmith", "scout_camp", "builders_hut", "merchant", "vip_shop", "farm")
 _BPIC = {"tpl": {}, "scale": {}}
 BPIC_MIN = {"merchant": 0.75, "vip_shop": 0.75, "hospital": 0.70}   # stricter where look-alikes exist
+# v313: the small bubble above a building (tavern chest, merchant "A", scout telescope, forge...) looks the SAME
+# in every civilization, while the buildings themselves change (a Chinese city looks nothing like a French one).
+BUBBLE_MIN = {"tavern": 0.80, "merchant": 0.80, "scout_camp": 0.80, "blacksmith": 0.80, "vip_shop": 0.85,
+              "hospital": 0.85, "builders_hut": 0.62}
 
 
 def _building_pics(kind):
+    """Building-body pictures: buildings/<kind>*.png (own recordings in templates/buildings first)."""
     import glob, cv2
     from common import BUILTIN_DIR, TEMPL_DIR
     if kind not in _BPIC["tpl"]:
@@ -1275,15 +1280,20 @@ def _building_pics(kind):
     return _BPIC["tpl"][kind]
 
 
-def find_building_pics(g, kind, img=None, min_score=None, many=False):
+def _bubble_pics(kind):
+    return _building_pics("bubble_" + kind)
+
+
+def find_building_pics(g, kind, img=None, min_score=None, many=False, bubble=False):
     """Where is <kind> on the city screen? Multi-scale picture match (building width 55-180 px on a 946 px wide
     game, scaled to the real game size). Returns [(rel_x, rel_y, score)] best first ([] when not seen)."""
     import cv2, numpy as np
-    tpls = _building_pics(kind)
+    tpls = _bubble_pics(kind) if bubble else _building_pics(kind)
     if not tpls:
         return []
     if min_score is None:
-        min_score = BPIC_MIN.get(kind, 0.62)
+        min_score = BUBBLE_MIN.get(kind, 0.80) if bubble else BPIC_MIN.get(kind, 0.62)
+    px_lo, px_hi = (22, 60) if bubble else (55, 180)
     if img is None:
         img = g.screenshot()
     H0, W0 = img.shape[:2]
@@ -1294,8 +1304,8 @@ def find_building_pics(g, kind, img=None, min_score=None, many=False):
     hits = []
     for t in tpls:
         th, tw = t.shape[:2]
-        known = _BPIC["scale"].get((kind, tw))
-        lo, hi = 55 * gw / tw, 180 * gw / tw
+        known = _BPIC["scale"].get((kind, bubble, tw))
+        lo, hi = px_lo * gw / tw, px_hi * gw / tw
         scales = (np.arange(max(lo, known * 0.9), min(hi, known * 1.1) + 1e-9, 0.01 * (known / 0.15))
                   if known else np.geomspace(lo, hi, 24))
         best = None
@@ -1313,7 +1323,7 @@ def find_building_pics(g, kind, img=None, min_score=None, many=False):
                 best = (mv, sc, ml, tt.shape[:2])
         if best and best[0] >= min_score:
             mv, sc, (x, y), (h, w) = best
-            _BPIC["scale"][(kind, tw)] = sc                   # the same server keeps the same zoom
+            _BPIC["scale"][(kind, bubble, tw)] = sc                   # the same server keeps the same zoom
             if not many:
                 hits.append(((x + w / 2) / W, (y + h / 2) / H, float(mv)))
     hits.sort(key=lambda h: -h[2])
@@ -1330,12 +1340,15 @@ def building_by_picture(g, sleep, kind, verify=None, tries=2):
     for attempt in range(tries):
         if attempt:
             _city_reset(g, sleep)
-        pts = find_building_pics(g, kind)
+        img = g.screenshot()
+        # v313: the bubble first (same in every civilization) - the building sits just under it
+        pts = [(x, min(0.92, y + 0.07), sc) for (x, y, sc) in find_building_pics(g, kind, img=img, bubble=True)]
+        pts += find_building_pics(g, kind, img=img)
         if not pts:
             continue
-        for (x, y, sc) in pts[:2]:
-            if not (0.03 < x < 0.97 and 0.10 < y < 0.92):
-                continue
+        for (x, y, sc) in pts[:3]:
+            if not (0.03 < x < 0.97 and 0.10 < y < 0.86) or (x > 0.86 and y > 0.70):
+                continue                                     # bottom bar / map-and-build buttons: not the building
             log(f"  {kind}: seen by picture at {x:.3f},{y:.3f} (match {sc:.2f})")
             if verify is not None:
                 if verify(x, y):
@@ -3135,7 +3148,7 @@ def merchant(g, sleep, max_buys=8, free_refresh=False):
             pos = p[0]
             break
     if not pos:                                              # v312: the merchant's building by picture
-        pp = find_building_pics(g, "merchant")
+        pp = find_building_pics(g, "merchant", bubble=True) or find_building_pics(g, "merchant")
         if pp:
             pos = (pp[0][0], pp[0][1])
             log(f"  merchant: seen by picture at {pos[0]:.3f},{pos[1]:.3f} (match {pp[0][2]:.2f})")
