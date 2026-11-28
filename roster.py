@@ -69,3 +69,14 @@ def known():
 
 def all_names():
     return [c["name"] for c in _load()[0]]
+
+
+def picture(name):
+    """v347: path of the commander's full-body picture in commanders_full/ (owner's pictures), or ""."""
+    try:
+        with open(os.path.join(_HERE, "commanders_full", "index.json"), encoding="utf-8") as f:
+            pics = json.load(f).get("commanders") or {}
+        p = (pics.get(canonical(name)) or {}).get("full") or ""
+        return os.path.join(_HERE, p) if p else ""
+    except Exception:
+        return ""

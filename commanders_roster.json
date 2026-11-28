@@ -1,7 +1,7 @@
 {
- "version": 1,
- "source": "owner list 28 Nov 2026 (142) + 5 seen in game pictures / old list",
- "count": 147,
+ "version": 2,
+ "source": "owner list 28 Nov 2026 (142) + Pelagius Prime + 5 seen in game pictures / old list",
+ "count": 148,
  "commanders": [
   {
    "name": "Sun Tzu Prime",
@@ -84,7 +84,9 @@
    "aliases": [
     "Pakal",
     "Pacal",
-    "Pacal II"
+    "Pacal II",
+    "Kʼinich Janaabʼ Pakal",
+    "K'inich Janaab' Pakal"
    ]
   },
   {
@@ -542,7 +544,8 @@
    "rarity": "Legendary",
    "role": "Leadership",
    "aliases": [
-    "Matthias"
+    "Matthias",
+    "Matthias I"
    ]
   },
   {
@@ -631,7 +634,8 @@
    "rarity": "Legendary",
    "role": "Leadership",
    "aliases": [
-    "Pepin"
+    "Pepin",
+    "Pepin III"
    ]
   },
   {
@@ -644,7 +648,10 @@
    "name": "Afonso",
    "rarity": "Legendary",
    "role": "Engineering",
-   "aliases": []
+   "aliases": [
+    "Afonso de Albuquerque",
+    "Afonso I"
+   ]
   },
   {
    "name": "Babur",
@@ -734,7 +741,10 @@
    "name": "Tamar of Georgia",
    "rarity": "Legendary",
    "role": "Gathering",
-   "aliases": []
+   "aliases": [
+    "Queen Tamar of Georgia",
+    "Tamar"
+   ]
   },
   {
    "name": "Sun Tzu",
@@ -907,6 +917,12 @@
   {
    "name": "Markswoman",
    "rarity": "Advanced",
+   "role": "",
+   "aliases": []
+  },
+  {
+   "name": "Pelagius Prime",
+   "rarity": "Legendary",
    "role": "",
    "aliases": []
   },

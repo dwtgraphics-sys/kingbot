@@ -1,0 +1,566 @@
+{
+ "note": "full-body picture of each commander (owner's 140 pictures, named 28 Nov 2026); portraits for the dashboard are in kingbot-ui/commanders/",
+ "count": 140,
+ "commanders": {
+  "Achilles": {
+   "full": "commanders_full/Achilles.webp",
+   "source": "IMG_0836.webp"
+  },
+  "Afonso": {
+   "full": "commanders_full/Afonso.webp",
+   "source": "IMG_0843.webp"
+  },
+  "Alexander Nevsky": {
+   "full": "commanders_full/Alexander Nevsky.webp",
+   "source": "IMG_0844.webp"
+  },
+  "Alexander the Great": {
+   "full": "commanders_full/Alexander the Great.webp",
+   "source": "IMG_0845.webp"
+  },
+  "Alp Arslan": {
+   "full": "commanders_full/Alp Arslan.webp",
+   "source": "IMG_0846.webp"
+  },
+  "Amanitore": {
+   "full": "commanders_full/Amanitore.webp",
+   "source": "IMG_0847.webp"
+  },
+  "Archimedes": {
+   "full": "commanders_full/Archimedes.webp",
+   "source": "IMG_0848.webp"
+  },
+  "Artemisia I": {
+   "full": "commanders_full/Artemisia I.webp",
+   "source": "IMG_0849.webp"
+  },
+  "Arthur Pendragon": {
+   "full": "commanders_full/Arthur Pendragon.webp",
+   "source": "IMG_0850.webp"
+  },
+  "Ashurbanipal": {
+   "full": "commanders_full/Ashurbanipal.webp",
+   "source": "IMG_0851.webp"
+  },
+  "Attila": {
+   "full": "commanders_full/Attila.webp",
+   "source": "IMG_0852.webp"
+  },
+  "Babur": {
+   "full": "commanders_full/Babur.webp",
+   "source": "IMG_0853.webp"
+  },
+  "Bai Qi": {
+   "full": "commanders_full/Bai Qi.webp",
+   "source": "IMG_0854.webp"
+  },
+  "Baibars": {
+   "full": "commanders_full/Baibars.webp",
+   "source": "IMG_0855.webp"
+  },
+  "Belisarius": {
+   "full": "commanders_full/Belisarius.webp",
+   "source": "IMG_0857.webp"
+  },
+  "Belisarius Prime": {
+   "full": "commanders_full/Belisarius Prime.webp",
+   "source": "IMG_0856.webp"
+  },
+  "Bertrand du Guesclin": {
+   "full": "commanders_full/Bertrand du Guesclin.webp",
+   "source": "IMG_0858.webp"
+  },
+  "Björn Ironside": {
+   "full": "commanders_full/Bjorn Ironside.webp",
+   "source": "IMG_0859.webp"
+  },
+  "Boudica": {
+   "full": "commanders_full/Boudica.webp",
+   "source": "IMG_0861.webp"
+  },
+  "Boudica Prime": {
+   "full": "commanders_full/Boudica Prime.webp",
+   "source": "IMG_0860.webp"
+  },
+  "Cao Cao": {
+   "full": "commanders_full/Cao Cao.webp",
+   "source": "IMG_0862.webp"
+  },
+  "Casimir III": {
+   "full": "commanders_full/Casimir III.webp",
+   "source": "IMG_0863.webp"
+  },
+  "Catherine de' Medici": {
+   "full": "commanders_full/Catherine de' Medici.webp",
+   "source": "IMG_0864.webp"
+  },
+  "Centurion": {
+   "full": "commanders_full/Centurion.webp",
+   "source": "IMG_0865.webp"
+  },
+  "Chandragupta Maurya": {
+   "full": "commanders_full/Chandragupta Maurya.webp",
+   "source": "IMG_0866.webp"
+  },
+  "Charlemagne": {
+   "full": "commanders_full/Charlemagne.webp",
+   "source": "IMG_0867.webp"
+  },
+  "Charles Martel": {
+   "full": "commanders_full/Charles Martel.webp",
+   "source": "IMG_0868.webp"
+  },
+  "Cheok Jun-gyeong": {
+   "full": "commanders_full/Cheok Jun-gyeong.webp",
+   "source": "IMG_0869.webp"
+  },
+  "Choe Yeong": {
+   "full": "commanders_full/Choe Yeong.webp",
+   "source": "IMG_0870.webp"
+  },
+  "City Keeper": {
+   "full": "commanders_full/City Keeper.webp",
+   "source": "IMG_0871.webp"
+  },
+  "Cleopatra VII": {
+   "full": "commanders_full/Cleopatra VII.webp",
+   "source": "IMG_0872.webp"
+  },
+  "Constance": {
+   "full": "commanders_full/Constance.webp",
+   "source": "IMG_0873.webp"
+  },
+  "Constantine I": {
+   "full": "commanders_full/Constantine I.webp",
+   "source": "IMG_0874.webp"
+  },
+  "Cyrus the Great": {
+   "full": "commanders_full/Cyrus the Great.webp",
+   "source": "IMG_0875.webp"
+  },
+  "David IV": {
+   "full": "commanders_full/David IV.webp",
+   "source": "IMG_0876.webp"
+  },
+  "Diaochan": {
+   "full": "commanders_full/Diaochan.webp",
+   "source": "IMG_0877.webp"
+  },
+  "Dido": {
+   "full": "commanders_full/Dido.webp",
+   "source": "IMG_0878.webp"
+  },
+  "Dragon Lancer": {
+   "full": "commanders_full/Dragon Lancer.webp",
+   "source": "IMG_0879.webp"
+  },
+  "Edward of Woodstock": {
+   "full": "commanders_full/Edward of Woodstock.webp",
+   "source": "IMG_0880.webp"
+  },
+  "El Cid": {
+   "full": "commanders_full/El Cid.webp",
+   "source": "IMG_0881.webp"
+  },
+  "Elizabeth I": {
+   "full": "commanders_full/Elizabeth I.webp",
+   "source": "IMG_0882.webp"
+  },
+  "Eulji Mundeok": {
+   "full": "commanders_full/Eulji Mundeok.webp",
+   "source": "IMG_0883.webp"
+  },
+  "Flavius Aetius": {
+   "full": "commanders_full/Flavius Aetius.webp",
+   "source": "IMG_0884.webp"
+  },
+  "Frederick I": {
+   "full": "commanders_full/Frederick I.webp",
+   "source": "IMG_0885.webp"
+  },
+  "Gaius Marius": {
+   "full": "commanders_full/Gaius Marius.webp",
+   "source": "IMG_0886.webp"
+  },
+  "Gang Gam-chan": {
+   "full": "commanders_full/Gang Gam-chan.webp",
+   "source": "IMG_0887.webp"
+  },
+  "Genghis Khan": {
+   "full": "commanders_full/Genghis Khan.webp",
+   "source": "IMG_0888.webp"
+  },
+  "Gilgamesh": {
+   "full": "commanders_full/Gilgamesh.webp",
+   "source": "IMG_0889.webp"
+  },
+  "Gorgo": {
+   "full": "commanders_full/Gorgo.webp",
+   "source": "IMG_0890.webp"
+  },
+  "Guan Yu": {
+   "full": "commanders_full/Guan Yu.webp",
+   "source": "IMG_0891.webp"
+  },
+  "Hannibal Barca": {
+   "full": "commanders_full/Hannibal Barca.webp",
+   "source": "IMG_0892.webp"
+  },
+  "Harald Sigurdsson": {
+   "full": "commanders_full/Harald Sigurdsson.webp",
+   "source": "IMG_0893.webp"
+  },
+  "Hayam Wuruk": {
+   "full": "commanders_full/Hayam Wuruk.webp",
+   "source": "IMG_0894.webp"
+  },
+  "Hector": {
+   "full": "commanders_full/Hector.webp",
+   "source": "IMG_0895.webp"
+  },
+  "Henry V": {
+   "full": "commanders_full/Henry V.webp",
+   "source": "IMG_0896.webp"
+  },
+  "Heraclius": {
+   "full": "commanders_full/Heraclius.webp",
+   "source": "IMG_0897.webp"
+  },
+  "Hermann": {
+   "full": "commanders_full/Hermann.webp",
+   "source": "IMG_0899.webp"
+  },
+  "Hermann Prime": {
+   "full": "commanders_full/Hermann Prime.webp",
+   "source": "IMG_0898.webp"
+  },
+  "Honda Tadakatsu": {
+   "full": "commanders_full/Honda Tadakatsu.webp",
+   "source": "IMG_0900.webp"
+  },
+  "Huo Qubing": {
+   "full": "commanders_full/Huo Qubing.webp",
+   "source": "IMG_0901.webp"
+  },
+  "Imhotep": {
+   "full": "commanders_full/Imhotep.webp",
+   "source": "IMG_0902.webp"
+  },
+  "Ishida Mitsunari": {
+   "full": "commanders_full/Ishida Mitsunari.webp",
+   "source": "IMG_0903.webp"
+  },
+  "Ivan IV": {
+   "full": "commanders_full/Ivan IV.webp",
+   "source": "IMG_0904.webp"
+  },
+  "Ivar the Boneless": {
+   "full": "commanders_full/Ivar the Boneless.webp",
+   "source": "IMG_0905.webp"
+  },
+  "Jadwiga": {
+   "full": "commanders_full/Jadwiga.webp",
+   "source": "IMG_0906.webp"
+  },
+  "Jan Žižka": {
+   "full": "commanders_full/Jan Zizka.webp",
+   "source": "IMG_0907.webp"
+  },
+  "Joan of Arc": {
+   "full": "commanders_full/Joan of Arc.webp",
+   "source": "IMG_0909.webp"
+  },
+  "Joan of Arc Prime": {
+   "full": "commanders_full/Joan of Arc Prime.webp",
+   "source": "IMG_0908.webp"
+  },
+  "John Hunyadi": {
+   "full": "commanders_full/John Hunyadi.webp",
+   "source": "IMG_0910.webp"
+  },
+  "Julius Caesar": {
+   "full": "commanders_full/Julius Caesar.webp",
+   "source": "IMG_0911.webp"
+  },
+  "Justinian I": {
+   "full": "commanders_full/Justinian I.webp",
+   "source": "IMG_0912.webp"
+  },
+  "Keira": {
+   "full": "commanders_full/Keira.webp",
+   "source": "IMG_0913.webp"
+  },
+  "Kusunoki Masashige": {
+   "full": "commanders_full/Kusunoki Masashige.webp",
+   "source": "IMG_0914.webp"
+  },
+  "Lancelot": {
+   "full": "commanders_full/Lancelot.webp",
+   "source": "IMG_0916.webp"
+  },
+  "Leonidas I": {
+   "full": "commanders_full/Leonidas I.webp",
+   "source": "IMG_0917.webp"
+  },
+  "Liu Che": {
+   "full": "commanders_full/Liu Che.webp",
+   "source": "IMG_0918.webp"
+  },
+  "Lohar": {
+   "full": "commanders_full/Lohar.webp",
+   "source": "IMG_0919.webp"
+  },
+  "Lü Bu": {
+   "full": "commanders_full/Lu Bu.webp",
+   "source": "IMG_0920.webp"
+  },
+  "Margaret I": {
+   "full": "commanders_full/Margaret I.webp",
+   "source": "IMG_0921.webp"
+  },
+  "Markswoman": {
+   "full": "commanders_full/Markswoman.webp",
+   "source": "IMG_0922.webp"
+  },
+  "Mary I": {
+   "full": "commanders_full/Mary I.webp",
+   "source": "IMG_0923.webp"
+  },
+  "Matilda of Flanders": {
+   "full": "commanders_full/Matilda of Flanders.webp",
+   "source": "IMG_0924.webp"
+  },
+  "Matthias Corvinus": {
+   "full": "commanders_full/Matthias Corvinus.webp",
+   "source": "IMG_0925.webp"
+  },
+  "Mehmed II": {
+   "full": "commanders_full/Mehmed II.webp",
+   "source": "IMG_0926.webp"
+  },
+  "Minamoto no Yoshitsune": {
+   "full": "commanders_full/Minamoto no Yoshitsune.webp",
+   "source": "IMG_0927.webp"
+  },
+  "Moctezuma I": {
+   "full": "commanders_full/Moctezuma I.webp",
+   "source": "IMG_0928.webp"
+  },
+  "Mulan": {
+   "full": "commanders_full/Mulan.webp",
+   "source": "IMG_0929.webp"
+  },
+  "Narses": {
+   "full": "commanders_full/Narses.webp",
+   "source": "IMG_0930.webp"
+  },
+  "Nebuchadnezzar II": {
+   "full": "commanders_full/Nebuchadnezzar II.webp",
+   "source": "IMG_0931.webp"
+  },
+  "Osman I": {
+   "full": "commanders_full/Osman I.webp",
+   "source": "IMG_0932.webp"
+  },
+  "Pakal II": {
+   "full": "commanders_full/Pakal II.webp",
+   "source": "IMG_0915.webp"
+  },
+  "Pelagius": {
+   "full": "commanders_full/Pelagius.webp",
+   "source": "IMG_0934.webp"
+  },
+  "Pelagius Prime": {
+   "full": "commanders_full/Pelagius Prime.webp",
+   "source": "IMG_0933.webp"
+  },
+  "Pepin the Short": {
+   "full": "commanders_full/Pepin the Short.webp",
+   "source": "IMG_0935.webp"
+  },
+  "Pericles": {
+   "full": "commanders_full/Pericles.webp",
+   "source": "IMG_0936.webp"
+  },
+  "Philip II": {
+   "full": "commanders_full/Philip II.webp",
+   "source": "IMG_0937.webp"
+  },
+  "Pyrrhus": {
+   "full": "commanders_full/Pyrrhus.webp",
+   "source": "IMG_0938.webp"
+  },
+  "Qin Shi Huang": {
+   "full": "commanders_full/Qin Shi Huang.webp",
+   "source": "IMG_0939.webp"
+  },
+  "Queen Seondeok": {
+   "full": "commanders_full/Queen Seondeok.webp",
+   "source": "IMG_0952.webp"
+  },
+  "Ragnar Lodbrok": {
+   "full": "commanders_full/Ragnar Lodbrok.webp",
+   "source": "IMG_0941.webp"
+  },
+  "Ragnar Lodbrok Prime": {
+   "full": "commanders_full/Ragnar Lodbrok Prime.webp",
+   "source": "IMG_0942.webp"
+  },
+  "Ramesses II": {
+   "full": "commanders_full/Ramesses II.webp",
+   "source": "IMG_0943.webp"
+  },
+  "Richard I": {
+   "full": "commanders_full/Richard I.webp",
+   "source": "IMG_0944.webp"
+  },
+  "Saladin": {
+   "full": "commanders_full/Saladin.webp",
+   "source": "IMG_0945.webp"
+  },
+  "Sargon the Great": {
+   "full": "commanders_full/Sargon the Great.webp",
+   "source": "IMG_0946.webp"
+  },
+  "Scipio Aemilianus": {
+   "full": "commanders_full/Scipio Aemilianus.webp",
+   "source": "IMG_0948.webp"
+  },
+  "Scipio Africanus": {
+   "full": "commanders_full/Scipio Africanus.webp",
+   "source": "IMG_0950.webp"
+  },
+  "Scipio Africanus Prime": {
+   "full": "commanders_full/Scipio Africanus Prime.webp",
+   "source": "IMG_0949.webp"
+  },
+  "Selim I": {
+   "full": "commanders_full/Selim I.webp",
+   "source": "IMG_0951.webp"
+  },
+  "Shajar al-Durr": {
+   "full": "commanders_full/Shajar al-Durr.webp",
+   "source": "IMG_0953.webp"
+  },
+  "Shapur I": {
+   "full": "commanders_full/Shapur I.webp",
+   "source": "IMG_0954.webp"
+  },
+  "Siyaj K'ak'": {
+   "full": "commanders_full/Siyaj K'ak'.webp",
+   "source": "IMG_0955.webp"
+  },
+  "Stephen the Great": {
+   "full": "commanders_full/Stephen the Great.webp",
+   "source": "IMG_0956.webp"
+  },
+  "Subutai": {
+   "full": "commanders_full/Subutai.webp",
+   "source": "IMG_0957.webp"
+  },
+  "Suleiman I": {
+   "full": "commanders_full/Suleiman I.webp",
+   "source": "IMG_0958.webp"
+  },
+  "Sun Tzu": {
+   "full": "commanders_full/Sun Tzu.webp",
+   "source": "IMG_0960.webp"
+  },
+  "Sun Tzu Prime": {
+   "full": "commanders_full/Sun Tzu Prime.webp",
+   "source": "IMG_0959.webp"
+  },
+  "Takeda Shingen": {
+   "full": "commanders_full/Takeda Shingen.webp",
+   "source": "IMG_0961.webp"
+  },
+  "Tamar of Georgia": {
+   "full": "commanders_full/Tamar of Georgia.webp",
+   "source": "IMG_0940.webp"
+  },
+  "Tariq ibn Ziyad": {
+   "full": "commanders_full/Tariq ibn Ziyad.webp",
+   "source": "IMG_0962.webp"
+  },
+  "Theodora": {
+   "full": "commanders_full/Theodora.webp",
+   "source": "IMG_0963.webp"
+  },
+  "Thutmose III": {
+   "full": "commanders_full/Thutmose III.webp",
+   "source": "IMG_0964.webp"
+  },
+  "Tokugawa Ieyasu": {
+   "full": "commanders_full/Tokugawa Ieyasu.webp",
+   "source": "IMG_0965.webp"
+  },
+  "Tomoe Gozen": {
+   "full": "commanders_full/Tomoe Gozen.webp",
+   "source": "IMG_0966.webp"
+  },
+  "Tomyris": {
+   "full": "commanders_full/Tomyris.webp",
+   "source": "IMG_0967.webp"
+  },
+  "Trajan": {
+   "full": "commanders_full/Trajan.webp",
+   "source": "IMG_0969.webp"
+  },
+  "Vercingetorix": {
+   "full": "commanders_full/Vercingetorix.webp",
+   "source": "IMG_0968.webp"
+  },
+  "Wak Chanil Ajaw": {
+   "full": "commanders_full/Wak Chanil Ajaw.webp",
+   "source": "IMG_0970.webp"
+  },
+  "William I": {
+   "full": "commanders_full/William I.webp",
+   "source": "IMG_0971.webp"
+  },
+  "William Marshal": {
+   "full": "commanders_full/William Marshal.webp",
+   "source": "IMG_0972.webp"
+  },
+  "William Wallace": {
+   "full": "commanders_full/William Wallace.webp",
+   "source": "IMG_0973.webp"
+  },
+  "Xiang Yu": {
+   "full": "commanders_full/Xiang Yu.webp",
+   "source": "IMG_0974.webp"
+  },
+  "Yahya ibn Khalid": {
+   "full": "commanders_full/Yahya ibn Khalid.webp",
+   "source": "IMG_0975.webp"
+  },
+  "Yi Seong-Gye": {
+   "full": "commanders_full/Yi Seong-Gye.webp",
+   "source": "IMG_0976.webp"
+  },
+  "Yi Sun-sin": {
+   "full": "commanders_full/Yi Sun-sin.webp",
+   "source": "IMG_0977.webp"
+  },
+  "Yi To": {
+   "full": "commanders_full/Yi To.webp",
+   "source": "IMG_0978.webp"
+  },
+  "Zenobia": {
+   "full": "commanders_full/Zenobia.webp",
+   "source": "IMG_0979.webp"
+  },
+  "Zhuge Liang": {
+   "full": "commanders_full/Zhuge Liang.webp",
+   "source": "IMG_0980.webp"
+  },
+  "Æthelflæd": {
+   "full": "commanders_full/Aethelflaed.webp",
+   "source": "IMG_0842.webp"
+  },
+  "Šárka": {
+   "full": "commanders_full/Sarka.webp",
+   "source": "IMG_0947.webp"
+  }
+ }
+}
