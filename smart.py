@@ -1602,13 +1602,32 @@ def rally_fort(g, sleep, level=10, preset=1, minutes=5, archers_only=True,
             pass
         recover_screen(g)
         return True
-    g.click_rel(*P["tab_fort"]); sleep(2)                    # Barbarian Fort tab
-    P = _search_panel(g) or P
-    for _ in range(12):
-        g.click_rel(*P["minus"]); sleep(0.25)                # level down to 1
+    # v334: vps-04-c001 28 Nov - the panel stayed on the 'Barbarians' tab at level 6 and SEARCH did nothing, so
+    # "RALLY not found" was reported although no fort search had run. Every step is now checked and repeated.
+    for t in range(3):                                       # Barbarian Fort tab - check that it is selected
+        g._click_absolute(*P["tab_fort"]); sleep(1.5)
+        P = _search_panel(g) or P
+        if _fort_tab_on(g, P):
+            break
+        log(f"    rally_fort: the Barbarian Fort tab is not selected yet (try {t + 1})")
+    else:
+        log("  ! rally_fort: could not select the Barbarian Fort tab - no rally this time")
+        recover_screen(g)
+        return True
+    for _ in range(25):
+        g._click_absolute(*P["minus"]); sleep(0.12)          # level down to 1 (extra clicks are harmless)
     for _ in range(max(0, int(level) - 1)):
-        g.click_rel(*P["plus"]); sleep(0.25)                 # level up
-    g.click_rel(*P["search"]); sleep(4)                      # SEARCH
+        g._click_absolute(*P["plus"]); sleep(0.2)            # level up
+    sleep(0.8)
+    for t in range(2):                                       # SEARCH - the panel closes when a fort was found
+        g._click_absolute(*P["search"]); sleep(4)
+        if not _search_panel(g):
+            break
+        log(f"    rally_fort: the search panel is still open after SEARCH (try {t + 1})")
+    else:
+        log(f"  - rally_fort: no level {level} fort nearby (the game found none) - trying again next round")
+        recover_screen(g)
+        return True
     r = g.find_image("btn_rally", 0.8)
     if not r:                                                # v317: the button at another size / by its word
         try:
@@ -2610,6 +2629,22 @@ def _search_panel(g, img=None):
     k = hit[3] / PANEL_BASE_SCALE
     gw, gh = 946.0, 532.0
     return {n: (hit[0] + dx * k / gw, hit[1] + dy * k / gh) for n, (dx, dy) in PANEL_OFFS.items()}
+
+
+def _fort_tab_on(g, P, img=None):
+    """v334: True when the 'Barbarian Fort' tab of the search panel is the selected one. The selected tab is the
+    darker brown one (ArchLord screenshot: selected 212,187,160 - other 222,207,188)."""
+    try:
+        img = g.screenshot() if img is None else img
+        h, w = img.shape[:2]
+
+        def lum(pt):
+            x, y = int(pt[0] * w), int(pt[1] * h)
+            box = img[max(0, y - 5):y + 6, max(0, x - 20):x + 21]
+            return float(box.mean()) if box.size else 0.0
+        return lum(P["tab_fort"]) + 8 < lum(P["tab_barb"])
+    except Exception:
+        return True                                          # cannot tell - do not block the rally
 
 
 def _barb_search(g, sleep, lo, hi):
