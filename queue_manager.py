@@ -610,6 +610,14 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
             log(f"  - train: skipped - not enough resources at {time.strftime('%H:%M', time.localtime(TRAIN_NORES['at']))}, "
                 f"next try after {time.strftime('%H:%M', time.localtime(TRAIN_NORES['until']))}")
             need = []
+        try:                                                 # v337: only troops whose building exists
+            import smart as _sm
+            skip = [r["unit"] for r in need if not _sm.has_building(_sm.UNIT_NEEDS.get(r["unit"]))]
+            if skip:
+                log(f"  - train: {', '.join(skip)} skipped - not built at City Hall level {_sm.city_hall_level()}")
+                need = [r for r in need if r["unit"] not in skip]
+        except Exception:
+            pass
         for r in need:
             res = train_unit(g, sleep, r["unit"], tiers.get(r["unit"], 4))
             if res == "no_res":

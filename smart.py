@@ -1367,6 +1367,42 @@ def building_by_picture(g, sleep, kind, verify=None, tries=2):
             recover_screen(g)
     return None
 
+# ---------------- v337: which buildings exist at the account's City Hall level (owner's knowledge) ----------------
+# city_buildings.json: {"2": {"storehouse": 1, "city_hall": 1, "tavern": 1, "barracks": 1, "farm": 1, "hospital": 1,
+# "builders_hut": 1}}. With a known City Hall level the bot never looks for a building that cannot exist yet.
+ROUTINE_NEEDS = {"research": "academy", "materials": "blacksmith", "scout": "scout_camp", "vip_shop": "shop",
+                 "alliance_help": "alliance_center", "alliance_tech": "alliance_center", "alliance_gifts": "alliance_center",
+                 "rally_fort": "alliance_center", "join_rally": "alliance_center", "merchant": "merchant",
+                 "sunset_canyon": "sunset_canyon", "tavern": "tavern", "heal": "hospital"}
+UNIT_NEEDS = {"infantry": "barracks", "archer": "archery_range", "cavalry": "stable", "siege": "siege_workshop"}
+
+
+def city_hall_level():
+    import control as _c
+    try:
+        lv = int((_c.data or {}).get("city_hall_level") or _c.CITY.get("city_hall_level") or 0)
+    except Exception:
+        lv = 0
+    return lv
+
+
+def has_building(kind):
+    """False only when the City Hall level is known and that level has no such building."""
+    if not kind:
+        return True
+    lv = city_hall_level()
+    if not lv:
+        return True
+    table = load_json(os.path.join(BASE, "city_buildings.json"), {})
+    known = [int(k) for k in table if str(k).isdigit()]
+    if not known:
+        return True
+    row = table.get(str(lv))
+    if row is None:                                           # a level the owner has not described yet: no limits
+        return True
+    return int(row.get(kind, 0) or 0) > 0
+
+
 def find_building(g, sleep, kind, extra=()):
     """v149: click a building by its NAME, because every character's city is laid out differently.
 
@@ -1466,7 +1502,11 @@ def train_troops(g, sleep, tier=4, fast=False, buildings=None, use_bag=False,
     TIERS_BY = {"barracks": _t(inf_tier, base_tier), "archery": _t(arch_tier, base_tier),
                 "stable": _t(cav_tier, base_tier), "siege": _t(siege_tier, base_tier)}
     trained = []
+    _bmap = {"barracks": "barracks", "archery": "archery_range", "stable": "stable", "siege": "siege_workshop"}
     for name in [b for b in BUILDINGS if b in (buildings or list(BUILDINGS))]:
+        if not has_building(_bmap.get(name)):                # v337: not built at this City Hall level
+            log(f"  - train_troops: {name} skipped - not built at City Hall level {city_hall_level()}")
+            continue
         if name not in BUILDINGS:
             continue
         _close_training_window(g, sleep)

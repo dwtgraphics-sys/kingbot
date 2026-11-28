@@ -1968,6 +1968,10 @@ def one_round(settings):
             nxt = datetime.datetime.fromtimestamp(state[name])
             log(f"  - {name}: not due yet (next at {nxt:%H:%M})")
             continue
+        need_b = smart.ROUTINE_NEEDS.get(name)              # v337: building not built at this City Hall level
+        if need_b and not smart.has_building(need_b):
+            log(f"  - {name}: skipped - no {need_b} at City Hall level {smart.city_hall_level()}")
+            continue
         try:                                                 # PLAN-01..04: the slot's subscription tier
             import plans
             ok, why = plans.allowed(name, ctl.data or {})

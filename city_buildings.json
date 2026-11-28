@@ -1,0 +1,4 @@
+{
+ "_note": "Buildings that exist at each City Hall level (owner's knowledge). The bot skips activities whose building is not built yet. Add more levels when known.",
+ "2": {"storehouse": 1, "city_hall": 1, "tavern": 1, "barracks": 1, "farm": 1, "hospital": 1, "builders_hut": 1}
+}
