@@ -245,6 +245,13 @@ def pin_obs_collection():
     Point user.ini at the Kingbot profile + collection (the window capture of the game)."""
     try:
         cfg = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(OBS_EXE))), "config", "obs-studio")
+        sent = os.path.join(cfg, ".sentinel")             # v341: OBS 30+ marks a run here; after the bot closes OBS
+        if os.path.isdir(sent):                           # it asked "Safe Mode?" and sat 3 min on that dialog
+            for f in os.listdir(sent):                    # (on top of the game) - --disable-shutdown-check is ignored
+                try:
+                    os.remove(os.path.join(sent, f))
+                except Exception:
+                    pass
         if not os.path.exists(os.path.join(cfg, "basic", "scenes", "Kingbot.json")):
             return
         path = os.path.join(cfg, "user.ini")
