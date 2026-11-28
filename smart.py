@@ -5392,6 +5392,8 @@ def switch_character(g, sleep, name="", kingdom=""):
     try:                                                    # v309: new character - forget the old resource values
         import control
         control.RESOURCES.clear()
+        import queue_manager
+        queue_manager.reset_timers()                        # v352: the saved queue timers were the old city's
     except Exception:
         pass
     img = _open_characters(g, sleep)

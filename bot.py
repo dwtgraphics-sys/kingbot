@@ -1303,7 +1303,7 @@ def _do_action(g, req):
             smart.notify("info", ("تعلّم عنصرًا جديدًا: " + name) if name else "لا يوجد فشل صالح للتعلّم منه")
         elif do == "read_queues":                                # v197: Queue Overview read, for the live monitor
             ctl.write_status(state="working", task="reading the Queue Overview")
-            queue_manager.scan(g, sleep)
+            queue_manager.scan(g, sleep, force=True)           # v352: "read now" always reads the panel
         elif do == "queue_manager":                              # v197: run the queue task now (dashboard / test)
             t = next((x for x in queue_tasks(list((ctl.data or {}).get("tasks") or []))
                       if x.get("routine") == "queue_manager"), {})
@@ -1824,6 +1824,7 @@ def rotation_settings(settings):
             try:                                            # v309: the 60% OCR guard must not compare two characters
                 import control
                 control.RESOURCES.clear()
+                queue_manager.reset_timers()                # v352: the saved queue timers were the old city's
             except Exception:
                 pass
             mins = _turn_minutes(slot)

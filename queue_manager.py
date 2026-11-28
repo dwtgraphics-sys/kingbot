@@ -46,6 +46,86 @@ TROOP_UNITS = {
 UNIT_BUILDING = {"infantry": "barracks", "archer": "archery", "cavalry": "stable", "siege": "siege"}
 DONE_WORDS = ("completed", "complete", "collect", "finished", "ready", "healed")
 LAST = {"qm": None}
+TIMERS = {}          # v352: "train:infantry" -> end time (epoch). Read once, then counted down until it ends.
+
+
+def _tkey(sec, r):
+    if sec == "train":
+        return "train:" + (r.get("unit") or norm(r.get("name", "")))
+    if sec in ("heal", "materials"):
+        return sec
+    return sec + ":" + norm(r.get("name", ""))
+
+
+def apply_timers(qm):
+    """v352 (owner rule): a timer read in the Queue Overview is kept until it ends - a later read of the same
+    job does not move it, and a row whose time was not read stays busy with the saved time. When a timer has
+    ended the row is reported 'done' until the panel is read again."""
+    now = time.time()
+    rows = [(sec, r) for sec in ("train", "build", "research", "scout") for r in (qm.get(sec) or [])]
+    rows += [(sec, qm[sec]) for sec in ("heal", "materials") if qm.get(sec)]
+    for sec, r in rows:
+        k = _tkey(sec, r)
+        end = TIMERS.get(k)
+        if r.get("state") == "busy" and r.get("left"):
+            new_end = qm.get("at", now) + r["left"]
+            if not end or end <= now or abs(new_end - end) > max(600, 0.15 * r["left"]):
+                TIMERS[k] = end = round(new_end)            # a new job (or none saved yet) - save it once
+        elif r.get("state") in ("idle", "done"):
+            TIMERS.pop(k, None); end = None
+        elif end and end > now:                          # time not read this time - keep the saved timer
+            r["state"] = "busy"
+        if end and r.get("state") == "busy":
+            r["end"] = int(end)
+            r["left"] = max(0, int(end - now))
+    return qm
+
+
+def refresh_from_timers(qm):
+    """LAST reading brought up to now from the saved timers (no panel read)."""
+    if not qm:
+        return qm
+    now = time.time()
+    rows = [(sec, r) for sec in ("train", "build", "research", "scout") for r in (qm.get(sec) or [])]
+    rows += [(sec, qm[sec]) for sec in ("heal", "materials") if qm.get(sec)]
+    for sec, r in rows:
+        end = r.get("end") or TIMERS.get(_tkey(sec, r))
+        if end and r.get("state") == "busy":
+            if end <= now:
+                r["state"], r["left"] = "done", None
+            else:
+                r["left"] = int(end - now)
+    return qm
+
+
+def next_due(qm, sections=("train",)):
+    """None when the panel must be read now; else the time the first saved timer ends (then read again).
+    Read now when a queue is idle/done/unknown (it needs work) or nothing is saved yet."""
+    if not qm:
+        return None
+    now = time.time()
+    must = [r for r in (qm.get("train") or []) if r.get("unit")] if "train" in sections else []
+    for sec in ("research", "build"):
+        if sec in sections:
+            must += list(qm.get(sec) or [])
+    h = qm.get("heal")
+    if "heal" in sections and h and h.get("state") != "busy" and (h.get("wounded") or 0) > 0:
+        return None
+    if not must:
+        return None
+    ends = []
+    for r in must:
+        end = r.get("end")
+        if r.get("state") != "busy" or not end or end <= now:
+            return None
+        ends.append(end)
+    return min(ends)
+
+
+def reset_timers():
+    """A character switch: the saved timers belong to the old city."""
+    TIMERS.clear()
+    LAST["qm"] = None
 
 
 # ------------------------------------------------------------------ reading
@@ -379,8 +459,23 @@ def _scroll(g, sleep, up=False):
     sleep(1.3)
 
 
-def scan(g, sleep, publish=True):
-    """Read the whole panel (expanding folded sections, scrolling to the end). -> qm dict or None."""
+def scan(g, sleep, publish=True, force=False, sections=("train",)):
+    """Read the whole panel (expanding folded sections, scrolling to the end). -> qm dict or None.
+    v352: while every training / research / building timer read before is still running, the panel is not
+    read again - the saved timers count down on the dashboard; it is read when the first one ends."""
+    due = None if force else next_due(LAST["qm"], sections)
+    if due:
+        qm = refresh_from_timers(LAST["qm"])
+        qm["cached"] = True
+        log(f"  queue_manager: all queues busy - saved timers kept, next read at "
+            f"{time.strftime('%H:%M', time.localtime(due))}")
+        if publish:
+            try:
+                import control
+                control.CITY["qm"] = qm
+            except Exception:
+                pass
+        return qm
     img = open_panel(g, sleep)
     if img is None:
         log("  ! queue_manager: the Queue Overview did not open")
@@ -431,7 +526,8 @@ def scan(g, sleep, publish=True):
             f.write("\n".join(dump))
     except Exception:
         pass
-    qm = build(rows)
+    qm = apply_timers(build(rows))
+    qm.pop("cached", None)
     LAST["qm"] = qm
     n = len(qm["train"]) + len(qm["build"]) + len(qm["research"]) + len(qm["scout"]) + \
         sum(1 for k in ("heal", "donate", "materials") if qm[k])
@@ -597,9 +693,12 @@ def run(g, sleep, train=True, heal=True, build=True, research=True, donate=True,
     import smart
     qm = LAST["qm"]
     if not qm or time.time() - qm.get("at", 0) > 120:      # the round start just read it - no second scan
-        qm = scan(g, sleep)
+        secs_on = tuple(k for k, on in (("train", train), ("research", research), ("build", build), ("heal", heal)) if on)
+        qm = scan(g, sleep, sections=secs_on)               # (v352: returns the saved timers while all are busy)
     if qm is None:
         return "retry"
+    if qm.get("cached"):                                     # v352: every queue busy - nothing to start now
+        return True
     did = []
     if train:
         need = [r for r in qm["train"] if r["state"] in ("idle", "done") and r["unit"]]
