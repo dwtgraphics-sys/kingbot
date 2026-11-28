@@ -812,7 +812,17 @@ def stream_keeper(force=False):
             if str(pid) in out:
                 # v193: stream_bot.py was updated after this copy started -> replace it with the new code
                 try:
-                    if os.path.getmtime(os.path.join(BASE, "stream_bot.py")) > os.path.getmtime(pid_file) + 5:
+                    import hashlib                           # v351: the update keeps old file times - compare content
+                    h = hashlib.sha1(open(os.path.join(BASE, "stream_bot.py"), "rb").read()).hexdigest()
+                    hf = os.path.join(BASE, "stream_bot.sha1")
+                    try:
+                        old_h = open(hf, encoding="utf-8").read().strip()
+                    except Exception:
+                        old_h = ""
+                    changed = old_h != h or os.path.getmtime(os.path.join(BASE, "stream_bot.py")) > os.path.getmtime(pid_file) + 5
+                    if changed:
+                        open(hf, "w", encoding="utf-8").write(h)
+                    if changed:
                         subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True, timeout=30,
                                        creationflags=0x08000000)
                         log("  stream: stream_bot.py was updated - restarting it")
