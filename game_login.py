@@ -34,17 +34,50 @@ def _iso():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+_STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "game_login_state.json")
+_T0 = [time.time()]
+
+
+def stage_age_start():
+    """time.time() when the current stage was set (survives a restart)."""
+    return _T0[0]
+
+
 def set_stage(stage, detail=""):
     STATE.update(stage=stage, detail=str(detail or "")[:160], at=_iso())
+    _T0[0] = time.time()
     try:
         import control
         control.CITY["game_login"] = dict(STATE)
+    except Exception:
+        pass
+    try:                                                     # v326: keep the stage over a bot restart, so the
+        import json as _j                                    # dashboard does not jump back to the email step
+        with open(_STATE_FILE, "w", encoding="utf-8") as f:  # while the code is on its way (no email/code saved)
+            _j.dump(dict(STATE, t=_T0[0]), f)
+    except Exception:
+        pass
+
+
+def _restore():
+    try:
+        import json as _j
+        d = _j.load(open(_STATE_FILE, encoding="utf-8"))
+        if d.get("stage") in ("sending_code", "code_sent", "logging_in") and time.time() - float(d.get("t", 0)) < 15 * 60:
+            STATE.update({k: d.get(k, "") for k in ("stage", "detail", "at", "email_hint")})
+            _T0[0] = float(d["t"])
+            import control
+            control.CITY["game_login"] = dict(STATE)
     except Exception:
         pass
 
 
 def clear():
     STATE.update(stage="", detail="", at="", email_hint="")
+    try:
+        os.remove(_STATE_FILE)
+    except Exception:
+        pass
     try:
         import control
         control.CITY.pop("game_login", None)
@@ -550,3 +583,6 @@ def _handle(req, do):
         set_stage(STATE.get("stage") or "need_email", "خطأ: " + repr(e)[:100])
         return "failed: " + repr(e)[:120]
     return "unknown"
+
+
+_restore()

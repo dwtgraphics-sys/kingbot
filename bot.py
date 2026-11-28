@@ -1049,8 +1049,12 @@ def login_wait():
         if time.time() - last > 60:
             last = time.time()
             ctl.write_status(state="paused", task="بانتظار تسجيل الدخول في اللعبة من لوحة التحكم")
+            busy = game_login.STATE.get("stage") in ("sending_code", "code_sent", "logging_in") and \
+                time.time() - game_login.stage_age_start() < 15 * 60      # v326: never restart mid-login
             try:                                             # v266: a fix for the login itself can arrive meanwhile
-                if local_version() != START_VER[0] or (int(time.time() // 60) % 5 == 0 and check_and_update(log)):
+                if busy:
+                    pass
+                elif local_version() != START_VER[0] or (int(time.time() // 60) % 5 == 0 and check_and_update(log)):
                     sys.exit(RESTART_CODE)
             except SystemExit:
                 raise
