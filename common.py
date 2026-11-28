@@ -196,6 +196,27 @@ def _cancel_right_of(img, rx, ry):
         return None
 
 
+def tavern_result(img, rx, ry):
+    """v331: the tavern chest result screen - a cyan CONFIRM at the bottom-left with orange OPEN ANOTHER /
+    OPEN / OPEN ALL buttons on its right (no CANCEL). CONFIRM only closes it; the OPEN buttons are never pressed.
+    The bot sat 17 min on this screen on 28 Nov because the off-centre CONFIRM was taken for 'Exit the game?'."""
+    try:
+        import numpy as np
+        h, w = img.shape[:2]
+        y0, y1 = int(max(0, ry - 0.03) * h), int(min(1, ry + 0.03) * h)
+        x0 = int(min(0.99, rx + 0.10) * w)
+        reg = img[y0:y1, x0:].astype(np.int16)
+        if reg.size == 0:
+            return False
+        b, g, r = reg[..., 0], reg[..., 1], reg[..., 2]
+        orange = (r > 200) & (g > 110) & (g < 200) & (b < 90)
+        cols = orange.any(axis=0)
+        # three wide orange buttons -> well over a third of the strip is orange somewhere in its height
+        return ry > 0.8 and float(cols.mean()) > 0.35
+    except Exception:
+        return False
+
+
 def confirm_alone(img, rx, ry):
     """v322: True only when a CONFIRM button stands alone in the middle (a reward / commander card).
     'Exit the game?' has CONFIRM on the LEFT and CANCEL on the right. On vps-04-c001 OCR read nothing and the
@@ -346,6 +367,10 @@ def recover_screen(g=None, tries=4):
                 return True
             if cancel_exit_notice(g, img):
                 return True
+        if cf and tavern_result(img, *cf[0]):            # v331: tavern chest result - CONFIRM just closes it
+            log("  ! the tavern chest result was open - pressing CONFIRM (never OPEN)")
+            g._click_absolute(*cf[0]); time.sleep(2.5)
+            continue
         if cf and not confirm_alone(img, *cf[0]):        # v322: a two-button dialog - maybe "Exit the game?"
             log(f"  ! a CONFIRM button off-centre at {cf[0][0]:.3f},{cf[0][1]:.3f} (two-button dialog, maybe "
                 "'Exit the game?') - not pressing it")

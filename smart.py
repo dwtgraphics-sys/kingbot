@@ -3581,7 +3581,11 @@ def tavern(g, sleep, max_open=12):
             if g.find_image("tavern_silver_title", 0.8, img=img2):
                 break
             cf = g.find_image("btn_confirm_cmd", 0.8, img=img2)
-            if cf and not __import__("common").confirm_alone(img2, *cf[0]):    # v322: never the CONFIRM of "Exit the game?"
+            _cm = __import__("common")
+            if cf and _cm.tavern_result(img2, *cf[0]):                   # v331: chest result (CONFIRM + orange OPEN)
+                g.click_rel(*cf[0]); sleep(2.5)
+                continue
+            if cf and not _cm.confirm_alone(img2, *cf[0]):    # v322: never the CONFIRM of "Exit the game?"
                 log("  ! tavern: a two-button CONFIRM dialog is open - not pressing it")
                 break
             if cf:
