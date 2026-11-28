@@ -317,6 +317,8 @@ def recover_screen(g=None, tries=4):
     if g is None:
         return True
     for i in range(tries):
+        if hide_launcher(g.hwnd):                          # v323: the launcher covered the game
+            activate(g.hwnd)
         close_gem_dialogs(g)
         img = g.screenshot()
         chat = g.find_image("chat_close", 0.85, img=img)
@@ -509,6 +511,36 @@ def find_window():
     return found[0][2]
 
 
+LAUNCHER_CHECK = [0.0]
+
+
+def hide_launcher(game_hwnd):
+    """v323: the RoK launcher ('RISE OF KINGDOMS 1.1.x' with START / Pre-Download) can come up in front of the
+    running game. Every screenshot then shows the launcher ('screen not recognised', 'tavern not found') and
+    every click lands on it (vps-01-main 27 Nov 16:53, a minute later 'Game window closed').
+    Minimise it without activating it - nothing on the launcher is ever clicked here. Checked every 10 s at most.
+    Returns True when it was minimised."""
+    if time.time() - LAUNCHER_CHECK[0] < 10:
+        return False
+    LAUNCHER_CHECK[0] = time.time()
+    try:
+        import game_launcher
+        lh = game_launcher.find_launcher()
+        if not lh or not game_hwnd or lh == game_hwnd or not user32.IsWindowVisible(lh) or user32.IsIconic(lh):
+            return False
+        a, b = wintypes.RECT(), wintypes.RECT()
+        user32.GetWindowRect(lh, ctypes.byref(a))
+        user32.GetWindowRect(game_hwnd, ctypes.byref(b))
+        if a.right <= b.left or b.right <= a.left or a.bottom <= b.top or b.bottom <= a.top:
+            return False                                   # not over the game
+        user32.ShowWindowAsync(lh, 7)                      # SW_SHOWMINNOACTIVE
+        log("  ! the game launcher was in front of the game - minimised it")
+        time.sleep(0.8)
+        return True
+    except Exception:
+        return False
+
+
 def activate(hwnd):
     """v158: put the game window in front, even when another app (the dashboard, the DSH window)
     has the focus. AttachThreadInput + the ALT tap are what make SetForegroundWindow work from a
@@ -645,6 +677,7 @@ class Game:
         self.x, self.y, self.w, self.h = client_rect(self.hwnd)
 
     def focus(self):
+        hide_launcher(self.hwnd)                         # v323: never work on the launcher's picture
         activate(self.hwnd)
         self.refresh()
         if user32.GetForegroundWindow() != self.hwnd:
