@@ -694,6 +694,8 @@ def idle(sec, **status):
     last_status = 0
     while time.time() < end:
         check_stop()
+        LAST_ACTIVITY[0] = time.time()       # v333: a deliberate wait (paused / frozen / sleeping) is not "stuck" -
+                                             # paused from the dashboard was restarted every 10 min (vps-01-main 28 Nov)
         _, changed = ctl.poll()
         ctl.screenshot_if_asked()
         probe_if_asked()

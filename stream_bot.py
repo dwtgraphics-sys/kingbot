@@ -23,9 +23,22 @@ LOG_FILE = os.path.join(BASE, "log.txt")
 OBS_EXE = r"C:\Users\Administrator\obs-studio\bin\64bit\obs64.exe"
 CHROME_EXE = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 CHROME_PROFILE = os.path.join(BASE, "stream_chrome")
+def _own_stream_id(sc):
+    """v333: every server pushed to the same default VDO.Ninja ID 'kbb294c813b7' unless local_config.json named
+    its own. Two servers live at once -> the second gets 'The stream ID you are publishing to is already in
+    use ... You will now be disconnected' (vps-01-main 28 Nov, that Chrome box covered the screen).
+    The original server keeps the old ID; every other server gets its own fixed ID made from its name.
+    The dashboard reads view_url from the status, so it follows automatically."""
+    import hashlib
+    sid = sc.server_id()
+    if sid == sc.DEFAULT_ID:
+        return "kbb294c813b7"
+    return "kb" + hashlib.sha1(("kingbot-stream:" + sid).encode()).hexdigest()[:10]
+
+
 try:                                                    # v196: from local_config.json when set (not on GitHub)
     import server_config as _sc
-    STREAM_ID = _sc.get("STREAM_ID") or "kbb294c813b7"
+    STREAM_ID = _sc.get("STREAM_ID") or _own_stream_id(_sc)
     STREAM_PW = _sc.get("STREAM_PASSWORD") or "ct1q-ZeP"
 except Exception:
     STREAM_ID, STREAM_PW = "kbb294c813b7", "ct1q-ZeP"
