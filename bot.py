@@ -1999,6 +1999,11 @@ def one_round(settings):
                                                    else "the game window closed (it will be reopened)"))
                     TASK_RESULT[name] = {"at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
                                          "ok": False, "result": why}
+                    if brain:                                # BRAIN-02: remembered as a known, solved state
+                        try:
+                            brain.record("error", repr(e), task=name)
+                        except Exception:
+                            pass
                     raise
                 kb_guard.error(f"{name}: {e!r}")
                 if brain:

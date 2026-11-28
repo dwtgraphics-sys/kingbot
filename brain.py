@@ -52,6 +52,9 @@ def _load():
         d.setdefault("incidents", {})
         d.setdefault("stats", {"recorded": 0, "since": _now()})
         _state["data"] = d
+        if d.get("lessons_version", 0) < max(x["since"] for x in LESSONS):
+            d["lessons_version"] = max(x["since"] for x in LESSONS)
+            threading.Timer(5, apply_lessons).start()     # BRAIN-02: close what the new lessons explain
     return _state["data"]
 
 
@@ -89,6 +92,107 @@ def signature(task, kind, msg, screen=None):
     return hashlib.sha1(raw.encode("utf-8", "ignore")).hexdigest()[:10]
 
 
+# ---------------------------------------------------------------- BRAIN-02: lessons (known faults + how they are handled)
+# Each lesson: what the fault looks like (message / log pattern), the real cause, and what the bot does about it.
+# - an error whose message matches a lesson with env=True is a known state, not a code bug: it is kept as kind
+#   "known", already solved, with the lesson attached - no alert, no Telegram, no screenshot.
+# - old open incidents that match a lesson are closed with the lesson as the note (the admin page shows it).
+# - a log line that matches a lesson's "handled" pattern counts as the bot applying that fix (stats per lesson).
+LESSONS = [
+    {"id": "no_screen", "since": 317, "env": True,
+     "match": r"screen grab failed",
+     "handled": r"screen is on again|moved it to the console|keep-screen: the screen is on",
+     "cause": "انقطعت جلسة سطح المكتب البعيد (RDP) أو صُغّرت نافذتها، فلا يستطيع البوت رؤية الشاشة ولا الضغط (المؤشر عالق عند 0,0).",
+     "fix": "يوقف البوت الجولة فوراً ولا يبدأ أي مهمة وهو أعمى، ينقل الجلسة إلى الكونسول (tscon) ثم يكمل بعد 20 ثانية، أو ينتظر 5 دقائق ويحاول مجدداً.",
+     "owner": "اقطع اتصال RDP بملف switch_to_hidden.bat بدل إغلاق النافذة أو تصغيرها."},
+    {"id": "game_closed", "since": 320, "env": True,
+     "match": r"Game window closed",
+     "handled": r"Game window opened|Launcher START pressed",
+     "cause": "أُغلقت اللعبة أثناء المهمة (انهيار، طرد من جهاز آخر، أو ضغطة على نافذة الخروج).",
+     "fix": "توقف الجولة، يُرسل تنبيه، ويعيد البوت فتح اللعبة ويضغط START في المشغّل ثم 'Click to Start'.",
+     "owner": ""},
+    {"id": "double_login", "since": 321, "env": True,
+     "match": r"another device|already logged in",
+     "handled": r"relogin: reconnected after the cooldown",
+     "cause": "نفس حساب اللعبة مفتوح على سيرفر أو جهاز آخر؛ كل واحد يطرد الآخر وقد تُغلق اللعبة مع الطرد.",
+     "fix": "ينتظر البوت 10 دقائق، وتتضاعف المدة مع كل طرد خلال 3 ساعات (حتى ساعتين)، وفي الطرد الثالث ينبّه المالك.",
+     "owner": "اترك كل حساب لعبة على سيرفر واحد فقط (بريد مختلف لكل سيرفر)."},
+    {"id": "exit_confirm", "since": 322, "env": False,
+     "match": r"CONFIRM button off-centre|'Exit the game\?' was open",
+     "handled": r"CONFIRM button off-centre|'Exit the game\?' was open - pressing CANCEL",
+     "cause": "نافذة 'Exit the game?' فيها CONFIRM على اليسار وCANCEL على اليمين؛ ضغط CONFIRM يغلق اللعبة.",
+     "fix": "لا يضغط البوت CONFIRM إلا إذا كان وحيداً في منتصف الشاشة (بطاقة مكافأة)؛ في نافذة الخروج يضغط CANCEL أو يتركها.",
+     "owner": ""},
+    {"id": "launcher_front", "since": 323, "env": False,
+     "match": r"launcher was in front",
+     "handled": r"launcher was in front of the game - minimised it",
+     "cause": "مشغّل اللعبة (START / Pre-Download) ظهر فوق اللعبة، فكانت الصور والضغطات تذهب إليه.",
+     "fix": "يصغّر البوت المشغّل دون أي ضغطة عليه ويعيد اللعبة للأمام قبل كل مهمة.",
+     "owner": ""},
+    {"id": "obs_runtime", "since": 319, "env": True,
+     "match": r"MSVCP140_1|Visual C\+\+ runtime|OBS closed right after starting",
+     "handled": r"Visual C\+\+ runtime installed|closed .* OBS error window",
+     "cause": "مكتبة Microsoft Visual C++ غير مثبتة، فـ OBS لا يعمل ويُظهر نافذة خطأ فوق اللعبة.",
+     "fix": "يمنع البوت نافذة الخطأ، يثبّت المكتبة بصمت من مايكروسوفت (مرة كل 6 ساعات)، ويؤجل إعادة تشغيل OBS بدل التكرار كل دقيقة.",
+     "owner": "إن استمر: شغّل أمر install_obs من لوحة التحكم."},
+    {"id": "telegram_401", "since": 323, "env": True,
+     "match": r"Telegram connection failed: .*401",
+     "handled": r"Telegram connection OK",
+     "cause": "رمز بوت تيليجرام (التوكن) في إعدادات هذا السيرفر خاطئ أو أُلغي - ليس خطأ برمجياً.",
+     "fix": "البوت يكمل عمله بدون تيليجرام ويُظهر التنبيهات في لوحة التحكم فقط.",
+     "owner": "أنشئ توكن جديداً من BotFather وضعه في إعدادات السيرفر."},
+]
+_LESSON_RE = [(l, re.compile(l["match"], re.I), re.compile(l["handled"], re.I)) for l in LESSONS]
+
+
+def lesson_for(text):
+    """The lesson whose pattern matches this message / log line, or None."""
+    t = str(text or "")
+    for l, m, _h in _LESSON_RE:
+        if m.search(t):
+            return l
+    return None
+
+
+def _lesson_note(l):
+    note = f"🧠 {l['id']} (v{l['since']}): السبب: {l['cause']} — ما يفعله البوت: {l['fix']}"
+    if l.get("owner"):
+        note += f" — المطلوب منك: {l['owner']}"
+    return note[:600]
+
+
+def _learned(lid, field):
+    """Count a lesson event: 'seen' (the fault happened) or 'handled' (the bot applied the fix)."""
+    with _lock:
+        d = _load()
+        st = d.setdefault("lessons", {}).setdefault(lid, {"seen": 0, "handled": 0})
+        st[field] = st.get(field, 0) + 1
+        st["last_" + field] = _now()
+        _state["dirty"] = True
+
+
+def apply_lessons():
+    """Close old open incidents that a lesson explains (once per load; the admin can reopen them)."""
+    changed = 0
+    with _lock:
+        d = _load()
+        for inc in d["incidents"].values():
+            l = lesson_for(inc.get("msg")) if inc.get("status") == "open" else None
+            if not l or inc.get("lesson") == l["id"]:
+                continue
+            inc["lesson"] = l["id"]
+            inc["status"] = "solved"
+            inc["admin_note"] = _lesson_note(l)
+            inc["admin_at"] = _now()
+            changed += 1
+        if changed:
+            d["lessons_version"] = max(x["since"] for x in LESSONS)
+            _save()
+    if changed:
+        log(f"  🧠 brain: {changed} old incident(s) closed with a known lesson")
+    return changed
+
+
 # ---------------------------------------------------------------- log hook: context + soft warnings
 def _hook(msg):
     s = str(msg)
@@ -96,6 +200,14 @@ def _hook(msg):
     t = s.strip()
     if _task["name"] and t.startswith("!") and not t.startswith("! brain"):
         _task["warns"].append(t[:200])
+    if "brain" not in t:                                  # BRAIN-02: the bot applied a known fix
+        for l, _m, h in _LESSON_RE:
+            if h.search(t):
+                try:
+                    _learned(l["id"], "handled")
+                except Exception:
+                    pass
+                break
 
 
 if _hook not in LOG_HOOKS:
@@ -117,10 +229,11 @@ def last_warning():
 # ---------------------------------------------------------------- recording
 def record(kind, msg, task=None, screen=None, shot=True, detail=None):
     """kind: error (exception) | fail (task returned False) | stuck | warn.  Returns the incident key."""
-    if kind == "error" and ("screen grab failed" in str(msg) or "Game window closed" in str(msg)):
-        # v317/v320: the Remote Desktop session was disconnected, or the game client closed - environment
-        # states the round loop recovers from (reconnect / reopen), not faults in the activity.
-        return None
+    lesson = lesson_for(msg) if kind in ("error", "fail") else None
+    if lesson and lesson.get("env"):
+        # v317/v320 + BRAIN-02: a known environment state (no screen, game closed, double login, ...).
+        # Remembered as kind "known", already solved, with its lesson - no bug report, alert or screenshot.
+        kind, shot = "known", False
     task = task or _task["name"] or "-"
     screen = screen or _task["screen"]
     key = signature(task, kind, msg, screen)
@@ -131,7 +244,13 @@ def record(kind, msg, task=None, screen=None, shot=True, detail=None):
         if new:
             inc = d["incidents"][key] = {"key": key, "task": task, "kind": kind, "msg": str(msg)[:300], "screen": screen,
                                          "count": 0, "first": _now(), "status": "open", "fixes": {}, "shots": 0}
-        reopened = inc.get("status") == "solved"
+        if lesson:
+            inc["lesson"] = lesson["id"]
+            if lesson.get("env"):
+                inc["status"] = "solved"
+                inc["admin_note"] = _lesson_note(lesson)
+                inc.setdefault("admin_at", _now())
+        reopened = inc.get("status") == "solved" and kind != "known"
         if reopened:                                  # it came back after being marked solved
             inc["status"] = "open"
             inc["reopened"] = inc.get("reopened", 0) + 1
@@ -145,7 +264,10 @@ def record(kind, msg, task=None, screen=None, shot=True, detail=None):
         want_shot = shot and inc.get("status") != "ignored" and (
             inc["count"] in SHOT_AT or time.time() - inc.get("shot_ts", 0) > SHOT_EVERY or reopened)
         _save()
-    log(f"  🧠 brain: {'new' if new else 'again'} {kind} #{key} ({task}) x{inc['count']}")
+    if lesson:
+        _learned(lesson["id"], "seen")
+    log(f"  🧠 brain: {'new' if new else 'again'} {kind} #{key} ({task}) x{inc['count']}"
+        + (f" - known: {lesson['id']}" if lesson else ""))
     if want_shot:
         threading.Thread(target=_shoot, args=(key,), daemon=True).start()
     if (new or reopened) and kind in ("error", "fail", "stuck") and inc.get("status") != "ignored":
@@ -242,7 +364,8 @@ def summary():
     d = _load()
     inc = list(d["incidents"].values())
     return {"open": sum(1 for i in inc if i.get("status") == "open"),
-            "total": len(inc), "recorded": d["stats"].get("recorded", 0)}
+            "total": len(inc), "recorded": d["stats"].get("recorded", 0),
+            "known": sum(1 for i in inc if i.get("lesson")), "lessons": len(LESSONS)}
 
 
 def upload(force=False):
@@ -258,6 +381,7 @@ def upload(force=False):
             i.pop("shot_ts", None)
         d["updated"] = _now()
         d["summary"] = summary()
+        d["playbook"] = [{k: l[k] for k in ("id", "since", "cause", "fix", "owner")} for l in LESSONS]
         folder = os.path.dirname(server_config.path("status"))
         body = json.dumps(control._seal_json(d, ("updated",)), ensure_ascii=False, indent=1).encode("utf-8")
         if control._gh_put_bytes(f"{folder}/brain.json", body, "bot: brain"):
