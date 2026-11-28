@@ -354,6 +354,24 @@ def skip_counselor(g=None, img=None, max_taps=25):
     return True
 
 
+PROFILE_TAPS = []
+
+
+def _profile_tap_ok():
+    """v357: vps-04-c001 28 Nov 17:56-18:00 tapped the profile X every 4-5 s for 4 minutes (also while read_profile
+    had opened the profile on purpose). After 3 taps in 90 s that did not close it, wait 5 minutes."""
+    now = time.time()
+    PROFILE_TAPS[:] = [t for t in PROFILE_TAPS if now - t < 300]
+    recent = [t for t in PROFILE_TAPS if now - t < 90]
+    if len(recent) >= 3:
+        if len(PROFILE_TAPS) == 3:
+            log("  ! the profile X did not close it 3 times - not tapping it again for 5 minutes")
+            PROFILE_TAPS.append(now)
+        return False
+    PROFILE_TAPS.append(now)
+    return True
+
+
 def profile_panel_open(img):
     """v355: the governor profile slides in from the left (dark blue panel, gold top). Its X is not matched by the
     X pictures, and the Space button stays visible - the bot took it for the plain city and never closed it
@@ -363,7 +381,12 @@ def profile_panel_open(img):
         h, w = img.shape[:2]
         r = img[int(.36 * h):int(.62 * h), int(.02 * w):int(.26 * w)].astype(np.int16)
         b, g_, rr = r[..., 0], r[..., 1], r[..., 2]
-        return float(((b > 100) & (rr < 70) & (b > g_ + 20)).mean()) > 0.6
+        blue = float(((b > 100) & (rr < 70) & (b > g_ + 20)).mean())
+        # v357: and the gold header of the panel (top-left) - map water on the left has no gold band
+        t = img[int(.02 * h):int(.12 * h), int(.03 * w):int(.26 * w)].astype(np.int16)
+        tb, tg, tr = t[..., 0], t[..., 1], t[..., 2]
+        gold = float(((tr > 170) & (tg > 120) & (tb < 110) & (tr > tb + 70)).mean())
+        return blue > 0.6 and gold > 0.4
     except Exception:
         return False
 
@@ -386,7 +409,7 @@ def recover_screen(g=None, tries=4):
             log("  ! the chat panel was open - closing it")
             g._click_absolute(*chat[0]); time.sleep(2)
             continue
-        if profile_panel_open(img):                          # v355: before the "plain view" test below
+        if profile_panel_open(img) and _profile_tap_ok():    # v355: before the "plain view" test below
             log("  ! the governor profile was open - closing it (X)")
             g._click_absolute(0.271, 0.025); time.sleep(1.5)
             continue
