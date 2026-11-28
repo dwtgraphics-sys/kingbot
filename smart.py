@@ -4922,6 +4922,18 @@ def read_conduct(g, sleep):
         x0, y0 = int(0.12 * w), int(0.18 * h)
         boxes = _ocr_boxes(img[y0:int(0.90 * h), x0:int(0.88 * w)], "settings_icons.png")
         lab = [b for b in boxes if _CONDUCT_WORDS.search(b[4] or "")]
+        on_button = False
+        if not lab:                                          # v328: Settings -> 'Other' tab -> 'Conduct Score' button
+            other = [b for b in boxes if re.fullmatch(r"\W*other\W*", (b[4] or "").strip(), re.I)
+                     and (b[0] + x0) < 0.35 * w]
+            if other:
+                b0 = other[0]
+                g.click_rel(((b0[0] + b0[2]) / 2 + x0) / w, ((b0[1] + b0[3]) / 2 + y0) / h); sleep(2.5)
+                img = g.screenshot()
+                boxes = _ocr_boxes(img[y0:int(0.90 * h), x0:int(0.88 * w)], "settings_other.png")
+                lab = [b for b in boxes if _CONDUCT_WORDS.search(b[4] or "") and (b[0] + x0) > 0.30 * w]
+                on_button = bool(lab)
+                log("    conduct: 'Other' tab opened" + (" - 'Conduct Score' button found" if lab else ""))
         if not lab:                                          # v308: more icons below - scroll the page once
             _drag(g, 0.5, 0.75, 0.5, 0.30); sleep(2)
             img = g.screenshot()
@@ -4933,7 +4945,10 @@ def read_conduct(g, sleep):
             return None
         b = lab[0]
         cx, cy = (b[0] + b[2]) / 2 + x0, b[1] + y0          # the icon sits right above its label
-        g.click_rel(cx / w, max(0.05, cy / h - 0.065)); sleep(3)
+        if on_button:                                        # v328: a wide button - press its label
+            g.click_rel(cx / w, ((b[1] + b[3]) / 2 + y0) / h); sleep(3)
+        else:
+            g.click_rel(cx / w, max(0.05, cy / h - 0.065)); sleep(3)
         img2 = g.screenshot()
         boxes2 = _ocr_boxes(img2[int(0.12 * h):int(0.90 * h), int(0.15 * w):int(0.85 * w)], "conduct_win.png", scale=2.0)
         raw = " | ".join(x[4] for x in boxes2)[:300]
@@ -4955,7 +4970,9 @@ def read_conduct(g, sleep):
             cand = [n for hh, n in nums if hh >= nums[0][0] * 0.8]
             score = next((n for n in cand if n not in (0, 100)), cand[0])
         low = raw.lower()
-        zone = next((z for k, z in _CONDUCT_ZONES if k in low), "")
+        # v328: the gauge prints all four zone names, so the zone comes from the score (0-40-60-80-100)
+        zone = ("" if score is None else "at_risk" if score < 40 else "questionable" if score < 60
+                else "good" if score < 80 else "excellent")
         m = re.search(r"(no restrictions?|restricted[^|]*|restriction[^|]*)", raw, re.I)
         restrict = m.group(1).strip()[:60] if m else ""
     finally:
