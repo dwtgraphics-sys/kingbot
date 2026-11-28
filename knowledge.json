@@ -1,0 +1,12 @@
+{
+ "_note": "The bot's standing knowledge from the owner (read by the bot, shown in the admin brain panel).",
+ "buildings": {
+  "blacksmith": "The Blacksmith (material building) looks the SAME in every civilization and at every City Hall level - its picture (builtin_templates/buildings/blacksmith.png) is enough everywhere.",
+  "city_hall_2": "City Hall level 2 has only: storehouse, city hall, tavern, infantry barracks, farm, hospital, builder's hut (see city_buildings.json)."
+ },
+ "tutorial": {
+  "counselor": "The Counselor lady starts tutorial instructions - skip them by tapping the arrow at the bottom of her talk box."
+ },
+ "vip": "VIP: daily points chest (top right CLAIM) + FREE EVERY DAY chest (green CLAIM). Never the paid offer.",
+ "conduct": "Conduct Score: Settings -> Other -> Conduct Score. Zones 0-40 At Risk, 40-60 Questionable, 60-80 Good, 80-100 Excellent. The bot stops at 80 or below."
+}

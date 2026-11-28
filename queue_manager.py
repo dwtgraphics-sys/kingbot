@@ -1045,11 +1045,21 @@ def produce_materials(g, sleep, kinds=("leather", "ore", "ebony", "bone"), slots
     """Material Production row -> blacksmith -> Material Production -> add materials to the free slots."""
     from common import close_gem_dialogs
     kinds = [k for k in (kinds or ()) if k in MAT_DX] or list(MAT_DX)
-    if not press_row_action(g, sleep, "materials"):
-        return 0
-    if not window_open(g, ("material", "production")):
+    import smart
+    opened = press_row_action(g, sleep, "materials") and window_open(g, ("material", "production"))
+    if not opened:                                           # v359: the Blacksmith by its picture - it looks the
+        log(f"    materials: queue card did not open production (title '{window_title(g)[:40]}') - "   # same in every
+            "finding the Blacksmith by its picture")                                                 # civilization
+        smart.recover_screen(g)
+        try:
+            smart._city_reset(g, sleep)
+            smart.building_by_picture(g, sleep, "blacksmith",
+                                      verify=lambda x, y: smart._mat_try(g, sleep, x, y, need_name=False))
+        except Exception as e:
+            log(f"    (blacksmith by picture failed: {e!r})")
+        opened = window_open(g, ("material", "production"))
+    if not opened:
         log(f"    ! materials: the production window did not open (title '{window_title(g)[:40]}')")
-        import smart
         smart.recover_screen(g)
         return 0
     added = 0

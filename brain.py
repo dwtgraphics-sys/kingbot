@@ -99,6 +99,12 @@ def signature(task, kind, msg, screen=None):
 # - old open incidents that match a lesson are closed with the lesson as the note (the admin page shows it).
 # - a log line that matches a lesson's "handled" pattern counts as the bot applying that fix (stats per lesson).
 LESSONS = [
+    {"id": "blacksmith_same_everywhere", "since": 359,
+     "match": r"materials: the production window did not open|materials: queue card did not open production",
+     "handled": r"Blacksmith .*seen by picture|blacksmith: seen by picture|materials: .* added",
+     "cause": "مبنى المواد (الحداد) لم يُفتح من بطاقة الطوابير.",
+     "fix": "ملاحظة المالك: مبنى المواد شكله واحد في كل الحضارات وكل مستويات قاعة المدينة — يبحث البوت عنه بصورته ويفتح «إنتاج المواد» منه.",
+     "owner": ""},
     {"id": "no_screen", "since": 317, "env": True,
      "match": r"screen grab failed",
      "handled": r"screen is on again|moved it to the console|keep-screen: the screen is on",
