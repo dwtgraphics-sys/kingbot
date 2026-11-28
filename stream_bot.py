@@ -138,6 +138,8 @@ def close_obs_error_windows():
         for h in found:
             u.PostMessageW(h, 0x0010, 0, 0)                 # WM_CLOSE
         if found:
+            # v319: a system error box ignores WM_CLOSE from a normal program; it closes when obs64.exe ends.
+            _run(["taskkill", "/IM", "obs64.exe", "/F"])
             log(f"closed {len(found)} OBS error window(s) that covered the game")
     except Exception:
         pass
@@ -172,18 +174,82 @@ def ensure_vcam():
         return False
 
 
+def no_error_boxes():
+    """v319: Windows shows 'obs64.exe - System Error / MSVCP140_1.dll was not found' as a system box that a
+    normal program cannot close (WM_CLOSE from v308 is refused), and it sat on top of the game. With
+    SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX the loader fails quietly instead;
+    OBS (started from here) inherits this mode, so the box can never appear again."""
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002 | 0x8000)
+    except Exception:
+        pass
+
+
+def _system_dir():
+    """v319: the real 64-bit System32. A 32-bit Python sees SysWOW64 under the name System32, where a 32-bit
+    msvcp140_1.dll made the v302 check pass although the 64-bit runtime that obs64.exe needs was missing."""
+    win = os.environ.get("WINDIR", r"C:\Windows")
+    native = os.path.join(win, "Sysnative")
+    return native if os.path.isdir(native) else os.path.join(win, "System32")
+
+
+def vc_runtime_ok():
+    d = _system_dir()
+    if all(os.path.exists(os.path.join(d, f)) for f in ("msvcp140.dll", "msvcp140_1.dll", "vcruntime140_1.dll")):
+        return True
+    obs_bin = os.path.dirname(OBS_EXE)                   # an OBS zip that carries its own copy also works
+    return os.path.exists(os.path.join(obs_bin, "msvcp140_1.dll"))
+
+
+VC_TRY = [0.0]
+
+
+def install_vc_runtime():
+    """v319: install the Microsoft Visual C++ 2015-2022 x64 runtime silently (same download as install_obs.ps1),
+    at most once every 6 hours. Returns True when the runtime is there afterwards."""
+    if time.time() - VC_TRY[0] < 6 * 3600:
+        return False
+    VC_TRY[0] = time.time()
+    log("Visual C++ runtime (MSVCP140_1.dll) missing - installing it from Microsoft (silent) ...")
+    exe = os.path.join(os.environ.get("TEMP", BASE), "vc_redist.x64.exe")
+    cmd = ("$ProgressPreference='SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol='Tls12'; "
+           f"Invoke-WebRequest 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile '{exe}' -UseBasicParsing; "
+           f"$p = Start-Process '{exe}' -ArgumentList '/install','/quiet','/norestart' -PassThru -Wait; $p.ExitCode")
+    out = ps(cmd, timeout=900)
+    ok = vc_runtime_ok()
+    log("Visual C++ runtime installed" if ok else f"! Visual C++ runtime install failed (exit {str(out).strip()[:40]})"
+        " - run the install_obs action from the dashboard")
+    return ok
+
+
+OBS_FAIL = {"n": 0, "until": 0.0}
+
+
 def start_obs():
     if not os.path.exists(OBS_EXE):
         log("! OBS is not installed at " + OBS_EXE)
         return False
-    if not os.path.exists(os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "System32", "msvcp140_1.dll")):
-        log("! OBS cannot start: the Visual C++ runtime (MSVCP140_1.dll) is missing - run the install_obs action")
+    if time.time() < OBS_FAIL["until"]:
+        return False                             # v319: OBS failed to start - wait instead of retrying every minute
+    if not vc_runtime_ok() and not install_vc_runtime():
+        if OBS_FAIL["n"] == 0:
+            log("! OBS cannot start: the Visual C++ runtime (MSVCP140_1.dll) is missing - run the install_obs action")
+        OBS_FAIL["n"] += 1
+        OBS_FAIL["until"] = time.time() + 1800
         return False                             # v302: otherwise every start leaves a 'System Error' window
     ensure_vcam()
     subprocess.Popen([OBS_EXE, "--startvirtualcam", "--minimize-to-tray", "--disable-shutdown-check"],
                      cwd=os.path.dirname(OBS_EXE), creationflags=DETACH)
-    log("OBS started with the virtual camera")
     time.sleep(12)
+    if not obs_running():                        # v319: it closed at once (missing DLL, broken install)
+        OBS_FAIL["n"] += 1
+        OBS_FAIL["until"] = time.time() + min(3600, 300 * OBS_FAIL["n"])
+        log(f"! OBS closed right after starting (try {OBS_FAIL['n']}) - next try in "
+            f"{int((OBS_FAIL['until'] - time.time()) / 60)} minutes; run the install_obs action if it keeps failing")
+        return False
+    OBS_FAIL["n"], OBS_FAIL["until"] = 0, 0.0
+    log("OBS started with the virtual camera")
     return True
 
 
@@ -267,6 +333,7 @@ def main():
         return                                    # one copy only
     save(PID_FILE, os.getpid())
     log(f"stream_bot started (pid {os.getpid()})")
+    no_error_boxes()                             # v319: OBS inherits it - no 'System Error' box on the game
     old_senders = sender_pids()
     if old_senders:                              # left by an older stream_bot: start clean
         for p in old_senders:
