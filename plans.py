@@ -10,9 +10,13 @@ TIERS = {
     "leader": {"name": "Leader", "price": 25, "groups": {"leader"}},
     "solo_leader_bundle": {"name": "Solo + Leader", "price": 45, "groups": {"solo", "leader"}},
     "group": {"name": "Group", "price": None, "groups": {"solo", "leader"}},
+    # v312: light plan - only these routines (gathering, barbarians, alliance flags, free chests + daily rewards)
+    "farms": {"name": "Farms", "name_ar": "باقة المزارع", "price": None, "groups": {"solo"},
+              "only": {"gather", "collect_city", "attack_barbarians", "alliance_flag",
+                       "tavern", "tavern_legendary", "daily_objectives", "daily_rewards", "vip_chests"}},
 }
 ALIASES = {"bundle": "solo_leader_bundle", "solo+leader": "solo_leader_bundle", "solo_leader": "solo_leader_bundle",
-           "multi": "group", "groups": "group"}
+           "multi": "group", "groups": "group", "farm": "farms", "المزارع": "farms", "باقة_المزارع": "farms"}
 LEADER_ROUTINES = {
     "leader_resource_point": "Resource Point", "leader_daily_credit": "Daily Credit", "leader_members": "Members",
     "leader_mobilization": "Alliance Mobilization Event", "leader_rally_mgmt": "Rally Management",
@@ -41,7 +45,14 @@ def allowed(routine, data):
     """(ok, reason) - reason is a short Arabic line for the log / dashboard when the plan excludes it."""
     tier = tier_of(data)
     g = group_of(routine)
-    if tier is None or g == "system" or g in TIERS[tier]["groups"]:
+    if tier is None or g == "system":
+        return True, ""
+    only = TIERS[tier].get("only")
+    if only is not None:
+        if routine in only:
+            return True, ""
+        return False, f"{routine}: غير مشمول في {TIERS[tier].get('name_ar') or TIERS[tier]['name']} (جمع المزارع، البرابرة، أعلام التحالف، المكافآت فقط)"
+    if g in TIERS[tier]["groups"]:
         return True, ""
     if g == "leader":
         return False, f"{routine}: أوامر القائد غير مشمولة في باقة {TIERS[tier]['name']} - رقِّ إلى Leader أو Solo + Leader"
@@ -50,10 +61,13 @@ def allowed(routine, data):
 
 def info(data):
     tier = tier_of(data)
-    return {"tier": tier or "", "name": TIERS[tier]["name"] if tier else "", "groups": sorted(TIERS[tier]["groups"]) if tier else ["leader", "solo"]}
+    out = {"tier": tier or "", "name": TIERS[tier]["name"] if tier else "", "groups": sorted(TIERS[tier]["groups"]) if tier else ["leader", "solo"]}
+    if tier and TIERS[tier].get("only") is not None:
+        out["only"] = sorted(TIERS[tier]["only"])
+    return out
 
 
 if __name__ == "__main__":
-    for t in (None, "solo", "leader", "bundle", "group"):
+    for t in (None, "solo", "leader", "bundle", "group", "farms"):
         d = {"plan": t}
         print(t, [allowed(r, d)[0] for r in ("gather", "leader_members", "read_marches", "sunset_canyon")])
