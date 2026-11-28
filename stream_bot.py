@@ -127,6 +127,41 @@ def sender_running():
     return bool(pids)
 
 
+OBS_FIX = {"at": 0.0}
+
+
+def obs_health():
+    """v342: restart OBS when its newest log shows it stuck or on the wrong scenes:
+    - stuck on the 'unclean shutdown - Safe Mode?' question (the log stops after that line for > 90 s);
+    - it opened the empty 'Untitled' collection (log: "Loaded scenes: - scene 'Scene'") - the stream was black."""
+    try:
+        if time.time() - OBS_FIX["at"] < 600 or not obs_running():
+            return
+        logs = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(OBS_EXE))), "config", "obs-studio", "logs")
+        files = sorted((os.path.join(logs, f) for f in os.listdir(logs) if f.endswith(".txt")), key=os.path.getmtime)
+        if not files:
+            return
+        f = files[-1]
+        txt = open(f, encoding="utf-8", errors="replace").read()
+        age = time.time() - os.path.getmtime(f)
+        why = None
+        if "unclean shutdown" in txt and "Startup complete" not in txt and age > 90:
+            why = "stuck on its 'Safe Mode?' question"
+        elif "Loaded scenes:" in txt and "scene 'Kingbot'" not in txt:
+            why = "opened the empty scene collection (black picture)"
+        if why:
+            OBS_FIX["at"] = time.time()
+            _run(["taskkill", "/IM", "obs64.exe", "/F"])
+            time.sleep(3)
+            log(f"OBS {why} - restarting it with the Kingbot scene")
+            if start_obs():
+                for p in (sender_pids() or []):          # the sender must pick up the new camera
+                    _run(["taskkill", "/PID", str(p), "/T", "/F"])
+                SENDER["proc"] = None
+    except Exception as e:
+        log(f"! obs_health: {e!r}")
+
+
 def close_obs_error_windows():
     """v308: every OBS start without the C++ runtime left an 'obs64.exe - System Error' box on top of the game;
     the bot then could not see the search panels. Close such boxes (title starts with 'obs64.exe')."""
@@ -420,6 +455,8 @@ def main():
                         _run(["taskkill", "/PID", str(p), "/T", "/F"])
                     SENDER["proc"] = None
                     log("Chrome sender restarted so it finds the new OBS camera")
+                if not obs_new:
+                    obs_health()
                 if not sender_running():
                     start_sender()
                 if active is not True:
