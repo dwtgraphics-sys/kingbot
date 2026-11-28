@@ -3,7 +3,7 @@
  "comment": "Kingbot UI registry - one entry per button/element. Lookup order: template picture -> OCR text -> relative to another element -> remembered position. Add an element here instead of writing code.",
  "elements": {
   "alliance_help_button": {
-   "template": "alliance_help2",
+   "template": "alliance_help3",
    "multiscale": true,
    "ocr_labels": [
     "help",
@@ -11,7 +11,10 @@
     "المساعدة"
    ],
    "screen": "any",
-   "note": "handshake button (city HUD, above the bottom row); icon found at any scale"
+   "note": "handshake button next to the round menu button (owner picture, v315); min_scale stops tiny look-alikes (alliance-centre bubble)",
+   "min_scale": 0.75,
+   "max_scale": 1.8,
+   "threshold": 0.75
   },
   "queue_button": {
    "template": "queue_btn",

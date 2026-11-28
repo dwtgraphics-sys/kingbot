@@ -172,6 +172,12 @@ def _on_map(g, img=None):
 
 
 def _click_tpl(g, name, sleep, threshold=0.78, wait=2.0, tries=3):
+    # v315: a second picture of the same button (<name>_b, the owner's newer screenshot) is tried too
+    if not name.endswith("_b") and os.path.isfile(os.path.join(BASE, "builtin_templates", name + "_b.png")):
+        if g.find_image(name, threshold) or not g.find_image(name + "_b", threshold):
+            pass
+        else:
+            name = name + "_b"
     for _ in range(tries):
         hits = g.find_image(name, threshold)
         if hits:
@@ -1101,7 +1107,8 @@ def find_element(g, name, img=None, threshold=None, allow_fallback=True):
     tpl = element.get("template")
     if tpl and element.get("multiscale"):
         try:
-            hit = find_icon(g, tpl, threshold=thr, img=img)
+            hit = find_icon(g, tpl, threshold=thr, img=img,
+                            min_scale=float(element.get("min_scale", 0.4)), max_scale=float(element.get("max_scale", 2.2)))
             if hit:
                 log(f"  ui: {name} found by icon search at {hit[0]:.3f},{hit[1]:.3f} "
                     f"(score {hit[2]:.2f}, scale {hit[3]:.2f})")
@@ -2531,6 +2538,20 @@ def _barb_search(g, sleep, lo, hi):
     else:
         log("  ! attack_barbarians: the barbarian search panel did not open")
         return None, int(hi)
+    try:                                                     # v315: "Max Lvl 21 Barbarians can be attacked."
+        img = g.screenshot(); h, w = img.shape[:2]
+        txt = " ".join(_ocr_lines(img[int(0.70 * h):int(0.86 * h), int(0.05 * w):int(0.55 * w)], "barb_max.png", scale=2))
+        m = re.search(r"max\s*l\s*v\s*l?\.?\s*(\d{1,2})", txt, re.I)
+        if m:
+            mx = int(m.group(1))
+            import control as _c
+            _c.CITY["barb_max"] = mx
+            if int(hi) > mx:
+                log(f"    barbarians: this account can attack up to level {mx} - searching {min(int(lo), mx)}-{mx} "
+                    f"instead of {lo}-{hi}")
+                hi, lo = mx, min(int(lo), mx)
+    except Exception as e:
+        log(f"    (max barbarian level not read: {e!r})")
     for _ in range(60):
         g._click_absolute(0.204, 0.758); sleep(0.08)         # level down to 1 (fast clicks inside the panel)
     for _ in range(max(0, int(hi) - 1)):
