@@ -3640,7 +3640,7 @@ def _scan_building(g, sleep, kind, probe):
 
 
 # ---------------- tavern free chests (v75) ----------------
-def _blue_buttons(img, y0=0.62, y1=0.73):
+def _blue_buttons(img, y0=0.62, y1=0.78):
     import cv2
     h, w = img.shape[:2]
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -3668,10 +3668,34 @@ def _tavern_try(g, sleep, x, y, need_name=False):
     return False
 
 
+def _tavern_bubble(g, sleep):
+    """v357: the tavern shows a chest bubble over it while a free chest waits - tap the bubble (works in every
+    city style; W85's Chinese tavern was never found by the tavern picture). None = no bubble on screen."""
+    hit = find_icon(g, "tavern_bubble", 0.6, 1.8, 13, 0.78)
+    if not hit:
+        return None
+    log(f"  tavern: free-chest bubble seen at {hit[0]:.3f},{hit[1]:.3f} (match {hit[2]:.2f}) - tapping it")
+    g.click_rel(hit[0], hit[1]); sleep(3)
+    if g.find_image("tavern_silver_title", 0.8, img=g.screenshot()):
+        return True
+    g.click_rel(hit[0], hit[1] + 0.06); sleep(3)                # the building under the bubble
+    img = g.screenshot()
+    if g.find_image("tavern_silver_title", 0.8, img=img):
+        return True
+    return _tavern_try(g, sleep, hit[0], hit[1] + 0.06)
+
+
 def _open_tavern(g, sleep):
     """v137: reset the camera, try this character's remembered spot, then the default spot,
     and if both fail search the city once (cities differ between characters)."""
     _city_reset(g, sleep)
+    try:
+        if _tavern_bubble(g, sleep):
+            return True
+        recover_screen(g)
+        _city_reset(g, sleep)
+    except Exception as e:
+        log(f"  (tavern bubble check failed: {e!r})")
     if building_by_picture(g, sleep, "tavern", verify=lambda x, y: _tavern_try(g, sleep, x, y)):   # v312
         return True
     _city_reset(g, sleep)
@@ -3691,17 +3715,23 @@ def _open_tavern(g, sleep):
     return bool(_scan_building(g, sleep, "tavern", lambda x, y: _tavern_try(g, sleep, x, y, need_name=True)))
 
 
+TAVERN_LAST = {"opened_page": False}
+
+
 def tavern(g, sleep, max_open=12):
     """Tavern: open ONLY free chests (blue OPEN button). Orange OPEN = keys -> never pressed. Never gems."""
     import cv2, control, time as _t
     from common import close_gem_dialogs, BASE
+    TAVERN_LAST["opened_page"] = False
     if ensure_screen(g, sleep, "city", tries=2) != "city":     # v181
         log("  ! tavern: the city is not showing - skipped")
         return True
+    TAVERN_LAST["opened_page"] = False
     if not _open_tavern(g, sleep):
         log("  ! tavern: the tavern did not open")
         recover_screen(g)
         return True
+    TAVERN_LAST["opened_page"] = True
     opened = 0
     for _ in range(int(max_open)):
         img = g.screenshot()
@@ -3746,28 +3776,13 @@ def tavern(g, sleep, max_open=12):
 
 
 def tavern_legendary(g, sleep):
-    """Legendary chest: once a day, ONLY if the button says it is free."""
-    from common import close_gem_dialogs
-    if not _in_city(g):
-        press_key("space"); sleep(6)
-    g.click_rel(0.835, 0.505); sleep(2)
-    g.click_rel(0.900, 0.603); sleep(3)                      # legendary chests button
-    img = g.screenshot()
-    h, w = img.shape[:2]
-    t = " ".join(_ocr_lines(img[int(0.645 * h):int(0.73 * h), int(0.4 * w):int(0.6 * w)], "legend_ocr.png", scale=3)).lower()
-    if "free" in t:
-        btn = _blue_buttons(img, 0.64, 0.71)
-        if btn:
-            g.click_rel(*btn[0]); sleep(4)
-            close_gem_dialogs(g)
-            for _k in range(4):
-                g.click_rel(0.5, 0.92); sleep(2)
-            log("  tavern_legendary: free legendary chest opened")
-    else:
-        log(f"  - tavern_legendary: no free legendary chest today ({t[:40]})")
-    g.click_rel(0.021, 0.025); sleep(2)
-    recover_screen(g)
-    return True
+    """v357: the legendary (Golden) chest sits on the same tavern page as the Silver one; its free OPEN is
+    blue once a day like the others, so the tavern run opens it. The old fixed-spot version tapped the wrong
+    place in W85's city, read nothing and marked the day as done."""
+    r = tavern(g, sleep)
+    if TAVERN_LAST.get("opened_page"):
+        return True
+    return "retry"                                           # page not reached - not done for today
 
 
 SMART["tavern"] = tavern
