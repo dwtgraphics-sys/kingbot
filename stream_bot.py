@@ -239,6 +239,42 @@ def install_vc_runtime():
 OBS_FAIL = {"n": 0, "until": 0.0}
 
 
+def pin_obs_collection():
+    """v339: newer OBS keeps the chosen profile / scene collection in user.ini, not global.ini - it opened the empty
+    'Untitled' collection ('Scene' with no source), so the virtual camera and the dashboard stream were black.
+    Point user.ini at the Kingbot profile + collection (the window capture of the game)."""
+    try:
+        cfg = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(OBS_EXE))), "config", "obs-studio")
+        if not os.path.exists(os.path.join(cfg, "basic", "scenes", "Kingbot.json")):
+            return
+        path = os.path.join(cfg, "user.ini")
+        want = {"Profile": "Kingbot", "ProfileDir": "Kingbot", "SceneCollection": "Kingbot",
+                "SceneCollectionFile": "Kingbot.json"}
+        lines = open(path, encoding="utf-8-sig").read().splitlines() if os.path.exists(path) else []
+        out, sec, done, inb = [], None, set(), False
+        for ln in lines:
+            st = ln.strip()
+            if st.startswith("[") and st.endswith("]"):
+                if inb:
+                    out += [f"{k}={v}" for k, v in want.items() if k not in done]
+                sec = st[1:-1]; inb = sec == "Basic"
+                out.append(ln); continue
+            k = st.split("=", 1)[0] if "=" in st else None
+            if inb and k in want:
+                out.append(f"{k}={want[k]}"); done.add(k); continue
+            out.append(ln)
+        if inb:
+            out += [f"{k}={v}" for k, v in want.items() if k not in done]
+        if not any(l.strip() == "[Basic]" for l in out):
+            out += ["", "[Basic]"] + [f"{k}={v}" for k, v in want.items()]
+        new = "\n".join(out) + "\n"
+        if new != "\n".join(lines) + "\n":
+            open(path, "w", encoding="utf-8").write(new)
+            log("  stream: OBS set to the Kingbot scene collection (user.ini)")
+    except Exception as e:
+        log(f"  stream: could not set the OBS scene collection: {e!r}")
+
+
 def start_obs():
     if not os.path.exists(OBS_EXE):
         log("! OBS is not installed at " + OBS_EXE)
@@ -252,7 +288,9 @@ def start_obs():
         OBS_FAIL["until"] = time.time() + 1800
         return False                             # v302: otherwise every start leaves a 'System Error' window
     ensure_vcam()
-    subprocess.Popen([OBS_EXE, "--startvirtualcam", "--minimize-to-tray", "--disable-shutdown-check"],
+    pin_obs_collection()
+    subprocess.Popen([OBS_EXE, "--startvirtualcam", "--minimize-to-tray", "--disable-shutdown-check",
+                      "--profile", "Kingbot", "--collection", "Kingbot", "--scene", "Kingbot"],
                      cwd=os.path.dirname(OBS_EXE), creationflags=DETACH)
     time.sleep(12)
     if not obs_running():                        # v319: it closed at once (missing DLL, broken install)
