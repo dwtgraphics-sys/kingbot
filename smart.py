@@ -6137,7 +6137,8 @@ def read_profile(g, sleep):
         if not _profile_open(img):
             log("  ! read_profile: the profile did not open")
             return True
-        boxes = _ocr_boxes(img[int(0.26 * h):int(0.49 * h), int(0.02 * w):int(0.28 * w)], "profile.png")
+        # v363: the profile now lists Power / Kill Points / Acclaim below Alliance - the old crop (to 0.49) cut them off
+        boxes = _ocr_boxes(img[int(0.26 * h):int(0.64 * h), int(0.02 * w):int(0.28 * w)], "profile.png")
         rows = []
         for b in sorted(boxes, key=lambda b: b[1]):
             if rows and abs(rows[-1][0] - b[1]) < 6:
@@ -6199,7 +6200,8 @@ def read_profile(g, sleep):
                 else:
                     prof["tag"], prof["alliance"] = "", upfix(al)
             elif low.startswith("po") and "power" not in prof:
-                prof["power"] = num(ln) or num(val_at(i))
+                m0 = re.search(r"(\d{1,3}(?:[,.]\d{3})+|\d+)\s*$", ln)     # v363: small accounts (4,287) too
+                prof["power"] = num(ln) or (int(re.sub(r"\D", "", m0.group(1))) if m0 else None) or num(val_at(i))
             elif low.startswith("kil") or low.startswith("ki11"):
                 prof["kp"] = num(ln) or _kp_popup(g, sleep)
             if "gid" not in prof:
@@ -6224,8 +6226,9 @@ def read_profile(g, sleep):
             if old.get("name") and _clean_gov_name(old["name"]):
                 prof["name"] = old["name"]
             log("    ! profile: the governor name could not be read this time" + (" - kept the last one" if prof.get("name") else ""))
+        same = not old.get("gid") or not prof.get("gid") or str(old.get("gid")) == str(prof.get("gid"))
         for k in ("ch", "conduct", "vip", "kp", "power", "gid"):
-            if old.get(k) and not prof.get(k):
+            if same and old.get(k) and not prof.get(k):         # v363: never another account's power/KP
                 prof[k] = old[k]
         control.CITY["profile"] = prof
         _persist_save()
