@@ -2119,7 +2119,14 @@ def one_round(settings):
                 log(f"  {name}: done for today ({today})")
             if every:
                 state = load_json(TASK_STATE_FILE, {})
-                wait_min = 30 if ok == "retry" else random.uniform(*every)   # v141: "retry" = try again soon
+                # v362: a task that keeps saying "retry" (vip_shop: 20+ misses on 28 Nov, 2-5 minutes each) waits
+                # longer every time: 30, 60, 120, 240, 360 minutes; a real run resets it.
+                rk = daily_key(name).replace("_day", "_retries")
+                n_retry = int(state.get(rk, 0)) + 1 if ok == "retry" else 0
+                state[rk] = n_retry
+                if n_retry >= 3 and n_retry in (3, 5):
+                    log(f"  ! {name}: did not work {n_retry} times in a row - waiting longer between tries")
+                wait_min = min(360, 30 * 2 ** (n_retry - 1)) if ok == "retry" else random.uniform(*every)
                 state[name] = time.time() + wait_min * 60
                 save_json(TASK_STATE_FILE, state)
                 log(f"  {name}: next time in {wait_min:.0f} minutes")
