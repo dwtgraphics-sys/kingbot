@@ -291,7 +291,62 @@ def ocr_panel(img):
     crop = img[:, :x1]
     scale = max(2.0, min(4.0, 560.0 / max(1, x1)))
     boxes = smart._ocr_boxes(crop, "qm_ocr.png", scale)
-    return [((by1 + by2) / 2.0, bx1, t) for bx1, by1, bx2, by2, t in boxes]
+    lines = [((by1 + by2) / 2.0, bx1, t) for bx1, by1, bx2, by2, t in boxes]
+    try:
+        lines = _merge_bar_lines(lines, _read_bars(crop, w))
+    except Exception as e:
+        log(f"    (queue bars read failed: {e!r})")
+    return lines
+
+
+def _find_bars(crop):
+    """v333: the blue progress bars of busy rows ("Training 10:35:13", white text on blue). [(y0, y1, x0)]"""
+    import numpy as np
+    b, g, r = [crop[..., i].astype(int) for i in range(3)]
+    blue = (b > 150) & (r < 135) & (b - r > 55)
+    ys = np.where(blue.mean(axis=1) > 0.2)[0]
+    groups = []
+    for y in ys:
+        if groups and y - groups[-1][1] <= 2:
+            groups[-1][1] = y
+        else:
+            groups.append([int(y), int(y)])
+    out = []
+    for y0, y1 in groups:
+        if y1 - y0 < 2:
+            continue
+        cols = np.where(blue[y0:y1 + 1].mean(axis=0) > 0.25)[0]
+        if len(cols) < 10:
+            continue
+        pad = 2
+        out.append((max(0, y0 - pad), min(crop.shape[0], y1 + pad + 1), int(cols.min())))
+    return out
+
+
+def _read_bars(crop, full_w):
+    """The status OCR missed the white-on-blue timers of every row but the first (28 Nov: the dashboard showed
+    only infantry). Each bar is cut out, made black-on-white and read alone -> [(y, x, text)]."""
+    import cv2, numpy as np, smart
+    x_end = min(crop.shape[1], int(0.168 * full_w))
+    out = []
+    for y0, y1, x0 in _find_bars(crop)[:8]:
+        bar = cv2.resize(crop[y0:y1, x0:x_end], None, fx=5, fy=5, interpolation=cv2.INTER_CUBIC)
+        m = 255 - (bar.min(axis=2) > 170).astype(np.uint8) * 255
+        m = cv2.copyMakeBorder(m, 16, 16, 16, 16, cv2.BORDER_CONSTANT, value=255)
+        boxes = smart._ocr_boxes_uncached(cv2.cvtColor(m, cv2.COLOR_GRAY2BGR), "qm_bar.png", 1.0)
+        text = " ".join(t for _, t in sorted((bx1, t) for bx1, by1, bx2, by2, t in boxes))
+        text = re.sub(r"(\d)\s*-\s*(\d)", r"\1:\2", text).strip()
+        if text and is_status(text):
+            out.append(((y0 + y1) / 2.0, x0, text))
+    return out
+
+
+def _merge_bar_lines(lines, bar_lines):
+    """A bar read replaces the normal OCR lines on the same bar (their timer was missing or garbled)."""
+    if not bar_lines:
+        return lines
+    keep = [ln for ln in lines if not any(abs(ln[0] - by) < 6 and is_status(ln[2]) for by, _, _ in bar_lines)]
+    return keep + bar_lines
 
 
 def open_panel(g, sleep):
