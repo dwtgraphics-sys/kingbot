@@ -194,6 +194,14 @@ ATTACK_WATCH = [0]
 WATCH_ERR = [0.0, ""]        # last watchdog fault: (time, text), so a repeating one is logged once
 
 
+def no_screen_error(e):
+    """v317: True when the failure only means the server has no screen right now (Remote Desktop
+    disconnected / input desktop gone): PIL's OSError('screen grab failed'), our own
+    RuntimeError('screen grab failed: ...') from a click pinned at 0,0. That is not a bug in an
+    activity - the round loop (same test) moves the session back to the console."""
+    return "screen grab failed" in repr(e)
+
+
 def watch_error(prefix, e):
     """Log a watchdog failure without flooding log.txt.
 
@@ -1347,6 +1355,8 @@ def _do_action(g, req):
         raise
     except Exception as e:
         log(f"! dashboard action {do} failed: {e!r}")
+        if no_screen_error(e):                               # v317: no screen is not a bug report
+            return "failed: the server screen is not available"
         kb_guard.error(f"action {do}: {e!r}")
         try:
             import brain
@@ -1869,8 +1879,9 @@ def one_round(settings):
             return
         try:
             recover_screen(g)
-        except Exception:
-            pass
+        except Exception as e:
+            if no_screen_error(e):                           # v317: the desktop is gone - stop the round now,
+                raise                                        # do not start the next activity blind
         every = task_every(t)
         state = load_json(TASK_STATE_FILE, {})
         today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
@@ -1953,6 +1964,11 @@ def one_round(settings):
             except (Stop, NewSettings, SystemExit, pyautogui.FailSafeException):
                 raise
             except Exception as e:
+                if no_screen_error(e):                       # v317: not a code fault - the round loop
+                    log(f"  {name}: stopped - the server screen is not available")   # reconnects the session
+                    TASK_RESULT[name] = {"at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                         "ok": False, "result": "no screen"}
+                    raise
                 kb_guard.error(f"{name}: {e!r}")
                 if brain:
                     try:

@@ -117,6 +117,10 @@ def last_warning():
 # ---------------------------------------------------------------- recording
 def record(kind, msg, task=None, screen=None, shot=True, detail=None):
     """kind: error (exception) | fail (task returned False) | stuck | warn.  Returns the incident key."""
+    if kind == "error" and "screen grab failed" in str(msg):
+        # v317: the Remote Desktop session was disconnected - an environment state the round loop
+        # recovers from, not a fault in the activity. Never open a bug report for it.
+        return None
     task = task or _task["name"] or "-"
     screen = screen or _task["screen"]
     key = signature(task, kind, msg, screen)
